@@ -68,6 +68,7 @@ Never run `git push` and never ask whether to push; a commit stays local until t
 - **Track option state ourselves.** libtelnet 0.23 exports no option-status query. `optionStatus(_:)` is derived in Swift from observed `WILL`/`WONT`/`DO`/`DONT` events; never read or guess internal C state.
 - **Errors are typed values.** `throws(TelnetError)` on every fallible public call. No `fatalError`, no `preconditionFailure`, no force-unwrap on a value that comes from the peer, and no `try!`. Map each `telnet_error_t` case explicitly; no `default:` arm may swallow one.
 - **Peer input is hostile.** Every parse path has a length bound and is fuzz-tested. A malformed sequence produces a warning or a typed error, never a crash or an unbounded allocation.
+- **A failing test is never silenced.** If a test fails, errors, flakes, or looks wrong, do not delete it, skip it, loosen its assertion or threshold, or edit it to pass. Stop and ask the human for the decision; then fix the product, or change the test only as that decision directs, and state why in the same change. This holds even when the failure follows a deliberate behavior change.
 
 ## Conventions
 
@@ -76,7 +77,7 @@ Never run `git push` and never ask whether to push; a commit stays local until t
 - Public symbols carry a `///` doc comment that states the caller contract: outcome, throw or finish conditions, ownership, ordering, and cancellation. Internal comments explain non-obvious invariants only; they do not narrate control flow.
 - One meaning per term. Use `option`, `negotiation`, `subnegotiation`, `event`, `connection`, and `session` with the definitions in [docs/glossary](docs/public-api.md#glossary); do not introduce a synonym for a term already defined there.
 - Prefer an existing dependency over new code when it removes owned code and tests; record the choice in the PRD rather than in a comment.
-- Tests describe observable behavior of the public API. A protocol-level test drives the parse layer directly; a connection test drives a real socket against `TelnetEchoServer`. Change obsolete behavior together with its tests.
+- Tests describe observable behavior of the public API. A protocol-level test drives the parse layer directly; a connection test drives a real socket against `TelnetEchoServer`. Change obsolete behavior together with its tests, under the same decision rule.
 - Files end with exactly one trailing newline. Keep a `FIXME` for a defect, `TODO` for planned work, and `XXX` for a hazard that must be revisited; do not use a bare marker without a reason.
 
 ## Documentation

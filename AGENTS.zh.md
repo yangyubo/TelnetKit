@@ -68,6 +68,7 @@ swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-
 - **选项状态由我们自己维护。** libtelnet 0.23 不导出选项状态查询。`optionStatus(_:)` 由 Swift 依据观测到的 `WILL`/`WONT`/`DO`/`DONT` 事件推导；绝不读取或猜测 C 内部状态。
 - **错误是类型化值。** 每个可能失败的公开调用都是 `throws(TelnetError)`。禁止 `fatalError`、`preconditionFailure`、对来自对端的值强制解包，以及 `try!`。每个 `telnet_error_t` 分支都要显式映射；任何 `default:` 分支都不允许吞掉一个分支。
 - **对端输入不可信。** 每条解析路径都有长度上限并被模糊测试覆盖。异常序列产生警告或类型化错误，绝不产生崩溃或无界分配。
+- **失败或异常的测试绝不能被消音。** 测试失败、报错、不稳定或看起来不对时，不得删除、跳过、放宽断言或阈值，也不得改成能通过的样子。必须停下来询问人的决定，然后据此修产品，或仅在决定指示下修改测试，并在同一次变更里说明原因。即使失败来自一次有意的行为变更，也同样适用。
 
 ## 约定
 
@@ -76,7 +77,7 @@ swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-
 - 公开符号带 `///` 文档注释，说明调用方契约：结果、抛出或结束条件、所有权、顺序与取消语义。内部注释只解释不显然的不变量；不叙述控制流。
 - 一个术语一个含义。`option`、`negotiation`、`subnegotiation`、`event`、`connection`、`session` 采用 [docs/glossary](docs/public-api.md#glossary) 中的定义；不得为已定义的术语另造同义词。
 - 当引入依赖能删掉自有代码与测试时，优先用依赖；把这一选择记进 PRD，而不是写进注释。
-- 测试描述公开 API 的可观测行为。协议层测试直接驱动解析层；连接测试用真实 socket 打 `TelnetEchoServer`。废弃行为要与其测试一起变更。
+- 测试描述公开 API 的可观测行为。协议层测试直接驱动解析层；连接测试用真实 socket 打 `TelnetEchoServer`。废弃行为要与其测试一起变更，并遵循同一条决定规则。
 - 文件以恰好一个结尾换行结束。`FIXME` 用于缺陷，`TODO` 用于计划工作，`XXX` 用于必须回看的高风险点；不要留没有理由的裸标记。
 
 ## 文档
