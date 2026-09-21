@@ -99,6 +99,7 @@ await connection.close()
 
 - 不做终端模拟。TelnetKit 只交付字节与协议事件；屏幕模型、光标处理与颜色渲染由调用方负责。
 - 未内置 MCCP2 压缩：收到 COMPRESS2 请求时以 `wont` 拒绝。Apple SDK 自带 zlib，所以这是范围取舍而非依赖缺失；启用前必须先设计解压上限与压缩态契约。
+- 不支持代理模式：在两个对端之间透明转发属于中间人与调试工具场景，而本库是 Telnet 端点。
 - 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项。Apple 自带 telnet 与 Homebrew 的 netkit-telnet 都不支持，上游 libtelnet 两个选项都未实现，IETF 相关草案也从未成为 RFC。
 - 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
 - 本里程碑不提供 CLI Demo 与回显服务端；它们发布后是仅 macOS 可执行文件，因为 watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。

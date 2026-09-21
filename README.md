@@ -99,6 +99,7 @@ await connection.close()
 
 - Terminal emulation is out of scope. TelnetKit delivers bytes and protocol events; screen models, cursor handling, and color rendering are the caller's job.
 - MCCP2 compression is not built in: a COMPRESS2 request is refused with `wont`. The Apple SDKs ship zlib, so this is a scope decision rather than a dependency gap; enabling it needs an inflation bound and compressed-state contracts first.
+- Proxy mode is not supported: transparent forwarding between two peers is a middle-man and debug-tool use, and this library is a Telnet endpoint.
 - Telnet over TLS/SSL is out of scope: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options. Apple's own telnet and Homebrew's netkit-telnet support neither, upstream libtelnet implements neither option, and the IETF drafts never became RFCs.
 - Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
 - The CLI demo and the echo server are not provided in this milestone; when they ship they are macOS-only executables, because watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.

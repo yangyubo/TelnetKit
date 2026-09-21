@@ -42,6 +42,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 - ❌ SSH / RLogin / Mosh 协议。
 - ❌ BBS 业务逻辑（ANSI 图、文件传输协议 ZMODEM 等）。
 - ❌ MCCP2 压缩（`HAVE_ZLIB`）。Apple 三个 SDK 都自带 zlib（我已验证 macOS/iOS/iPadOS 均可 `-lz` 链接），所以关闭不是依赖问题，而是取舍：目标用户（开发者、运维人员、极客）不依赖它；而一旦接受压缩流，inflate 会引入解压炸弹、压缩态事件流与失败模式三项未设计的契约。首版对其一律 `wont`，v0.2 按 §6.3 的启用条件评估。
+- ❌ 代理模式（`TELNET_FLAG_PROXY`）。它把 libtelnet 变成一根透明管道：关闭 RFC 1143 应答，把每个 `WILL`/`WONT`/`DO`/`DONT` 上报给应用自行转发，唯一的额外能力是自动识别 COMPRESS2。这是中间人（客户端 ↔ 代理 ↔ 服务端）与调试工具的形态：转发方不能对选项站队。本库恰恰相反——它是端点，价值就在于代理模式会关掉的那三样：RFC 1143 自动应答、选项表与 `optionStatus(_:)`；而 COMPRESS2 这项额外能力受 zlib 控制，首版未开启。需要透明转发时，请直接以代理模式使用上游 libtelnet；v0.2 若要重新评估，须先满足 §6.3 为压缩设定的同类前置条件。
 - ❌ Telnet 服务端框架（`NIOTSListenerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
 - ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
 - ❌ Telnet over TLS/SSL（`telnets`/992、START-TLS、TELNET ENCRYPT 与 AUTHENTICATION 选项）。设备与服务端极少，标准已废弃，Apple 与 Homebrew 的 telnet 都不支持；上游 libtelnet 也未实现 ENCRYPT/AUTHENTICATION。需要保密时由部署方使用 VPN 或跳板机，本库只承载明文 Telnet，并在文档中显著标注这一事实。
@@ -464,7 +465,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-PROTO-03 | `IAC IAC`（转义）还原为单字节 `0xFF` 并归入 `.data` | P0 | 单测断言字节 |
 | FR-PROTO-04 | 非法/截断 `IAC` 序列产生 `.warning` 而非崩溃 | P0 | 模糊输入（随机字节流 10 万次）无崩溃 |
 | FR-PROTO-05 | 子协商内容完整保真（含 `IAC` 转义还原） | P0 | TTYPE/NAWS/NEW-ENVIRON 子协商 payload 精确匹配 |
-| FR-PROTO-06 | NVT 行尾语义通过 `configuration.newlinePolicy` 暴露，不暴露宏；首版不做代理模式 | P1 | 换行策略有测试；代理模式需求推迟 |
+| FR-PROTO-06 | NVT 行尾语义通过 `configuration.newlinePolicy` 暴露，不暴露宏；代理模式不在范围内（§1.3） | P1 | 换行策略有测试；不存在代理模式的验收标准 |
 | FR-PROTO-07 | 子协商长度超 `subnegotiationLimit` 时抛 `.subnegotiationTooLarge` | P1 | 超大 SB 被拦截 |
 | FR-PROTO-08 | 回调缓冲零拷贝拷贝策略正确（不出现悬垂指针） | P0 | AddressSanitizer 下跑协议单测无报错 |
 
