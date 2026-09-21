@@ -268,7 +268,6 @@ public struct TelnetConfiguration: Sendable {
     public var eventBufferPolicy: TelnetEventBufferPolicy
     public var newlinePolicy: TelnetNewlinePolicy
     public var waitForConnectivity: Bool
-    public var transportOptions: [NWProtocolOptions]
     public var logger: Logger?
 
     public init(
@@ -279,7 +278,6 @@ public struct TelnetConfiguration: Sendable {
         eventBufferPolicy: TelnetEventBufferPolicy = .bounded(1024),
         newlinePolicy: TelnetNewlinePolicy = .nvt,
         waitForConnectivity: Bool = true,
-        transportOptions: [NWProtocolOptions] = [],
         logger: Logger? = nil
     )
 }
@@ -303,9 +301,8 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `newlinePolicy` | `.nvt` translates CR and LF for text sends and for received data; `.raw` passes bytes through. `binary` negotiation overrides both to raw while it is enabled. |
 | `logger` | Optional `swift-log` logger. Nil logs nothing. Payload content is never logged, at any level. |
 | `waitForConnectivity` | True parks a connect attempt that has no route instead of failing, and the attempt resumes when a route appears (FR-PATH-01). The connect call has not returned while it is parked, and `.waitingForConnectivity` reports the state. |
-| `transportOptions` | Network.framework protocol options passed through to `NIOTSConnectionBootstrap`. Empty means Telnet over TCP with no extra protocol. Passing `NWProtocolTLS.default` enables TLS, and the system evaluates trust; no custom trust callback exists, so a certificate the system rejects fails the connect and surfaces as `.transportFailed`. |
 
-The defaults are the ones a caller gets by passing nothing, and each is asserted by a configuration test. `inboundBufferLimit` and `subnegotiationLimit` are byte counts; `eventBufferPolicy` counts events; `waitForConnectivity` is a flag; `transportOptions` is an ordered list applied from first to last.
+The defaults are the ones a caller gets by passing nothing, and each is asserted by a configuration test. `inboundBufferLimit` and `subnegotiationLimit` are byte counts; `eventBufferPolicy` counts events; `waitForConnectivity` is a flag.
 
 ## Errors
 
@@ -372,7 +369,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | `TelnetCommand` | all 19 cases |
 | `TelnetLineEnding` | all four cases |
 | `EnvironmentScope`, `EnvironmentVariable` | all cases and properties |
-| `TelnetConfiguration` | `init` with every default, and all nine properties |
+| `TelnetConfiguration` | `init` with every default, and all eight properties |
 | `TelnetEventBufferPolicy`, `TelnetNewlinePolicy` | all cases |
 | `TelnetError` | all 12 cases, each reached by a test; the v0.2 zlib path reaches `unsupportedFeature` and is out of scope while zlib is off |
 | `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | all properties and cases |

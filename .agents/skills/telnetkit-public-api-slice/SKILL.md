@@ -56,7 +56,7 @@ A slice that needs a new Swift type decides its layer first: a type the caller c
 - When the slice changes an existing signature, update [docs/public-api.md](../../../docs/public-api.md), the demo, and the affected tests in the same change; treat the interface snapshot as the checklist.
 - Time-dependent behavior uses a configured bound plus a generous assertion bound. Never assert on a fixed sleep.
 - The protocol suite runs without a socket. If a protocol test needs a server, the behavior belongs in the transport layer instead.
-- The library ships for macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2, on Network.framework through NIOTS and nothing else. A slice that touches a connection-sensitive path (connect, connectivity waiting, path change, TLS options, background suspension) states the behavior for all five platforms and is verified by the platform builds.
+- The library ships for macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2, on Network.framework through NIOTS and nothing else. A slice that touches a connection-sensitive path (connect, connectivity waiting, path change, background suspension) states the behavior for all five platforms and is verified by the platform builds.
 
 ## Validation
 

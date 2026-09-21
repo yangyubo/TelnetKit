@@ -90,7 +90,7 @@ await connection.close()
 
 - 不做终端模拟。TelnetKit 只交付字节与协议事件；屏幕模型、光标处理与颜色渲染由调用方负责。
 - 未内置 MCCP2 压缩：收到 COMPRESS2 请求时以 `wont` 拒绝。Apple SDK 自带 zlib，所以这是范围取舍而非依赖缺失；启用前必须先设计解压上限与压缩态契约。
-- 首版未实现 TLS。它将通过 `transportOptions` 以 Network.framework 的 `NWProtocolTLS` 选项接入，不引入 OpenSSL 依赖。
+- 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项。Apple 自带 telnet 与 Homebrew 的 netkit-telnet 都不支持，上游 libtelnet 两个选项都未实现，IETF 相关草案也从未成为 RFC。
 - 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
 - CLI Demo 与回显服务端是仅 macOS 可执行文件；watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。
@@ -98,7 +98,7 @@ await connection.close()
 
 ## 安全
 
-Telnet 是明文协议：凭据与会话内容不经加密传输，链路中间人可以读取或篡改。请在可信网络中使用；在发送任何机密之前，请等待支持 TLS 的版本。iOS 上同样如此，而移动网络远比有线局域网不可信。
+Telnet 是明文协议：凭据与会话内容不经加密传输，链路中间人可以读取或篡改。本库不提供任何加密，发送机密之前请把连接放进 VPN 或经跳板机接入。iOS 上同样如此，而移动网络远比有线局域网不可信。
 
 库把对端输入视为不可信：每条解析路径都有长度上限，异常序列产生警告或类型化错误而非崩溃，日志输出绝不包含业务数据或对端提供的值。
 

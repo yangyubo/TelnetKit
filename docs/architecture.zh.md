@@ -21,7 +21,7 @@ TelnetChannelHandler (internal)             ChannelDuplexHandler
 NIOTSConnectionBootstrap + NIOTSEventLoopGroup
   waits for a route, reports path changes   Network.framework owns the connection
         |
-Network.framework                            path, proxy, VPN, TLS, power
+Network.framework                            path, proxy, VPN, power
         |
 CLibTelnet (C target)                       vendored libtelnet 0.23, parsing only
 ```
@@ -36,9 +36,9 @@ CLibTelnet (C target)                       vendored libtelnet 0.23, parsing onl
 
 | 决策 | 选择 | 理由 |
 |---|---|---|
-| 传输层 | `NIOTSEventLoopGroup` 上的 `NIOTSConnectionBootstrap` | Network.framework 是 Apple 官方支持的传输层，连接管理、代理与 VPN 接入、路径监测、能耗行为与系统 TLS 都由它提供，无需逐项自己实现 |
+| 传输层 | `NIOTSEventLoopGroup` 上的 `NIOTSConnectionBootstrap` | Network.framework 是 Apple 官方支持的传输层，连接管理、代理与 VPN 接入、路径监测与能耗行为都由它提供，无需逐项自己实现 |
 | 不保留 POSIX 路径 | 不依赖 `NIOPosix` | 第二种传输层会让需要在五个平台上证明的不变量（背压、取消、路径上报）翻倍，却不给调用方增加任何被要求的能力 |
-| TLS | Network.framework 协议选项，不用 `swift-nio-ssl` | 不引入 BoringSSL 静态库，信任评估交给系统，TLS 配置以调用方本就熟悉的 `NWProtocolOptions` 值传递 |
+| 不做 TLS | 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项 | 该标准已废弃、提供它的设备极少，Apple 与 Homebrew 的 telnet 都不实现，上游 libtelnet 两个选项都未实现；保密应交给 VPN 或跳板机，而不是本库 |
 | 可执行产物 | 仅 macOS | `TelnetEchoServer` 与 CLI Demo 需要进程与回环监听，watchOS、tvOS、visionOS 不提供这些语义 |
 
 测试归属按同样口径拆分：协议层与公开接口套件在五个平台都跑；会绑定回环监听的集成套件只在 macOS 与 iOS 模拟器上跑。

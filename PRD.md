@@ -44,6 +44,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 - ❌ MCCP2 压缩（`HAVE_ZLIB`）。Apple 三个 SDK 都自带 zlib（我已验证 macOS/iOS/iPadOS 均可 `-lz` 链接），所以关闭不是依赖问题，而是取舍：目标用户（开发者、运维人员、极客）不依赖它；而一旦接受压缩流，inflate 会引入解压炸弹、压缩态事件流与失败模式三项未设计的契约。首版对其一律 `wont`，v0.2 按 §6.3 的启用条件评估。
 - ❌ Telnet 服务端框架（`NIOTSListenerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
 - ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
+- ❌ Telnet over TLS/SSL（`telnets`/992、START-TLS、TELNET ENCRYPT 与 AUTHENTICATION 选项）。设备与服务端极少，标准已废弃，Apple 与 Homebrew 的 telnet 都不支持；上游 libtelnet 也未实现 ENCRYPT/AUTHENTICATION。需要保密时由部署方使用 VPN 或跳板机，本库只承载明文 Telnet，并在文档中显著标注这一事实。
 - ❌ 非 Apple 平台支持（Linux、Windows、Android 明确不做，也不为它们保留抽象或条件编译）。
 - ❌ POSIX/BSD socket 传输路径（`NIOPosix`、裸 `socket()`、`select`/`kqueue`）；传输层只有 Network.framework 一条路。
 - ❌ 服务端/监听侧（`NIOTSListenerBootstrap`）产品化；测试夹具中的回显服务端不计入产品接口。
@@ -87,9 +88,13 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 | libtelnet 是否有 Package.swift | **没有**（`develop` 与 `master` 分支均无）。必须由我们在 Swift Package 内 vendor C 源文件 + `module.modulemap`（已与需求方确认采用此方案） |
 | libtelnet 公开面 | `telnet_init/free/recv/iac/negotiate/send/send_text/begin_sb/subnegotiation/begin_compress2/printf/raw_printf/begin_newenviron/newenviron_value/ttype_send/ttype_is/send_zmp/send_zmpv/send_vzmpv/begin_zmp/zmp_arg`，以及 `telnet_finish_sb`、`telnet_finish_newenviron`、`telnet_finish_zmp` 三个**宏**（Swift 不可见，必须用自己的实现补齐） |
 | libtelnet 无选项状态查询 | 头文件**不导出**任何查询协商结果的函数。因此 `optionStatus(_:)` 必须由本库在 Swift 侧依据观测到的协商事件自行维护账本，不能读 C 结构体内部状态 |
+| libtelnet 不实现安全选项 | 头文件只定义 `TELNET_TELOPT_AUTHENTICATION`(37) 与 `TELNET_TELOPT_ENCRYPT`(38) 两个选项号；`libtelnet.c` 中二者的实现代码为零（`grep -c` = 0），也没有任何 TLS/START-TLS 相关符号。因此「Telnet 协议层加密/认证」在上游永远不会有，加密只能由外部传输层提供 |
 | libtelnet 事件模型 | `telnet_event_handler_t(telnet_t*, telnet_event_t*, void *user_data)`，`telnet_event_t` 是 union，事件类型 15 种 |
 | libtelnet 压缩 | 由 `HAVE_ZLIB` 编译开关控制，默认关闭 |
 | 传输层 | NIOTS（`swift-nio-transport-services` 1.x）把 Network.framework 的 EventLoop、Channel 与 Bootstrap 接入 SwiftNIO；要求 swift-nio ≥ 2.83.0，支持 macOS 10.14+/iOS 12+/tvOS 12+/watchOS 6+，我们的部署下限远高于它 |
+| Apple 自带 telnet | 源码在 `apple-oss-distributions/remote_cmds`。`telnet(1)` 与 `telnetd(8)` 手册页全文无 TLS/SSL/certificate 字样；Xcode 工程的预定义宏只有 `AUTHENTICATION`、`KRB5`、`SKEY`、`IPSEC`、`INET6` 等，**从未定义 `ENCRYPTION`**（`grep -c ENCRYPTION project.pbxproj` = 0），即 TELNET ENCRYPT 选项（RFC 2946）整段被编掉，`-x` 手册页描述的「默认已开启加密」与实现不符。结论：Apple 自带 telnet 能认证（Kerberos V5/S/Key），从不加密、从不支持 TLS |
+| Homebrew telnet | `brew install telnet` 装的是 **netkit-telnet 308**，用法为 `telnet [-4] [-6] [-8] [-E] [-K] [-L] [-N] [-S tos] [-X atype] …`，同样没有任何 TLS/SSL 选项 |
+| Telnet over TLS 的标准状态 | 两份 IETF 草案都没成为 RFC：[draft-altman-telnet-starttls](https://datatracker.ietf.org/doc/draft-altman-telnet-starttls/)（个人提交，IESG 状态 **Dead**，Expired）与 [draft-ietf-tn3270e-telnet-tls](https://datatracker.ietf.org/doc/draft-ietf-tn3270e-telnet-tls/)（tn3270e 工作组，2002 年 Expired，Intended status 为 None）。IANA 的 `telnets 992/tcp` 无 RFC 引用、无联系人。带 TLS 的实现只有 OpenSSL 系的 `telnet-ssl`/`telnetd-ssl`（Debian 仍在维护），FreeBSD/Apple 这条线从未合并 |
 | libtelnet 许可证 | 公有领域（public domain dedication，见 `COPYING`） |
 
 **原型验证结果（已实跑，非推测）**：
@@ -164,7 +169,7 @@ TelnetKit/
 ├──────────────────────────────────────────────────────────────┤
 │ NIOTS       NIOTSConnectionBootstrap + NIOTSEventLoopGroup     │
 ├──────────────────────────────────────────────────────────────┤
-│ System      Network.framework（路径、代理、VPN、TLS、能耗）    │
+│ System      Network.framework（路径、代理、VPN、能耗）         │
 ├──────────────────────────────────────────────────────────────┤
 │ C           CLibTelnet（libtelnet.c，只做协议解析）            │
 └──────────────────────────────────────────────────────────────┘
@@ -385,7 +390,6 @@ public struct TelnetConfiguration: Sendable {
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
     public var logger: Logger?                     // swift-log；默认 nil（静默）
-    public var transportOptions: [NWProtocolOptions]  // 透传给 Network.framework；TLS 用 NWProtocolTLS（见 §6.6）
 }
 ```
 
@@ -501,17 +505,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | FR-PATH-06 | 路径事件在公开接口中以 Swift 值表达，不泄漏 `NWPath` 类型 | P1 | 快照中不出现 `NWPath`、`NWError`、`nw_*` |
 | FR-PATH-07 | 仅在通道激活之后才发出 `.pathChanged` | P1 | 测试断言连接事件之前没有路径事件 |
 
-### 6.6 传输安全（FR-TLS）
-
-| ID | 需求 | 优先级 | 验收标准 |
-| --- | --- | --- | --- |
-| FR-TLS-01 | TLS 由 Network.framework 提供：`transportOptions` 传入 `NWProtocolTLS.options` 即启用 | P0 | 连接自签 TLS 服务端，握手成功后按 Telnet 协商收发 |
-| FR-TLS-02 | 信任评估由系统完成，不提供自定义信任回调 | P1 | 自签证书默认拒绝，并由 `.transportFailed` 携带原因 |
-| FR-TLS-03 | TLS 握手失败映射为类型化错误，不产生不明确的挂起 | P0 | 错误在 `connectTimeout` 内到达 |
-| FR-TLS-04 | 不依赖 `swift-nio-ssl`/OpenSSL：不引入 BoringSSL 静态库 | P0 | 依赖树中无 `NIOSSL`、无 `CNIOBoringSSL` |
-| FR-TLS-05 | 调用方固定的证书可通过 Network.framework 选项表达 | P2 | 固定证书的连接成功，证书不匹配时被拒绝 |
-
-### 6.5 错误与诊断（FR-ERR）
+### 6.6 错误与诊断（FR-ERR）
 
 | ID | 需求 | 优先级 | 验收标准 |
 | --- | --- | --- | --- |
@@ -720,7 +714,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | R3 | `telnet_t` 非线程安全，跨线程访问导致数据竞争 | 高 | 单 EventLoop 所有权（§4.3）；所有入站/出站经 handler 串行化；`Sendable` 检查 + 并发测试 |
 | R4 | `telnet_finish_sb` / `telnet_finish_newenviron` / `telnet_finish_zmp` 是宏，Swift 不可见 | 中 | 在 `TelnetProtocolCore` 内以其等价实现替代（`telnet_iac(t, TELNET_SE)`），并在单测中覆盖 |
 | R5 | 选项协商策略自研容易产生协商回环或状态错乱 | 中 | 完全复用 libtelnet 的 RFC 1143 Q-method 实现，不自研状态机；补充"报告给用户的 `optionStatus`"与 libtelnet 内部状态一致性的断言 |
-| R6 | Telnet 明文传输（含口令） | 中 | 文档显著标注风险；首版不实现 AUTHENTICATION 选项；`configuration.tls` 预留 TLS over Telnet（`NIOSSL`）通道，v0.2 评估 |
+| R6 | Telnet 明文传输（含口令），且本库不提供任何加密通道 | 高 | README 与 DocC 显著标注；`telnets`/START-TLS/ENCRYPT/AUTHENTICATION 明确列为不支持；需要保密时由部署方使用 VPN 或跳板机，并在 `TelnetConfiguration` 文档中说明本库不参与保密 |
 | R7 | 启用 MCCP2 的解压路径可能被解压炸弹放大（几 KB → GB 级内存） | 中 | 首版不启用；v0.2 启用时必须同时落地 `maxInflatedBytes` 上限、压缩态事件流契约与压缩流失败模式测试，并在 CI 增加开启变体。zlib 本身无需处理：macOS/iOS/iPadOS SDK 均内置（已实测 `-lz` 可链接） |
 | R8 | `AsyncStream` 事件缓冲策略不当导致内存暴涨或事件丢失 | 中 | 默认 `.bounded`，丢弃/终止策略可配且**丢弃时发出 `.warning`**；补大流量压测 |
 | R9 | 公开 API 与 swift-nio 类型（如 `ByteBuffer`）耦合，未来升级受限 | 低 | `TelnetEvent.data` 采用 `ByteBuffer` 作为二进制载体（与 NIO 生态一致）；同时提供 `text`/`bytes([UInt8])` 便捷访问，避免调用方必须理解 NIO |
@@ -736,7 +730,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | ID | 问题 | 建议默认值 |
 | --- | --- | --- |
 | Q1 | `TelnetEvent.data` 用 `NIOCore.ByteBuffer` 还是自定义 `[UInt8]`？ | 用 `ByteBuffer`（零拷贝、与 NIO 生态一致），并提供 `[UInt8]`/`String` 便捷视图 |
-| Q2 | 是否首版就提供 TLS over Telnet？ | 首版不提供，仅预留配置位与文档说明 |
+| Q2 | 断线重连由库提供还是仅给示例？ | 仅给示例：库负责 `waitForConnectivity` 与清晰错误，重连策略由调用方决定 |
 | Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
 | Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
 | Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.md#双语配对)；本 PRD 以中文为正本，对照版为 [PRD.en.md](PRD.en.md) |

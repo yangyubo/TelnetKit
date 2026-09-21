@@ -44,6 +44,7 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 - ❌ MCCP2 compression (`HAVE_ZLIB`). All three Apple SDKs ship zlib (I verified `-lz` links for macOS, iOS, and iPadOS), so leaving it off is a tradeoff rather than a dependency gap: the target users (developers, operators, and technical enthusiasts) do not rely on it, and accepting a compressed stream would add three undesigned contracts: an inflation-ratio bound, event-flow behavior under compression, and a compressed-state failure mode. The first release answers `wont`, and v0.2 evaluates the enablement conditions in §6.3.
 - ❌ A Telnet server framework productized on `NIOTSListenerBootstrap`; the echo server in the test fixture is not part of the product interface.
 - ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
+- ❌ Telnet over TLS/SSL (`telnets`/992, START-TLS, the TELNET ENCRYPT and AUTHENTICATION options). Devices and servers that offer it are rare, the standard was abandoned, Apple's and Homebrew's telnet both lack it, and upstream libtelnet implements neither ENCRYPT nor AUTHENTICATION. A deployment that needs confidentiality uses a VPN or a bastion host; this library carries plaintext Telnet only and states that fact prominently in its documentation.
 - ❌ Non-Apple platforms (Linux, Windows, and Android are out of scope, with no abstraction or conditional compilation kept for them).
 - ❌ A POSIX/BSD socket transport (`NIOPosix`, raw `socket()`, `select`/`kqueue`); Network.framework is the only transport.
 - ❌ A productized server or listener side (`NIOTSListenerBootstrap`); the echo server in the test fixture is not part of the product interface.
@@ -87,9 +88,13 @@ These facts were verified before writing this document (2026-09-21, this machine
 | Does libtelnet have Package.swift | **No** (neither the `develop` nor the `master` branch). We must vendor the C sources plus a `module.modulemap` inside the Swift Package (agreed with the requester) |
 | libtelnet public surface | `telnet_init/free/recv/iac/negotiate/send/send_text/begin_sb/subnegotiation/begin_compress2/printf/raw_printf/begin_newenviron/newenviron_value/ttype_send/ttype_is/send_zmp/send_zmpv/send_vzmpv/begin_zmp/zmp_arg`, plus the macros `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` (invisible to Swift, so the seam must supply them) |
 | libtelnet has no option-status query | The header exports **no** function that reports the result of `WILL`/`WONT`/`DO`/`DONT` negotiation. `optionStatus(_:)` must therefore be derived by this library in Swift from observed negotiation events; reading C struct internals is forbidden |
+| libtelnet implements no security option | The header defines only the option numbers `TELNET_TELOPT_AUTHENTICATION` (37) and `TELNET_TELOPT_ENCRYPT` (38); `libtelnet.c` contains zero implementation code for either (`grep -c` is 0) and no TLS or START-TLS symbol. Protocol-level Telnet encryption or authentication will therefore never exist upstream, and confidentiality has to come from the transport or the deployment |
 | libtelnet event model | `telnet_event_handler_t(telnet_t*, telnet_event_t*, void *user_data)`; `telnet_event_t` is a union with 15 event types |
 | libtelnet compression | Controlled by the `HAVE_ZLIB` build switch, off by default |
 | Transport | NIOTS (`swift-nio-transport-services` 1.x) brings Network.framework's EventLoop, Channels, and Bootstraps into SwiftNIO; it needs swift-nio >= 2.83.0 and supports macOS 10.14+, iOS 12+, tvOS 12+, and watchOS 6+, all far below our floors |
+| Apple's own telnet | The source lives in `apple-oss-distributions/remote_cmds`. The `telnet(1)` and `telnetd(8)` man pages never mention TLS, SSL, or certificates; the Xcode project defines only `AUTHENTICATION`, `KRB5`, `SKEY`, `IPSEC`, and `INET6` among security switches and **never defines `ENCRYPTION`** (`grep -c ENCRYPTION project.pbxproj` is 0), so the TELNET ENCRYPT option (RFC 2946) is compiled out and the `-x` man page claim that stream encryption is now the default contradicts the binary. Apple's telnet authenticates with Kerberos V5 or S/Key and never encrypts or speaks TLS |
+| Homebrew telnet | `brew install telnet` installs **netkit-telnet 308**, whose usage is `telnet [-4] [-6] [-8] [-E] [-K] [-L] [-N] [-S tos] [-X atype] ...`, again with no TLS or SSL option |
+| Standard status of Telnet over TLS | Neither IETF draft became an RFC: [draft-altman-telnet-starttls](https://datatracker.ietf.org/doc/draft-altman-telnet-starttls/) (individual submission, IESG state **Dead**, expired) and [draft-ietf-tn3270e-telnet-tls](https://datatracker.ietf.org/doc/draft-ietf-tn3270e-telnet-tls/) (tn3270e working group, expired in 2002 with intended status None). IANA's `telnets 992/tcp` has no RFC reference and no contact. TLS-capable implementations exist only in the OpenSSL family, `telnet-ssl` and `telnetd-ssl`, which Debian still maintains and the FreeBSD and Apple line never merged |
 | libtelnet license | Public domain dedication (see `COPYING`) |
 
 **Prototype results (actually run, not inferred)**:
@@ -164,7 +169,7 @@ TelnetKit/
 ├──────────────────────────────────────────────────────────────┤
 │ NIOTS       NIOTSConnectionBootstrap + NIOTSEventLoopGroup     │
 ├──────────────────────────────────────────────────────────────┤
-│ System      Network.framework (path, proxy, VPN, TLS, power)   │
+│ System      Network.framework (path, proxy, VPN, power)       │
 ├──────────────────────────────────────────────────────────────┤
 │ C           CLibTelnet (libtelnet.c, protocol parsing only)    │
 └──────────────────────────────────────────────────────────────┘
@@ -385,7 +390,6 @@ public struct TelnetConfiguration: Sendable {
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
     public var logger: Logger?                     // swift-log; nil by default (silent)
-    public var transportOptions: [NWProtocolOptions]  // passed through to Network.framework; TLS uses NWProtocolTLS (see §6.6)
 }
 ```
 
@@ -501,17 +505,7 @@ NIOTS exposes Network.framework path events to SwiftNIO (`NIOTSNetworkEvents`). 
 | FR-PATH-06 | Path events reach the public API as Swift values with no `NWPath` leak | P1 | The snapshot contains no `NWPath`, `NWError`, or `nw_*` |
 | FR-PATH-07 | `.pathChanged` is emitted with the current viability only after the channel is active | P1 | A test asserts no path event precedes the connection event |
 
-### 6.6 Transport security (FR-TLS)
-
-| ID | Requirement | Priority | Acceptance criterion |
-| --- | --- | --- | --- |
-| FR-TLS-01 | TLS comes from Network.framework: passing `NWProtocolTLS.options` in `transportOptions` enables it | P0 | A self-signed TLS server completes a handshake and Telnet negotiation follows |
-| FR-TLS-02 | The system evaluates trust; no custom trust callback is offered | P1 | A self-signed certificate is refused by default and `.transportFailed` carries the reason |
-| FR-TLS-03 | A TLS handshake failure maps to a typed error and never to an unclear hang | P0 | The error arrives within `connectTimeout` |
-| FR-TLS-04 | No `swift-nio-ssl` or OpenSSL dependency: no BoringSSL static library | P0 | The dependency tree has no `NIOSSL` and no `CNIOBoringSSL` |
-| FR-TLS-05 | A certificate pinned by the caller is expressible through Network.framework options | P2 | A pinned connection completes and an unpinned mismatch is refused |
-
-### 6.5 Errors and diagnostics (FR-ERR)
+### 6.6 Errors and diagnostics (FR-ERR)
 
 | ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
@@ -720,7 +714,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | R3 | `telnet_t` is not thread-safe, so a cross-thread access is a data race | High | Single-EventLoop ownership (§4.3); every inbound and outbound path serializes through the handler; `Sendable` checking plus concurrency tests |
 | R4 | `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` are macros, invisible to Swift | Medium | Supply equivalent implementations inside `TelnetProtocolCore` (`telnet_iac(t, TELNET_SE)`) and cover them in unit tests |
 | R5 | A self-written negotiation strategy easily produces a loop or state confusion | Medium | Reuse libtelnet's RFC 1143 Q-method implementation entirely and write no state machine; add an assertion that the reported `optionStatus` agrees with libtelnet's internal state |
-| R6 | Telnet is plaintext, including passwords | Medium | State the risk prominently in the documentation; do not implement the AUTHENTICATION option in the first release; reserve `configuration.tls` for a TLS-over-Telnet (`NIOSSL`) channel to evaluate in v0.2 |
+| R6 | Telnet is plaintext, including passwords, and this library offers no encrypted channel | High | State it prominently in the README and DocC; list `telnets`, START-TLS, ENCRYPT, and AUTHENTICATION as unsupported; a deployment that needs confidentiality uses a VPN or a bastion host, and the `TelnetConfiguration` documentation says the library takes no part in confidentiality |
 | R7 | Enabling MCCP2 exposes the inflate path to a decompression bomb (a few KB into gigabytes of memory) | Medium | Leave it off in the first release; enabling it in v0.2 requires the `maxInflatedBytes` bound, the event-flow contract under compression, and a compressed-stream failure test, plus an enabled CI variant. zlib itself needs no work: the macOS, iOS, and iPadOS SDKs all ship it (verified linkable with `-lz`) |
 | R8 | A poor `AsyncStream` buffer policy causes memory growth or event loss | Medium | Default to `.bounded` with a configurable drop or finish policy, emit a `.warning` **when an event is dropped**, and add a high-traffic stress test |
 | R9 | The public API couples to swift-nio types such as `ByteBuffer`, which limits a future upgrade | Low | Use `ByteBuffer` as the binary carrier for `TelnetEvent.data` because it matches the NIO ecosystem, and provide `text` and `bytes([UInt8])` accessors so a caller never has to understand NIO |
@@ -736,7 +730,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | ID | Question | Proposed default |
 | --- | --- | --- |
 | Q1 | Should `TelnetEvent.data` use `NIOCore.ByteBuffer` or a custom `[UInt8]`? | Use `ByteBuffer` (zero copy, consistent with the NIO ecosystem) and provide `[UInt8]` and `String` convenience views |
-| Q2 | Should the first release ship TLS over Telnet? | No; reserve the configuration field and document the intent |
+| Q2 | Does the library provide reconnection, or only an example? | An example only: the library owns `waitForConnectivity` and clear errors, and the caller owns the retry policy |
 | Q3 | Should the SwiftUI demo app be an in-package executable target or a separate `Examples/` Xcode project? | A separate project under `Examples/` so that referencing SwiftUI inside the package cannot slow `swift test`, while reusing the `Sources/TelnetKit/Demos` components |
 | Q4 | Is `swift-metrics` or `swift-service-lifecycle` integration needed? | Not in the first release; swift-log is enough |
 | Q5 | Should Chinese documentation ship alongside the English? | Decided: every human-facing document is a bilingual pair under the [documentation standard](docs/AGENTS.md#bilingual-pairs); this PRD is canonical in Chinese, with `PRD.en.md` as its counterpart |

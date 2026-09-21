@@ -21,7 +21,7 @@ TelnetChannelHandler (internal)             ChannelDuplexHandler
 NIOTSConnectionBootstrap + NIOTSEventLoopGroup
   waits for a route, reports path changes   Network.framework owns the connection
         |
-Network.framework                            path, proxy, VPN, TLS, power
+Network.framework                            path, proxy, VPN, power
         |
 CLibTelnet (C target)                       vendored libtelnet 0.23, parsing only
 ```
@@ -36,9 +36,9 @@ The decision record:
 
 | Decision | Choice | Reason |
 |---|---|---|
-| Transport | `NIOTSConnectionBootstrap` on `NIOTSEventLoopGroup` | Network.framework is Apple's supported transport and supplies connection management, proxy and VPN integration, path monitoring, energy behavior, and system TLS without per-feature code |
+| Transport | `NIOTSConnectionBootstrap` on `NIOTSEventLoopGroup` | Network.framework is Apple's supported transport and supplies connection management, proxy and VPN integration, path monitoring, and energy behavior without per-feature code |
 | No POSIX path | `NIOPosix` is not a dependency | A second transport would double the invariants (backpressure, cancellation, path reporting) to prove on five platforms while adding no capability a caller asked for |
-| TLS | Network.framework protocol options, not `swift-nio-ssl` | No BoringSSL static library, trust evaluation stays with the system, and TLS configuration travels as a `NWProtocolOptions` value the caller already understands |
+| No TLS | Telnet over TLS/SSL is unsupported: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options | The standard was abandoned, devices that offer it are rare, neither Apple's nor Homebrew's telnet implements it, upstream libtelnet implements neither option, and confidentiality belongs to a VPN or a bastion host rather than to this library |
 | Executables | macOS only | `TelnetEchoServer` and the CLI demo need a process and a loopback listener, which watchOS, tvOS, and visionOS do not provide |
 
 Test placement follows the same split: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs on macOS and the iOS simulator.
@@ -132,7 +132,7 @@ Network.framework's error set (`NWError`) is mapped to `TelnetTransportFailure.K
 |---|---|---|
 | Support another Telnet option | Add a constant in `TelnetOption.swift` and handle the case in the core; no new public type | Public surface unchanged |
 | Add a structured event | Add a `TelnetEvent` case, a `switch` arm in the core, and a test in the protocol suite | Public surface widens; public-api.md updates in the same change |
-| Change TCP setup such as TLS | `TelnetConfiguration` plus the bootstrap in `Transport/` | Public surface widens or keeps its shape; connect tests cover the path |
+| Change connection setup, such as connectivity waiting or multipath | `TelnetConfiguration` plus the bootstrap in `Transport/` | Public surface widens or keeps its shape; connect tests cover the path |
 | Add a convenience operation such as window-size reporting | A method on `TelnetConnection` that composes existing core calls | No core change; public-api.md and its test update together |
 | Change output text handling | `TelnetWireCoding` | Line-ending and escaping tests in the protocol suite cover it |
 

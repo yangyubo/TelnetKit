@@ -56,7 +56,7 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 - 当切片修改既有签名时，在同一次变更中更新 [docs/public-api.md](../../../docs/public-api.md)、Demo 与受影响的测试；把 interface 快照当作检查清单。
 - 依赖时间的行为使用配置上限加宽松的断言上限。绝不用固定 sleep 断言。
 - 协议套件不使用 socket 运行。若某个协议测试需要一个服务端，该行为应归属传输层。
-- 库面向 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2，传输层只用 Network.framework（经 NIOTS）。触及连接敏感路径（连接建立、等待路由、路径变化、TLS 选项、后台挂起）的切片要写明五个平台上的行为，并由各平台构建验证。
+- 库面向 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2，传输层只用 Network.framework（经 NIOTS）。触及连接敏感路径（连接建立、等待路由、路径变化、后台挂起）的切片要写明五个平台上的行为，并由各平台构建验证。
 
 ## 校验
 

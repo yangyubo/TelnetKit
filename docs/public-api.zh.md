@@ -268,7 +268,6 @@ public struct TelnetConfiguration: Sendable {
     public var eventBufferPolicy: TelnetEventBufferPolicy
     public var newlinePolicy: TelnetNewlinePolicy
     public var waitForConnectivity: Bool
-    public var transportOptions: [NWProtocolOptions]
     public var logger: Logger?
 
     public init(
@@ -279,7 +278,6 @@ public struct TelnetConfiguration: Sendable {
         eventBufferPolicy: TelnetEventBufferPolicy = .bounded(1024),
         newlinePolicy: TelnetNewlinePolicy = .nvt,
         waitForConnectivity: Bool = true,
-        transportOptions: [NWProtocolOptions] = [],
         logger: Logger? = nil
     )
 }
@@ -303,9 +301,8 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `newlinePolicy` | `.nvt` 对文本发送与收到的数据做 CR、LF 转换；`.raw` 原样透传。`binary` 协商启用期间会覆盖两者为 raw。 |
 | `logger` | 可选的 `swift-log` logger。为 nil 时不记录任何日志。任何级别都不记录载荷内容。 |
 | `waitForConnectivity` | 为 true 时，无可用路由的连接尝试被挂起而不是立即失败，路由出现后继续建立（FR-PATH-01）。挂起期间 `connect` 尚未返回，`.waitingForConnectivity` 报告该状态。 |
-| `transportOptions` | 透传给 `NIOTSConnectionBootstrap` 的 Network.framework 协议选项。为空表示纯 TCP 承载 Telnet。传入 `NWProtocolTLS.default` 即启用 TLS，信任由系统评估；不提供自定义信任回调，系统拒绝的证书会让连接失败并以 `.transportFailed` 呈现。 |
 
-这些默认值就是调用方什么都不传时得到的结果，且每个默认值都有配置测试断言。`inboundBufferLimit` 与 `subnegotiationLimit` 是字节数，`eventBufferPolicy` 计数的是事件，`waitForConnectivity` 是布尔开关，`transportOptions` 是有序列表并按顺序应用。
+这些默认值就是调用方什么都不传时得到的结果，且每个默认值都有配置测试断言。`inboundBufferLimit` 与 `subnegotiationLimit` 是字节数，`eventBufferPolicy` 计数的是事件，`waitForConnectivity` 是布尔开关。
 
 ## 错误
 
@@ -372,7 +369,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | `TelnetCommand` | 全部 19 个 case |
 | `TelnetLineEnding` | 全部四个 case |
 | `EnvironmentScope`、`EnvironmentVariable` | 全部 case 与属性 |
-| `TelnetConfiguration` | `init` 的每个默认值，以及全部九个属性 |
+| `TelnetConfiguration` | `init` 的每个默认值，以及全部八个属性 |
 | `TelnetEventBufferPolicy`、`TelnetNewlinePolicy` | 全部 case |
 | `TelnetError` | 全部 12 个 case，每个都有测试触达；`unsupportedFeature` 的触达点在 v0.2 的 zlib 路径上，zlib 关闭期间不在范围内 |
 | `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | 全部属性与 case |

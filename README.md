@@ -90,7 +90,7 @@ await connection.close()
 
 - Terminal emulation is out of scope. TelnetKit delivers bytes and protocol events; screen models, cursor handling, and color rendering are the caller's job.
 - MCCP2 compression is not built in: a COMPRESS2 request is refused with `wont`. The Apple SDKs ship zlib, so this is a scope decision rather than a dependency gap; enabling it needs an inflation bound and compressed-state contracts first.
-- TLS is not implemented in the first version. `transportOptions` is where it will arrive, as a Network.framework `NWProtocolTLS` option, with no OpenSSL dependency.
+- Telnet over TLS/SSL is out of scope: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options. Apple's own telnet and Homebrew's netkit-telnet support neither, upstream libtelnet implements neither option, and the IETF drafts never became RFCs.
 - Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
 - The CLI demo and the echo server are macOS-only executables; watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
@@ -98,7 +98,7 @@ await connection.close()
 
 ## Security
 
-Telnet is plaintext: credentials and session content travel unencrypted, and anyone on the path can read or alter them. Use it on a trusted network, or wait for a TLS-capable release before sending a secret. This applies on iOS too, where a mobile network is far less trustworthy than a wired LAN.
+Telnet is plaintext: credentials and session content travel unencrypted, and anyone on the path can read or alter them. This library adds no encryption, so put the connection inside a VPN or reach it through a bastion host before sending a secret. This applies on iOS too, where a mobile network is far less trustworthy than a wired LAN.
 
 The library treats peer input as hostile: every parse path has a length bound, a malformed sequence produces a warning or a typed error rather than a crash, and log output never contains payload bytes or peer-supplied values.
 
