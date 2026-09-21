@@ -628,6 +628,16 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | `memory_stable_after_100k_events` | Resident memory growth after 100,000 events stays under the threshold |
 | `no_dangling_buffer_with_asan` | The full protocol suite passes under an ASan build |
 
+**H. Real server (Apple's telnetd from Homebrew)**
+
+| Case | Assertion |
+| --- | --- |
+| `real_server_connects` | The TCP connection completes and the first bytes are valid Telnet (`FF` in the leading window or plain text with no stray `FF`) |
+| `real_server_negotiation_settles` | Negotiation stops within a bounded number of messages and does not loop |
+| `real_server_session_stays_usable` | The session sends and receives for a bounded period without `.protocolError` |
+| `real_server_closes_cleanly` | `close()` finishes the event stream exactly once and leaves no pending write |
+| `real_server_suite_skips_without_server` | With `TELNETKIT_TEST_SERVER_HOST` unset the suite reports a skip rather than a failure |
+
 **G. Public interface contract (§5.6)**
 
 | Case | Assertion |

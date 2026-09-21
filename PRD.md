@@ -628,6 +628,16 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | `memory_stable_after_100k_events` | 10 万事件后常驻内存增幅 < 阈值 |
 | `no_dangling_buffer_with_asan` | ASan 构建下全量协议测试通过 |
 
+**H. 真实服务端（经 Homebrew 安装的 Apple telnetd）**
+
+| 用例 | 断言 |
+| --- | --- |
+| `real_server_connects` | TCP 连接完成，且首批字节是合法 Telnet（前导窗口内出现 `FF`，或为不含游离 `FF` 的纯文本） |
+| `real_server_negotiation_settles` | 协商在有限条报文内收敛，不回环 |
+| `real_server_session_stays_usable` | 会话在有限时长内持续收发，且不产生 `.protocolError` |
+| `real_server_closes_cleanly` | `close()` 使事件流恰好结束一次，且没有未完成的写入 |
+| `real_server_suite_skips_without_server` | 未设置 `TELNETKIT_TEST_SERVER_HOST` 时套件报告跳过而不是失败 |
+
 **G. 公开接口契约（对应 §5.6）**
 
 | 用例 | 断言 |

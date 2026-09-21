@@ -24,6 +24,7 @@ Toolchain floor: Xcode 26 or newer with Swift 6.2 or newer. The deployment floor
 | `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Bytes in, `[TelnetEvent]` out; no socket | Yes | Yes | Yes, build plus run |
 | `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address | Yes | Yes | Build only |
 | `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | `NIOTSListenerBootstrap` fixture, injected `NIOTSNetworkEvents` | Yes | Yes | No |
+| `Tests/TelnetKitTests/RealServer/` | A real server: connect, first bytes, no negotiation loop, bounded session, close | Apple's `telnetd` from Homebrew, addressed by `TELNETKIT_TEST_SERVER_HOST` and `TELNETKIT_TEST_SERVER_PORT`; skipped when unset | Yes | Yes | No |
 
 The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration suite binds a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
 
@@ -58,6 +59,49 @@ xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPh
 ```
 
 `xcodebuild` resolves a scheme only after the package has been opened once in Xcode, so CI assigns a stable `TelnetKit-Package` scheme in the workspace and fails with the package name when the scheme is absent.
+
+## Tests against a real Telnet server
+
+The loopback fixture proves the parser; a real server proves the connection. Two servers are used, and they answer different questions.
+
+| Server | What it proves | Where it runs |
+|---|---|---|
+| `NIOTSListenerBootstrap` fixture in the test target | Deterministic negotiation: the script chooses which options to advertise, so TTYPE, NAWS, and NEW-ENVIRON cases have a fixed expectation | Every integration run, all platforms |
+| Apple's `telnetd`, installed through Homebrew | Authentic server behavior: real prompts, real negotiation order, real IAC handling by a server nobody on this project wrote | The `RealServer` suite, plus manual runs |
+
+Homebrew's `telnetd` formula builds Apple's own `remote_cmds` telnetd, which is the same daemon the system shipped before it was removed. `telnetd` normally runs from `inetd`, which macOS no longer has, so tests start it standalone: the `-debug` flag starts it manually and accepts an alternate port, which is what keeps the test server on a high port instead of the privileged 23.
+
+```sh
+brew install telnetd
+sudo telnetd -debug 2323            # standalone on 2323; needs root, and creates
+                                    # a real login session when a client connects
+```
+
+The `RealServer` suite is driven by environment variables so that a run without a server skips instead of failing, and so CI stays hermetic:
+
+```sh
+TELNETKIT_TEST_SERVER_HOST=127.0.0.1 TELNETKIT_TEST_SERVER_PORT=2323 \
+  swift test --filter TelnetKitTests.RealServer
+```
+
+The suite asserts only what a foreign server can promise: the TCP connection completes, the first bytes are valid Telnet, negotiation does not loop, the session stays usable for a bounded period, and close behaves. It does not assert a prompt string, a banner, or an exact negotiation sequence, because those are the server's choices and not this library's contract.
+
+## Simulator runs against the Mac host
+
+Every simulator shares the Mac's network stack, so a server on the Mac is reachable from inside any of them. The host address is read from the machine rather than hardcoded, because it differs per network:
+
+```sh
+ipconfig getifaddr en0               # the address a simulator connects to
+```
+
+| Platform | How the real-server suite runs | Notes |
+|---|---|---|
+| macOS | `swift test --filter TelnetKitTests.RealServer` | No host application needed; this is the reference run |
+| iOS, iPadOS | `xcodebuild test -destination 'platform=iOS Simulator,name=iPhone 17'` | Runs the same suite; the local-network prompt can appear on first connect |
+| watchOS | Build plus the protocol suite | Testing needs a paired iPhone simulator, so the real-server case is not planned here |
+| tvOS, visionOS | `xcodebuild test` where the destination supports it, otherwise build plus the protocol suite | Treated as a build gate first and a test target second, so a toolchain that refuses to run the bundle does not block a change |
+
+A local-network prompt or a refused connection means the run reports the platform and the address it tried, rather than reporting a protocol failure. No simulator address reaches CI: the matrix job runs the deterministic fixture only, and the real-server suite is a local and manual step.
 
 ## Coverage, sanitizers, and concurrency
 
@@ -106,13 +150,15 @@ A change passes when all of the following hold, and the run reports the observed
 | `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | Gate 7 |
 | `platform-matrix` | macOS with all four runtimes | `xcodebuild build` and `xcodebuild test` per platform | Gates 2, 3 |
 | `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | Gate 4, for the interface snapshot |
+| `real-server` | A developer Mac, never CI | `TELNETKIT_TEST_SERVER_HOST=... swift test --filter TelnetKitTests.RealServer` | Manual evidence for the milestone checklist |
 
 The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
 
 ## Manual verification
 
-Three things cannot be automated on a hosted runner and are recorded as evidence in the milestone checklist:
+Four things cannot be automated on a hosted runner and are recorded as evidence in the milestone checklist:
 
-1. A real Telnet service over the public internet: the login prompt is visible and a command round-trips.
-2. A cellular-to-Wi-Fi switch on a device, showing `.pathChanged` and a session that survives it.
-3. Background suspension on iOS or watchOS: the connection drops, and the app reconnects when it returns to the foreground.
+1. Apple's `telnetd` from the section above answers a login prompt, and a command round-trips against it.
+2. The `RealServer` suite runs from the iOS simulator against the Mac host, with the platform and the address it used recorded in the log.
+3. A public Telnet service over the internet answers a login prompt, which is the only check that leaves the local network.
+4. A cellular-to-Wi-Fi switch on a device, and background suspension on iOS or watchOS, show `.pathChanged` and the documented disconnect behavior.

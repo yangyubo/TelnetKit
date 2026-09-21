@@ -54,7 +54,7 @@
 | `docs/AGENTS.md` | 1,700：本文件负责双语配对机制与九个层级的归属表 |
 | `docs/architecture.md` | 2,100：平台与传输层决策表以及路径事件流无法在不丢失设计契约的前提下下沉 |
 | `docs/public-api.md` | 3,200：调用方契约对每个公开符号穷尽，成员表格的一行所占词数无法在不丢契约的前提下下沉 |
-| `docs/testing.md` | 1,400：每层一个命令块加 CI 矩阵 |
+| `docs/testing.md` | 2,000：它还负责真实服务端与模拟器连宿主的流程 |
 | `README.md` | 900 |
 | `.agents/skills/*/SKILL.md` 下的 skill | 1,400 |
 | `PRD.md` | 不设上限：它拥有需求细节 |
