@@ -53,6 +53,8 @@ swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-
 
 `swift test` is the local evidence. Report only commands actually run, with their observed result; do not claim a check that did not execute. Coverage is complete for public symbols, not for source lines alone: a public symbol without a test is failing work, not partial work.
 
+Never run `git push` and never ask whether to push; a commit stays local until the human publishes it.
+
 ## Non-negotiable constraints
 
 - **Apple platforms only.** Deployment floors are macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2. Linux, Windows, and Android are out of scope: do not add a platform entry, an abstraction, or a conditional branch for them. Do not add an API newer than the floors.

@@ -53,6 +53,8 @@ swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-
 
 `swift test` 是本地证据。只报告实际运行过的命令及其观测结果；没有执行的检查不能声称已通过。覆盖以公开符号为准，而不是只看源码行：一个没有测试的公开符号属于失败的工作，不是部分完成的工作。
 
+绝不运行 `git push`，也不询问是否推送；提交在人工发布之前始终留在本地。
+
 ## 不可协商的约束
 
 - **仅 Apple 平台。** 部署下限是 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2。Linux、Windows、Android 不在范围内：不得为它们添加平台声明、抽象层或条件分支。不得引入比这些下限更新的 API。
