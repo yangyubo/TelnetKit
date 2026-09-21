@@ -2,7 +2,7 @@
 
 English | [中文](architecture.zh.md)
 
-Read this before changing anything under `Sources/`. It is the design contract: the package is not implemented yet, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status) rather than in this file. Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
+Read this before changing anything under `Sources/`. It is the design contract: the library layers are implemented, the demo executables are designed, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status) rather than in this file. Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
 
 ## Composition
 
@@ -30,7 +30,7 @@ One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, 
 
 ## Platform and transport decision
 
-**Designed.** The library ships for macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 from one source tree, and Network.framework through NIOTS is the only transport. Non-Apple platforms are not promised, and no abstraction or conditional compilation is kept for them.
+**Verified.** The library builds for the macOS 15 and iOS 18 simulator floors, and the C target builds for the watchOS 11, tvOS 18, and visionOS 2 floors, from one source tree; Network.framework through NIOTS is the only transport. Non-Apple platforms are not promised, and no abstraction or conditional compilation is kept for them.
 
 The decision record:
 
@@ -45,7 +45,7 @@ Test placement follows the same split: the protocol and public interface suites 
 
 ## Concurrency model
 
-**Designed.** The protocol state machine is single-threaded, and the design enforces that by ownership rather than by locking.
+**Verified.** The protocol state machine is single-threaded, and the design enforces that by ownership rather than by locking.
 
 | Rule | Reason |
 |---|---|
@@ -86,7 +86,7 @@ The pin, the generated module map, and the upstream upgrade procedure are owned 
 
 ## Option and command modeling
 
-**Designed.** Wire codes become Swift values in one mapping file, `Sources/TelnetKit/Public/TelnetOption.swift` and `TelnetCommand.swift`, and nowhere else.
+**Verified.** Wire codes become Swift values in one mapping file, `Sources/TelnetKit/Public/TelnetOption.swift` and `TelnetCommand.swift`, and nowhere else.
 
 `TelnetOption` is a `RawRepresentable` struct wrapping `UInt8` with static constants, not an enum: Telnet assigns over 250 option codes and libtelnet accepts any of them, so an enum would need an unbounded associated-value case and would break `CaseIterable` traversal. A code with no constant stays representable, and `displayName` renders it as `option(<code>)`.
 
@@ -96,7 +96,7 @@ The pin, the generated module map, and the upstream upgrade procedure are owned 
 
 ## Event model
 
-**Designed.** `TelnetEvent` is a closed enum with one case per libtelnet event, plus three structured cases the core derives: `localEchoChanged`, `terminalType(_:)`, and `environment(_:_:)`. A caller that needs only bytes and text matches two cases; a caller that needs protocol detail matches all.
+**Verified.** `TelnetEvent` is a closed enum with one case per libtelnet event plus the structured cases the core derives: `localEchoChanged`, `terminalType(_:)`, `environment(_:_:)`, and the path reports. A caller that needs only bytes and text matches two cases; a caller that needs protocol detail matches all.
 
 Byte payloads travel as `NIOCore.ByteBuffer` because it is the type NIO already produced, so delivery copies nothing. A convenience accessor exposes bytes and UTF-8 text, so a caller never has to learn NIO to read output.
 
@@ -104,7 +104,7 @@ The union discrimination that C performs with `event.type` happens in one `switc
 
 ## Error model
 
-**Designed.** Failures are values, never crashes. `TelnetError` covers connection establishment, transport, protocol, and configuration failures; each libtelnet `telnet_error_t` case maps to exactly one `TelnetError` case, and the mapping is exhaustive with no `default` arm.
+**Verified.** Failures are values, never crashes. `TelnetError` covers connection establishment, transport, protocol, and configuration failures; each libtelnet `telnet_error_t` case maps to exactly one `TelnetError` case, and the mapping is exhaustive with no `default` arm.
 
 Recoverable and fatal stay separate. A `.warning` event leaves the connection usable; a `.protocolError` closes it, finishes the event stream, and makes later calls throw `.notConnected`. Mapping a fatal condition to a warning would strand a caller in a parser that cannot make progress, and mapping a warning to fatal would drop a session over a malformed sequence.
 
@@ -112,7 +112,7 @@ Network.framework's error set (`NWError`) is mapped to `TelnetTransportFailure.K
 
 ## Resource bounds
 
-**Designed.** Every peer-controlled value has a ceiling with an owner in `TelnetConfiguration`.
+**Verified.** Every peer-controlled value has a ceiling with an owner in `TelnetConfiguration`; the v0.2 inflated-bytes row stays designed while zlib is off.
 
 | Bound | Default | Owner | Failure |
 |---|---|---|---|

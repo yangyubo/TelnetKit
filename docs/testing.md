@@ -2,7 +2,7 @@
 
 English | [中文](testing.zh.md)
 
-This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.zh.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The package is not implemented yet, so every section below is **Designed** under the [design-status rule](../AGENTS.md#design-status).
+This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.zh.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The library suites and the vendored C suite are implemented; the demo and real-server procedures are **Designed** under the [design-status rule](../AGENTS.md#design-status).
 
 ## Environment
 
@@ -23,11 +23,11 @@ Toolchain floor: Xcode 26 or newer with Swift 6.2 or newer. The deployment floor
 |---|---|---|---|---|---|
 | `Tests/CLibTelnetTests/` | The vendored libtelnet C library through the `CLibTelnet` module | Bytes in, recorded events out; no socket, no connection | Yes, and this suite passes today | Yes | Yes, build plus run |
 | `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Bytes in, `[TelnetEvent]` out; no socket | Yes | Yes | Yes, build plus run |
-| `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address | Yes | Yes | Build only |
+| `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | A `NIOTSListenerBootstrap` fixture in the test target | Yes | Yes | Build only |
 | `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | `NIOTSListenerBootstrap` fixture, injected `NIOTSNetworkEvents` | Yes | Yes | No |
 | `Tests/TelnetKitTests/RealServer/` | A real server: connect, first bytes, no negotiation loop, bounded session, close | Apple's `telnetd` from Homebrew, addressed by `TELNETKIT_TEST_SERVER_HOST` and `TELNETKIT_TEST_SERVER_PORT`; skipped when unset | Yes | Yes | No |
 
-This milestone ships the libtelnet suite, the row that is present; the other four arrive with the Swift target and are listed here so their platform placement is fixed now. The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration suite binds a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
+This milestone ships the libtelnet suite and the three Swift suites; the real-server suite is listed so its platform placement is fixed now. The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration and public API suites bind a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
 
 ## Running each suite
 
@@ -43,12 +43,9 @@ swift test --list-tests                            # what exists, for the symbol
 swift test --list-tests | wc -l                    # count for the coverage checklist
 ```
 
-The echo server is a fixture, not a service: the integration suite starts one per run and stops it on teardown.
+The echo server is a fixture, not a service: a suite binds its own loopback listener and stops it on teardown.
 
-```sh
-swift run TelnetEchoServer --port 2323             # manual: start the fixture by hand
-swift run TelnetDemo --host 127.0.0.1 --port 2323  # manual: drive it from the CLI demo
-```
+The CLI demo and the standalone echo server are not provided in this milestone; when they ship they are manual entry points, not a substitute for a suite.
 
 Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM test bundle needs a host application on those platforms.
 
@@ -141,7 +138,7 @@ A change passes when all of the following hold, and the run reports the observed
 6. The ASan job is green, and the TSan job is green.
 7. The `-strict-concurrency=complete` build reports zero warnings.
 8. No test reaches the external network, and no test depends on wall-clock sleep for correctness.
-9. The dependency tree contains no `NIOSSL`, no `CNIOBoringSSL`, and no `NIOPosix`.
+9. No target in this package imports `NIOSSL`, `CNIOBORINGSSL`, or `NIOPosix`; the transitive `NIO` umbrella that `NIOTransportServices` pulls in is the only place `NIOPosix` is built.
 
 ## CI plan
 

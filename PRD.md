@@ -464,7 +464,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-PROTO-03 | Restore the `IAC IAC` escape to one `0xFF` byte inside `.data` | P0 | The test asserts the bytes |
 | FR-PROTO-04 | An illegal or truncated `IAC` sequence produces `.warning`, never a crash | P0 | 100,000 iterations of random bytes do not crash |
 | FR-PROTO-05 | Subnegotiation content survives intact, including `IAC` escape restoration | P0 | The TTYPE, NAWS, and NEW-ENVIRON payloads match exactly |
-| FR-PROTO-06 | `TELNET_FLAG_PROXY` and `TELNET_FLAG_NVT_EOL` are exposed through `configuration`, never as macros | P1 | Each mode has a test |
+| FR-PROTO-06 | NVT end-of-line semantics are exposed through `configuration.newlinePolicy`, never as a macro; proxy mode is out of scope for the first release | P1 | The newline policy has a test; a proxy-mode requirement is deferred |
 | FR-PROTO-07 | A subnegotiation longer than `subnegotiationLimit` throws `.subnegotiationTooLarge` | P1 | An oversized SB is stopped |
 | FR-PROTO-08 | The callback copy strategy holds no dangling pointer | P0 | The protocol tests pass under AddressSanitizer |
 
@@ -483,8 +483,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-NEG-09 | Parse `ZMP` commands and arguments | P2 | Multi-argument and empty-argument boundaries are correct |
 | FR-NEG-10 | `compress2` is not registered in `TelnetOptions`: this end answers negotiations with `WONT` and never accepts a compressed stream | P1 | A `DO COMPRESS2` receives `WONT COMPRESS2`, and `optionStatus(.compress2)` reports all-false |
 | FR-NEG-11 | The precondition for enabling compression (v0.2) is explicit: the inflation bound, event-flow behavior under compression, and the compressed-stream failure mode must all be designed | P2 | Each of the three has a test; `HAVE_ZLIB` stays undefined while any is missing |
-| FR-NEG-11 | `optionStatus(_:)` reflects negotiation state live | P1 | State is asserted before and after negotiation |
-| FR-NEG-12 | Capabilities such as `sendWindowSize` and `replyTerminalType` can be triggered from the demo | P1 | The demo exposes an entry point for each |
+| FR-NEG-12 | `optionStatus(_:)` reflects negotiation state live | P1 | State is asserted before and after negotiation |
+| FR-NEG-13 | Capabilities such as `sendWindowSize` and `replyTerminalType` can be triggered from the demo | P1 | The demo exposes an entry point for each |
 
 ### 6.4 Text and encoding (FR-TEXT)
 

@@ -8,9 +8,9 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 ## Design status
 
-The package does not exist yet; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
+The `TelnetKit` library exists and is tested; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. The demo executables are designed but not written. A statement in this repository is one of three kinds, and prose states which:
 
-- **Verified.** Reproduced on this machine: `swift build --target CLibTelnet` and `swift test` succeed, the eight tests in `Tests/CLibTelnetTests` pass, `swift build --target CLibTelnet --triple` succeeds for the iOS, watchOS, tvOS, and visionOS floors, and `telnet_send_text("hi\n")` emits `FF FD 01 68 69 0D 0A` after the peer's WILL ECHO.
+- **Verified.** Reproduced on this machine: `swift build` and `swift test` succeed with 96 tests, `swift build -Xswiftc -strict-concurrency=complete` reports no warning, the `TelnetKit` target builds for the macOS 15 and iOS 18 simulator floors, and `swift build --target CLibTelnet --triple` succeeds for the watchOS, tvOS, and visionOS floors.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
 - **Designed.** Planned behavior of code that is not written. Mark designed statements as requirements, never as descriptions of existing behavior, and delete the marker when the behavior ships.
 
@@ -26,29 +26,27 @@ Sources/CLibTelnet/            our module map, two symlinks into the submodule, 
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
 Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
-Sources/TelnetDemo/            CLI demo executable
-Sources/TelnetEchoServer/      macOS-only local echo server, also the integration fixture
-Tests/CLibTelnetTests/        the libtelnet suite that ships now (Tests/TelnetKitTests/ follows)
-Examples/TelnetKitDemoApp/     SwiftUI demo application
+Sources/TelnetDemo/            CLI demo executable (designed, not written)
+Sources/TelnetEchoServer/      macOS-only local echo server (designed, not written)
+Tests/CLibTelnetTests/         the vendored libtelnet suite; Tests/TelnetKitTests/ holds the Swift suites
+Examples/TelnetKitDemoApp/     SwiftUI demo application (designed, not written)
 docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
 ```
 
-Package products: library `TelnetKit`, executables `TelnetDemo` and `TelnetEchoServer`. `CLibTelnet` stays internal and never becomes a product.
+Package products: library `TelnetKit` only; `TelnetDemo` and `TelnetEchoServer` are designed but not declared yet. `CLibTelnet` stays internal and never becomes a product.
 
 ## Commands
 
 ```sh
 git submodule update --init --recursive   # required once after cloning
 swift build                       # debug build of every target
-swift test                        # 8 tests in Tests/CLibTelnetTests; offline, under 60s
-swift test --filter TelnetKitTests.Protocol   # one suite while iterating
+swift test                        # 96 tests across both test targets; offline, under 60s
+swift test --filter TelnetProtocolCoreTests   # one suite while iterating
 swift build -Xswiftc -strict-concurrency=complete   # concurrency error check
 swift build --configuration release               # release build and binary-size check
 swift package describe            # target and product inventory
 swift package diagnose-api-breaking-changes baseline.json   # public interface snapshot comparison
-swift run TelnetEchoServer        # local fixture on port 2323
-swift run TelnetDemo --host 127.0.0.1 --port 2323
 xcodebuild -list                  # the only scheme is TelnetKit-Package (SwiftPM names it)
 swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" --triple arm64-apple-ios18.0-simulator   # floor check
 ```

@@ -10,7 +10,7 @@ TelnetKit gives you one `async` object per connection. You await the connection,
 
 ## Status
 
-The package is designed but not implemented. The requirement source is [PRD.md](PRD.md); the design contract is [docs/architecture.md](docs/architecture.md) and [docs/public-api.md](docs/public-api.md). Do not depend on this package yet.
+The library is implemented and tested on macOS; the CLI demo and echo server executables are not part of this milestone. The requirement source is [PRD.md](PRD.md); the design contract is [docs/architecture.md](docs/architecture.md) and [docs/public-api.md](docs/public-api.md).
 
 ## Requirements
 
@@ -41,14 +41,15 @@ After cloning, initialise the submodule once; the first build fails without it:
 git submodule update --init --recursive
 ```
 
-Run the local echo server, then the demo client:
+The library product is what this milestone ships; the CLI demo and echo server executables are not part of it yet. A minimal session:
 
-```sh
-swift run TelnetEchoServer          # listens on 127.0.0.1:2323
-swift run TelnetDemo --host 127.0.0.1 --port 2323
+```swift
+let connection = try await TelnetConnection.connect(host: "your.host", port: 23)
+try await connection.send(text: "hello")
+await connection.close()
 ```
 
-The demo connects, prints every event it receives, sends a command, and closes the connection.
+See [Use the library](#use-the-library) for event consumption.
 
 ## Use the library
 
@@ -65,8 +66,8 @@ let connection = try await TelnetConnection.connect(
 Task {
     for await event in connection.events {
         switch event {
-        case .data(let buffer):
-            print(buffer.text ?? "", terminator: "")
+        case .data:
+            print(event.text ?? "", terminator: "")
         case .negotiation(let action, let option, let remote):
             print(remote ? "remote" : "local", action, option.displayName)
         case .terminalTypeRequested:
@@ -100,7 +101,7 @@ await connection.close()
 - MCCP2 compression is not built in: a COMPRESS2 request is refused with `wont`. The Apple SDKs ship zlib, so this is a scope decision rather than a dependency gap; enabling it needs an inflation bound and compressed-state contracts first.
 - Telnet over TLS/SSL is out of scope: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options. Apple's own telnet and Homebrew's netkit-telnet support neither, upstream libtelnet implements neither option, and the IETF drafts never became RFCs.
 - Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
-- The CLI demo and the echo server are macOS-only executables; watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.
+- The CLI demo and the echo server are not provided in this milestone; when they ship they are macOS-only executables, because watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
 - SSH, RLogin, and BBS file-transfer protocols are out of scope.
 

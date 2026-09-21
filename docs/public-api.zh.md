@@ -2,7 +2,7 @@
 
 [English](public-api.md) | 中文
 
-本文是 `TelnetKit` 库产物的调用方契约，定义每一个公开类型、方法与 case，并且是契约的存档依据：当代码与本文冲突时，其中一方是缺陷，变更必须同时修正两者。本包尚未实现，因此依据[设计状态规则](../AGENTS.md#design-status)，下文所有签名都是**设计中**；需求与验收标准见 [PRD.zh.md](../PRD.zh.md)，内部设计见 [architecture.md](architecture.md)。
+本文是 `TelnetKit` 库产物的调用方契约，定义每一个公开类型、方法与 case，并且是契约的存档依据：当代码与本文冲突时，其中一方是缺陷，变更必须同时修正两者。库已实现；演示可执行文件处于设计阶段、尚未编写，因此涉及它们的陈述依据[设计状态规则](../AGENTS.md#design-status)仍为**设计中**；需求与验收标准见 [PRD.zh.md](../PRD.zh.md)，内部设计见 [architecture.md](architecture.md)。
 
 ## 公开接口规则
 
@@ -32,7 +32,7 @@
 
 ## 生命周期契约
 
-**设计中。** `TelnetConnection.connect(host:port:options:configuration:)` 返回一条已连接、可开始协商的会话。连接在关闭前一直可用，而关闭只可能是四种情形之一：调用方调用 `close()`、远端关闭、发生致命协议错误，或配置的超时到期。
+**已验证。** `TelnetConnection.connect(host:port:options:configuration:)` 返回一条已连接、可开始协商的会话。连接在关闭前一直可用，而关闭只可能是四种情形之一：调用方调用 `close()`、远端关闭、发生致命协议错误，或配置的超时到期。
 
 事件流按线序投递事件，并在任意关闭路径上恰好结束一次。从不消费事件流的调用方同样能观测到关闭：出站调用抛出 `.notConnected`，`isConnected` 变为 false。事件流是单消费者的；第二个消费者什么都收不到，而不是收到一份拷贝。
 
@@ -84,7 +84,7 @@ extension TelnetConnection {
 | 成员 | 契约 |
 |---|---|
 | `send(_:)` | 发送应用字节。按 NVT 把每个 `0xFF` 翻倍为 `0xFF 0xFF`。不改变 CR 与 LF。 |
-| `send(text:)` | 把 `text` 编码为 UTF-8，应用 `configuration.newlinePolicy` 与 `TelnetLineEnding.crlf`，然后转义。策略与行尾冲突时抛 `.invalidConfiguration`。 |
+| `send(text:)` | 把 `text` 编码为 UTF-8，应用 `configuration.newlinePolicy` 与 `TelnetLineEnding.crlf`，然后转义。 |
 | `send(text:lineEnding:)` | 用显式指定的行尾发送 `text`，忽略配置的默认值。 |
 | `sendRaw(_:)` | 发送字节，不做转义也不做行尾转换。用于承载已经编码好的 Telnet 字节流；若字节中含裸 `IAC`，可能破坏会话。 |
 | `send(command:)` | 以 `IAC <command>` 发送一个 Telnet 命令。 |
@@ -111,7 +111,7 @@ extension TelnetConnection {
 | `requestOption(_:)` | 本端提供该选项时发 `will`，希望从对端获得时发 `do`，依据 `options` 选择。选项不在两个列表中的任何一个时抛 `.invalidConfiguration`，因为对端会应答一个调用方并未声明的请求。 |
 | `subnegotiate(option:payload:)` | 发送 `IAC SB <option> <payload> IAC SE`，并对载荷中的 `0xFF` 转义。载荷超过配置上限时抛 `.subnegotiationTooLarge`。 |
 | `replyTerminalType(_:)` | 响应未决的终端类型请求，发送 `IAC SB TERMINAL-TYPE IS <type> IAC SE`。仅在 `.terminalTypeRequested` 事件之后有效，否则抛 `.invalidConfiguration`。 |
-| `sendEnvironment(_:scope:)` | 用给定 scope 发送 NEW-ENVIRON 列表，并转义名称与值中的转义字节。 |
+| `sendEnvironment(_:scope:)` | 用给定 scope 发送 NEW-ENVIRON 列表，并转义名称与值中的转义字节。编码后的列表超出配置上限时抛 `.subnegotiationTooLarge`。 |
 | `sendWindowSize(columns:rows:)` | 以四个大端字节发送 NAWS，并转义 RFC 1073 要求的 `0xFF` 字节。尺寸超出 0...65535 时以 `.invalidConfiguration` 拒绝。 |
 
 ## 选项配置
@@ -132,6 +132,8 @@ public struct TelnetOptions: Sendable {
     public var local: [LocalOption]
     public var remote: [RemoteOption]
     public var isValid: Bool
+
+    public init(local: [LocalOption] = [], remote: [RemoteOption] = [])
 
     public static var standardClient: TelnetOptions { get }
     public static func serverRequesting(_ options: [TelnetOption]) -> TelnetOptions
@@ -163,6 +165,7 @@ public enum TelnetEvent: Sendable {
     case pathChanged(viable: Bool, expensive: Bool, constrained: Bool)
     case betterPathAvailable
     case betterPathUnavailable
+    case viabilityChanged(isViable: Bool)
     case waitingForConnectivity(error: String?, description: String)
     case warning(TelnetWarning)
     case protocolError(TelnetProtocolError)
@@ -327,6 +330,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
     public var kind: Kind
     public var message: String
     public var isRetryable: Bool
+
+    public init(kind: Kind, message: String, isRetryable: Bool)
 }
 
 public enum TelnetWarning: Error, Sendable, Equatable {
@@ -352,7 +357,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 
 ## 日志
 
-**设计中。** 当 `configuration.logger` 非 nil 时，库以 `info` 记录连接生命周期，以 `debug` 记录协商与状态变更，以 `trace` 记录协议帧。任何级别都不记录载荷字节、对端发来的选项值或环境变量值。默认静默：未配置 logger 的连接不产生任何日志记录。
+**已验证。** 当 `configuration.logger` 非 nil 时，库以 `info` 记录连接生命周期，以 `debug` 记录协商与状态变更，以 `trace` 记录协议帧。任何级别都不记录载荷字节、对端发来的选项值或环境变量值。默认静默：未配置 logger 的连接不产生任何日志记录。
 
 ## 符号清单
 
@@ -361,8 +366,8 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | 类型 | 符号 |
 |---|---|
 | `TelnetConnection` | `connect`、`events`、`isConnected`、`remoteAddress`、`localAddress`、`optionStatus`、`send(_:)`、`send(text:)`、`send(text:lineEnding:)`、`sendRaw(_:)`、`send(command:)`、`negotiate(_:option:)`、`requestOption(_:)`、`subnegotiate(option:payload:)`、`replyTerminalType(_:)`、`sendEnvironment(_:scope:)`、`sendWindowSize(columns:rows:)`、`close()` |
-| `TelnetEvent` | 全部 19 个 case，加上 `bytes` 与 `text` |
-| `TelnetOptions` | `LocalOption`、`RemoteOption`、`local`、`remote`、`isValid`、`standardClient`、`serverRequesting(_:)` |
+| `TelnetEvent` | 全部 19 个 case，加上 `bytes` 与 `text`；未链接 zlib 的构建中 `compressionEnabled` 没有触发点 |
+| `TelnetOptions` | `init(local:remote:)`、`LocalOption`、`RemoteOption`、`local`、`remote`、`isValid`、`standardClient`、`serverRequesting(_:)` |
 | `TelnetOption` | `init(rawValue:)`、`rawValue`、`displayName`、`allCases`，以及全部 18 个常量 |
 | `TelnetOptionStatus` | 全部四个属性 |
 | `TelnetNegotiation` | 全部四个 case |
@@ -371,7 +376,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | `EnvironmentScope`、`EnvironmentVariable` | 全部 case 与属性 |
 | `TelnetConfiguration` | `init` 的每个默认值，以及全部八个属性 |
 | `TelnetEventBufferPolicy`、`TelnetNewlinePolicy` | 全部 case |
-| `TelnetError` | 全部 12 个 case，每个都有测试触达；`unsupportedFeature` 的触达点在 v0.2 的 zlib 路径上，zlib 关闭期间不在范围内 |
-| `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | 全部属性与 case |
+| `TelnetError` | 全部 12 个 case；`.alreadyClosed` 与 `.unsupportedFeature` 仅作为值触达，因为 `close()` 幂等、且 v0.2 的 zlib 路径在 zlib 关闭期间不在范围内 |
+| `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | `init(kind:message:isRetryable:)`、全部属性与 case |
 | `TelnetWarning` | 全部五个 case；`compressionUnavailable` 为 v0.2 的 zlib 支持预留，在未链接 zlib 的构建中没有触发点 |
 | `TelnetProtocolError`、`TelnetErrorCode` | 全部 case |

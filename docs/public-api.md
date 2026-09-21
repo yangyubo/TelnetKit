@@ -2,7 +2,7 @@
 
 English | [中文](public-api.zh.md)
 
-This document is the caller contract for the `TelnetKit` library product. It defines every public type, method, and case, and it is the contract of record: when code and this document disagree, one of them is a defect and the change fixes both. The package is not implemented yet, so every signature below is **Designed** under the [design-status rule](../AGENTS.md#design-status); requirements and acceptance criteria live in [PRD.md](../PRD.md), and internal design lives in [architecture.md](architecture.md).
+This document is the caller contract for the `TelnetKit` library product. It defines every public type, method, and case, and it is the contract of record: when code and this document disagree, one of them is a defect and the change fixes both. The library is implemented; the demo executables are designed and not written, so statements about them stay **Designed** under the [design-status rule](../AGENTS.md#design-status); requirements and acceptance criteria live in [PRD.md](../PRD.md), and internal design lives in [architecture.md](architecture.md).
 
 ## Public surface rules
 
@@ -32,7 +32,7 @@ These terms have one meaning across this repository. Do not add a synonym for on
 
 ## Lifetime contract
 
-**Designed.** `TelnetConnection.connect(host:port:options:configuration:)` returns a connected, ready-to-negotiate session. The connection is usable until it closes, and it closes in exactly one of four ways: the caller calls `close()`, the remote endpoint closes, a fatal protocol error occurs, or a configured timeout expires.
+**Verified.** `TelnetConnection.connect(host:port:options:configuration:)` returns a connected, ready-to-negotiate session. The connection is usable until it closes, and it closes in exactly one of four ways: the caller calls `close()`, the remote endpoint closes, a fatal protocol error occurs, or a configured timeout expires.
 
 The event stream delivers events in wire order and finishes exactly once, on any close path. A caller that never consumes the stream still observes the closure: outbound calls throw `.notConnected` and `isConnected` becomes false. The stream is single-consumer; a second consumer receives nothing rather than a copy.
 
@@ -84,7 +84,7 @@ extension TelnetConnection {
 | Member | Contract |
 |---|---|
 | `send(_:)` | Sends application bytes. Doubles every `0xFF` to `0xFF 0xFF` per NVT. Does not alter CR or LF. |
-| `send(text:)` | Encodes `text` as UTF-8, applies `configuration.newlinePolicy` and `TelnetLineEnding.crlf`, then escapes. Throws `.invalidConfiguration` if policy and line ending conflict. |
+| `send(text:)` | Encodes `text` as UTF-8, applies `configuration.newlinePolicy` and `TelnetLineEnding.crlf`, then escapes. |
 | `send(text:lineEnding:)` | Sends `text` with an explicit line ending, ignoring the configured default. |
 | `sendRaw(_:)` | Sends bytes with no escaping and no line-ending translation. Intended for carrying an already-encoded Telnet stream; it can break the session if the bytes contain a bare `IAC`. |
 | `send(command:)` | Sends a Telnet command as `IAC <command>`. |
@@ -111,7 +111,7 @@ extension TelnetConnection {
 | `requestOption(_:)` | Sends `will` for an option the local end provides or `do` for one it wants from the peer, choosing by `options`. Throws `.invalidConfiguration` when the option is in neither list, because the peer would answer a request the caller has not declared. |
 | `subnegotiate(option:payload:)` | Sends `IAC SB <option> <payload> IAC SE`, escaping `0xFF` in the payload. Throws `.subnegotiationTooLarge` when the payload exceeds the configured bound. |
 | `replyTerminalType(_:)` | Answers a pending terminal-type request by sending `IAC SB TERMINAL-TYPE IS <type> IAC SE`. Valid only after a `.terminalTypeRequested` event; otherwise throws `.invalidConfiguration`. |
-| `sendEnvironment(_:scope:)` | Sends a NEW-ENVIRON list with the given scope, escaping the escape byte inside names and values. |
+| `sendEnvironment(_:scope:)` | Sends a NEW-ENVIRON list with the given scope, escaping the escape byte inside names and values. Throws `.subnegotiationTooLarge` when the encoded list exceeds the configured bound. |
 | `sendWindowSize(columns:rows:)` | Sends NAWS as four big-endian bytes, escaping the `0xFF` octet that RFC 1073 requires. Rejects a dimension outside 0...65535 with `.invalidConfiguration`. |
 
 ## Options configuration
@@ -132,6 +132,8 @@ public struct TelnetOptions: Sendable {
     public var local: [LocalOption]
     public var remote: [RemoteOption]
     public var isValid: Bool
+
+    public init(local: [LocalOption] = [], remote: [RemoteOption] = [])
 
     public static var standardClient: TelnetOptions { get }
     public static func serverRequesting(_ options: [TelnetOption]) -> TelnetOptions
@@ -163,6 +165,7 @@ public enum TelnetEvent: Sendable {
     case pathChanged(viable: Bool, expensive: Bool, constrained: Bool)
     case betterPathAvailable
     case betterPathUnavailable
+    case viabilityChanged(isViable: Bool)
     case waitingForConnectivity(error: String?, description: String)
     case warning(TelnetWarning)
     case protocolError(TelnetProtocolError)
@@ -327,6 +330,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
     public var kind: Kind
     public var message: String
     public var isRetryable: Bool
+
+    public init(kind: Kind, message: String, isRetryable: Bool)
 }
 
 public enum TelnetWarning: Error, Sendable, Equatable {
@@ -352,7 +357,7 @@ Each libtelnet `telnet_error_t` value maps one-to-one: `TELNET_EBADVAL` to `.bad
 
 ## Logging
 
-**Designed.** When `configuration.logger` is non-nil, the library logs connection lifecycle at `info`, negotiation and state changes at `debug`, and protocol frames at `trace`. No level logs payload bytes, option values sent by the peer, or environment values. Silence is the default: an unconfigured connection emits no log records.
+**Verified.** When `configuration.logger` is non-nil, the library logs connection lifecycle at `info`, negotiation and state changes at `debug`, and protocol frames at `trace`. No level logs payload bytes, option values sent by the peer, or environment values. Silence is the default: an unconfigured connection emits no log records.
 
 ## Symbol checklist
 
@@ -361,8 +366,8 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | Type | Symbols |
 |---|---|
 | `TelnetConnection` | `connect`, `events`, `isConnected`, `remoteAddress`, `localAddress`, `optionStatus`, `send(_:)`, `send(text:)`, `send(text:lineEnding:)`, `sendRaw(_:)`, `send(command:)`, `negotiate(_:option:)`, `requestOption(_:)`, `subnegotiate(option:payload:)`, `replyTerminalType(_:)`, `sendEnvironment(_:scope:)`, `sendWindowSize(columns:rows:)`, `close()` |
-| `TelnetEvent` | all 19 cases plus `bytes` and `text` |
-| `TelnetOptions` | `LocalOption`, `RemoteOption`, `local`, `remote`, `isValid`, `standardClient`, `serverRequesting(_:)` |
+| `TelnetEvent` | all 19 cases plus `bytes` and `text`; `compressionEnabled` has no producer while the build ships without zlib |
+| `TelnetOptions` | `init(local:remote:)`, `LocalOption`, `RemoteOption`, `local`, `remote`, `isValid`, `standardClient`, `serverRequesting(_:)` |
 | `TelnetOption` | `init(rawValue:)`, `rawValue`, `displayName`, `allCases`, and all 18 constants |
 | `TelnetOptionStatus` | all four properties |
 | `TelnetNegotiation` | all four cases |
@@ -371,7 +376,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | `EnvironmentScope`, `EnvironmentVariable` | all cases and properties |
 | `TelnetConfiguration` | `init` with every default, and all eight properties |
 | `TelnetEventBufferPolicy`, `TelnetNewlinePolicy` | all cases |
-| `TelnetError` | all 12 cases, each reached by a test; the v0.2 zlib path reaches `unsupportedFeature` and is out of scope while zlib is off |
-| `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | all properties and cases |
+| `TelnetError` | all 12 cases; `.alreadyClosed` and `.unsupportedFeature` are reachable as values only, since `close()` is idempotent and the v0.2 zlib path is out of scope while zlib is off |
+| `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | `init(kind:message:isRetryable:)`, all properties and cases |
 | `TelnetWarning` | all five cases; `compressionUnavailable` is reserved for v0.2 zlib support and has no trigger while the build ships without zlib |
 | `TelnetProtocolError`, `TelnetErrorCode` | all cases |

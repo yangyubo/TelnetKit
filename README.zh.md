@@ -10,7 +10,7 @@ TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已�
 
 ## 状态
 
-本包已完成设计，尚未实现。需求来源是 [PRD.zh.md](PRD.zh.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。当前请勿依赖本包。
+本库已在 macOS 上实现并通过测试；CLI Demo 与回显服务端可执行文件不属于本里程碑。需求来源是 [PRD.zh.md](PRD.zh.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。
 
 ## 环境要求
 
@@ -41,14 +41,15 @@ targets: [
 git submodule update --init --recursive
 ```
 
-先启动本地回显服务端，再启动演示客户端：
+本里程碑交付的是库产品；CLI Demo 与回显服务端可执行文件尚未提供。最小会话：
 
-```sh
-swift run TelnetEchoServer          # 监听 127.0.0.1:2323
-swift run TelnetDemo --host 127.0.0.1 --port 2323
+```swift
+let connection = try await TelnetConnection.connect(host: "your.host", port: 23)
+try await connection.send(text: "hello")
+await connection.close()
 ```
 
-演示程序会建立连接、打印收到的每一个事件、发送一条命令并关闭连接。
+事件消费见[使用库](#使用库)。
 
 ## 使用库
 
@@ -65,8 +66,8 @@ let connection = try await TelnetConnection.connect(
 Task {
     for await event in connection.events {
         switch event {
-        case .data(let buffer):
-            print(buffer.text ?? "", terminator: "")
+        case .data:
+            print(event.text ?? "", terminator: "")
         case .negotiation(let action, let option, let remote):
             print(remote ? "remote" : "local", action, option.displayName)
         case .terminalTypeRequested:
@@ -100,7 +101,7 @@ await connection.close()
 - 未内置 MCCP2 压缩：收到 COMPRESS2 请求时以 `wont` 拒绝。Apple SDK 自带 zlib，所以这是范围取舍而非依赖缺失；启用前必须先设计解压上限与压缩态契约。
 - 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项。Apple 自带 telnet 与 Homebrew 的 netkit-telnet 都不支持，上游 libtelnet 两个选项都未实现，IETF 相关草案也从未成为 RFC。
 - 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
-- CLI Demo 与回显服务端是仅 macOS 可执行文件；watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。
+- 本里程碑不提供 CLI Demo 与回显服务端；它们发布后是仅 macOS 可执行文件，因为 watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。
 - SSH、RLogin 与 BBS 文件传输协议不在范围内。
 

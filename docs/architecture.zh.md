@@ -2,7 +2,7 @@
 
 [English](architecture.md) | 中文
 
-修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：本包尚未实现，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载而非写在本文里。需求与验收标准见 [PRD.zh.md](../PRD.zh.md)；调用方可见的签名见 [public-api.md](public-api.md)。
+修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：库各分层已实现，演示可执行文件处于设计阶段，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载而非写在本文里。需求与验收标准见 [PRD.zh.md](../PRD.zh.md)；调用方可见的签名见 [public-api.md](public-api.md)。
 
 ## 组成
 
@@ -30,7 +30,7 @@ CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing on
 
 ## 平台与传输层决策
 
-**设计中。** 库从同一份源码为 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 交付，且经 NIOTS 使用 Network.framework 是唯一传输层。非 Apple 平台不做承诺，也不为它们保留抽象或条件编译。
+**已验证。** 库在 macOS 15 与 iOS 18 模拟器下限下构建成功，C target 在 watchOS 11、tvOS 18 与 visionOS 2 下限下构建成功，全部来自同一份源码；经 NIOTS 使用 Network.framework 是唯一传输层。非 Apple 平台不做承诺，也不为它们保留抽象或条件编译。
 
 决策记录：
 
@@ -45,7 +45,7 @@ CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing on
 
 ## 并发模型
 
-**设计中。** 协议状态机是单线程的，设计以所有权而非加锁来保证这一点。
+**已验证。** 协议状态机是单线程的，设计以所有权而非加锁来保证这一点。
 
 | 规则 | 理由 |
 |---|---|
@@ -86,7 +86,7 @@ pin、生成的 module map 与上游升级流程由 `Sources/CLibTelnet/UPSTREAM
 
 ## 选项与命令建模
 
-**设计中。** 线码到 Swift 值的转换只发生在一个映射文件里：`Sources/TelnetKit/Public/TelnetOption.swift` 与 `TelnetCommand.swift`，别处不转换。
+**已验证。** 线码到 Swift 值的转换只发生在一个映射文件里：`Sources/TelnetKit/Public/TelnetOption.swift` 与 `TelnetCommand.swift`，别处不转换。
 
 `TelnetOption` 是包裹 `UInt8` 并带静态常量的 `RawRepresentable` struct，而不是 enum：Telnet 分配了 250 多个选项码，libtelnet 接受其中任意一个，若用 enum 就需要一个无界的关联值 case，并且会破坏 `CaseIterable` 遍历。没有常量的码仍可表示，`displayName` 把它渲染成 `option(<code>)`。
 
@@ -96,7 +96,7 @@ pin、生成的 module map 与上游升级流程由 `Sources/CLibTelnet/UPSTREAM
 
 ## 事件模型
 
-**设计中。** `TelnetEvent` 是封闭 enum，每个 libtelnet 事件对应一个 case，另有三个由 core 派生的结构化 case：`localEchoChanged`、`terminalType(_:)`、`environment(_:_:)`，以及来自 `NIOTSNetworkEvents` 的路径 case。只需要字节与文本的调用方匹配两个 case；需要协议细节的调用方匹配全部。
+**已验证。** `TelnetEvent` 是封闭 enum，每个 libtelnet 事件对应一个 case，另有 core 派生的结构化 case：`localEchoChanged`、`terminalType(_:)`、`environment(_:_:)` 以及路径上报。只需要字节与文本的调用方匹配两个 case；需要协议细节的调用方匹配全部。
 
 字节载荷以 `NIOCore.ByteBuffer` 传递，因为它就是 NIOTS 入站已经产出的类型，投递时无需额外拷贝。便捷访问器提供字节与 UTF-8 文本，因此调用方读取输出时不必了解 NIO。
 
@@ -104,7 +104,7 @@ C 用 `event.type` 做的 union 判别在 core 中收敛为一个 `switch`。由
 
 ## 错误模型
 
-**设计中。** 失败是值，绝不用崩溃表达。`TelnetError` 覆盖连接建立、传输、协议与配置四类失败；每个 libtelnet `telnet_error_t` 分支恰好映射到一个 `TelnetError` 分支，且映射是穷尽的，没有 `default` 分支。
+**已验证。** 失败是值，绝不用崩溃表达。`TelnetError` 覆盖连接建立、传输、协议与配置四类失败；每个 libtelnet `telnet_error_t` 分支恰好映射到一个 `TelnetError` 分支，且映射是穷尽的，没有 `default` 分支。
 
 可恢复与致命严格分开。`.warning` 事件之后连接仍可用；`.protocolError` 会关闭连接、结束事件流，并使后续调用抛出 `.notConnected`。把致命情形映射成警告会让调用方卡在无法推进的解析器里，把警告映射成致命则会因一段异常序列丢掉整个会话。
 
@@ -112,7 +112,7 @@ Network.framework 的错误集合（`NWError`）在 `TelnetNetworkEventMapping` 
 
 ## 资源上限
 
-**设计中。** 每个受对端控制的值都有上限，且上限的所有者在 `TelnetConfiguration` 中。
+**已验证。** 每个受对端控制的值都有上限，且上限的所有者在 `TelnetConfiguration` 中；zlib 关闭期间，v0.2 的解压上限一行仍属设计。
 
 | 约束对象 | 默认值 | 所有者 | 失败表现 |
 |---|---|---|---|

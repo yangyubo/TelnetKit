@@ -2,7 +2,7 @@
 
 [English](testing.md) | 中文
 
-本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.zh.md](../PRD.zh.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。本包尚未实现，因此依据[设计状态规则](../AGENTS.md#design-status)，下文每一条都是**设计中**。
+本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.zh.md](../PRD.zh.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。库套件与 vendored C 套件已实现；Demo 与真实服务端相关流程依据[设计状态规则](../AGENTS.md#design-status)仍为**设计中**。
 
 ## 环境
 
@@ -23,11 +23,11 @@
 |---|---|---|---|---|---|
 | `Tests/CLibTelnetTests/` | 经 `CLibTelnet` 模块测试 vendored libtelnet C 库 | 输入字节，输出记录的事件；不使用 socket、不建立连接 | 是，且该套件今日已通过 | 是 | 是，构建并运行 |
 | `Tests/TelnetKitTests/Protocol/` | 经 `@testable import` 测试 `TelnetProtocolCore` | 输入字节，输出 `[TelnetEvent]`；不使用 socket | 是 | 是 | 是，构建并运行 |
-| `Tests/TelnetKitTests/PublicAPI/` | 仅经 `import TelnetKit` 测试 `TelnetConnection` | 回环地址上的 `TelnetEchoServer` | 是 | 是 | 仅构建 |
+| `Tests/TelnetKitTests/PublicAPI/` | 仅经 `import TelnetKit` 测试 `TelnetConnection` | 测试 target 内 `NIOTSListenerBootstrap` 起的夹具 | 是 | 是 | 仅构建 |
 | `Tests/TelnetKitTests/Integration/` | 连接行为：超时、取消、关闭、并发、路径事件 | `NIOTSListenerBootstrap` 起的夹具，以及注入的 `NIOTSNetworkEvents` | 是 | 是 | 否 |
 | `Tests/TelnetKitTests/RealServer/` | 真实服务端：连接、首批字节、协商不回环、有限时长会话、关闭 | 经 Homebrew 安装的 Apple `telnetd`，地址由 `TELNETKIT_TEST_SERVER_HOST` 与 `TELNETKIT_TEST_SERVER_PORT` 给出；未设置时跳过 | 是 | 是 | 否 |
 
-本里程碑只交付 libtelnet 套件（即存在的那一行）；其余四个随 Swift target 一起到来，列在此处是为了现在就固定它们的平台归属。协议套件是正确性关卡且不碰网络，因此它是唯一在所有平台都跑的套件。集成套件要绑定回环监听，而 watchOS、tvOS、visionOS 不提供该语义，所以这些平台止步于构建加协议套件。
+本里程碑交付 libtelnet 套件与三个 Swift 套件；真实服务端套件列在此处是为了现在就固定它的平台归属。协议套件是正确性关卡且不碰网络，因此它是唯一在所有平台都跑的套件。集成套件与公开接口套件要绑定回环监听，而 watchOS、tvOS、visionOS 不提供该语义，所以这些平台止步于构建加协议套件。
 
 ## 运行每个套件
 
@@ -43,12 +43,9 @@ swift test --list-tests                            # 列出已有测试，供符
 swift test --list-tests | wc -l                    # 覆盖率清单核对用的计数
 ```
 
-回显服务端是夹具而不是服务：集成套件每次运行自己启动一个，并在 teardown 中停掉。
+回显服务端是夹具而不是服务：套件自己绑定回环监听，并在 teardown 中停掉。
 
-```sh
-swift run TelnetEchoServer --port 2323             # 手工：自己启动夹具
-swift run TelnetDemo --host 127.0.0.1 --port 2323  # 手工：用 CLI Demo 驱动它
-```
+本里程碑不提供 CLI Demo 与独立回显服务端；它们发布后是手工入口，不能替代任何套件。
 
 模拟器的构建与运行走 `xcodebuild`，因为 SwiftPM 的测试包在这些平台上需要一个宿主应用。
 
@@ -141,7 +138,7 @@ ipconfig getifaddr en0               # 模拟器要连接的地址
 6. ASan job 全绿，TSan job 全绿。
 7. `-strict-concurrency=complete` 构建零警告。
 8. 没有测试访问外网，也没有测试把墙钟 sleep 当作正确性依赖。
-9. 依赖树中不含 `NIOSSL`、`CNIOBoringSSL` 与 `NIOPosix`。
+9. 本包没有任何 target 导入 `NIOSSL`、`CNIOBoringSSL` 与 `NIOPosix`；`NIOTransportServices` 传递引入的 `NIO` 伞形模块是唯一构建 `NIOPosix` 的地方。
 
 ## CI 计划
 

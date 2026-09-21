@@ -464,7 +464,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-PROTO-03 | `IAC IAC`（转义）还原为单字节 `0xFF` 并归入 `.data` | P0 | 单测断言字节 |
 | FR-PROTO-04 | 非法/截断 `IAC` 序列产生 `.warning` 而非崩溃 | P0 | 模糊输入（随机字节流 10 万次）无崩溃 |
 | FR-PROTO-05 | 子协商内容完整保真（含 `IAC` 转义还原） | P0 | TTYPE/NAWS/NEW-ENVIRON 子协商 payload 精确匹配 |
-| FR-PROTO-06 | `TELNET_FLAG_PROXY` 与 `TELNET_FLAG_NVT_EOL` 通过 `configuration` 暴露，不暴露宏 | P1 | 两种模式各有测试 |
+| FR-PROTO-06 | NVT 行尾语义通过 `configuration.newlinePolicy` 暴露，不暴露宏；首版不做代理模式 | P1 | 换行策略有测试；代理模式需求推迟 |
 | FR-PROTO-07 | 子协商长度超 `subnegotiationLimit` 时抛 `.subnegotiationTooLarge` | P1 | 超大 SB 被拦截 |
 | FR-PROTO-08 | 回调缓冲零拷贝拷贝策略正确（不出现悬垂指针） | P0 | AddressSanitizer 下跑协议单测无报错 |
 
@@ -483,8 +483,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-NEG-09 | 支持 `ZMP` 命令与参数解析 | P2 | 多参数/空参数边界正确 |
 | FR-NEG-10 | 不在 `TelnetOptions` 中登记 `compress2`：本端对协商回 `WONT`，绝不接受压缩流 | P1 | 收到 `DO COMPRESS2` 时出站 `WONT COMPRESS2`；`optionStatus(.compress2)` 全为 false |
 | FR-NEG-11 | 启用压缩（v0.2）的前置条件写清楚：解压上限、压缩态事件流契约、压缩流失败模式三者都有设计才可开启 | P2 | 三项设计各自有测试；缺任一项则 `HAVE_ZLIB` 保持未定义 |
-| FR-NEG-11 | `optionStatus(_:)` 实时反映协商状态 | P1 | 协商前后状态断言 |
-| FR-NEG-12 | `sendWindowSize`、`replyTerminalType` 等能力可从 Demo 手动触发 | P1 | Demo 中有对应入口 |
+| FR-NEG-12 | `optionStatus(_:)` 实时反映协商状态 | P1 | 协商前后状态断言 |
+| FR-NEG-13 | `sendWindowSize`、`replyTerminalType` 等能力可从 Demo 手动触发 | P1 | Demo 中有对应入口 |
 
 ### 6.4 文本与编码（FR-TEXT）
 
