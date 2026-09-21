@@ -6,7 +6,7 @@ This file defines TelnetKit document tiers, placement, writing rules, and word c
 
 ## Document structure
 
-These rules apply to human-facing documents, not to vendored upstream files, which keep their upstream form.
+These rules apply to human-facing documents, not to upstream files reached through a submodule, which keep their upstream form.
 
 Classify every in-scope document as a tutorial or a reference. A tutorial follows an ordered path to an outcome and introduces only what each step needs; the [README quick start](../README.md) is the only tutorial. A reference defines a lookup scope and states current behavior without a teaching sequence. Separate substantial tutorial and reference content, and label a section when either part is small.
 
@@ -27,7 +27,7 @@ Each fact has one home: the tier whose job it is. Elsewhere, link there. A state
 | [docs/testing.md](testing.md) | The test plan: environment, framework, how to run each suite on macOS and the simulators, quality gates, and the CI matrix | Requirement identifiers and acceptance criteria (→ PRD.md), per-test design notes (→ the test source) |
 | [README.md](../README.md) | The consumer contract: what the library does, install, a runnable quick start, supported platforms, known limitations, security stance | Contributor procedure, internal design, requirement traceability |
 | [.agents/skills/](../.agents/skills/) | Reusable workflows and decision standards for repeatable tasks | Product contracts, requirement identifiers, runtime behavior |
-| [Sources/CLibTelnet/UPSTREAM.md](../Sources/CLibTelnet/UPSTREAM.md) | Vendored source provenance: upstream URL, branch, commit, version, copy date, local-modification statement | Build instructions, design rationale |
+| [Sources/CLibTelnet/UPSTREAM.md](../Sources/CLibTelnet/UPSTREAM.md) | Submodule provenance: upstream URL, path, pinned commit, header version, and what we generate inside the submodule | Build instructions, design rationale |
 
 Placement: a requirement → PRD; a caller contract → public-api.md; a design decision that constrains code → architecture.md; a repeatable procedure → a skill; a standing rule → root AGENTS.md with a link to its owner; a consumer-visible fact → README.
 
@@ -50,7 +50,7 @@ The ceilings below are guardrails, not reduction targets. Measure with `wc -w` o
 
 | Document | Ceiling (words) |
 |---|---|
-| `AGENTS.md` | 1,400 |
+| `AGENTS.md` | 1,500: the submodule workflow adds a clone step and a read-only rule |
 | `docs/AGENTS.md` | 1,700: this file owns the bilingual pairing mechanics and the tier table for nine tiers |
 | `docs/architecture.md` | 2,100: the platform and transport decision table plus the path-event flow cannot be relocated without losing the design contract |
 | `docs/public-api.md` | 3,200: the caller contract is exhaustive about every public symbol, and a member table row costs words that cannot be relocated without losing the contract |

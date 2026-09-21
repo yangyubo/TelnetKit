@@ -24,7 +24,7 @@ A slice is one caller-visible capability, complete: contract, protocol handling,
 
 Require an explicit slice: a named public symbol or a named event case. If the request is "implement the library", propose a slice list from the [milestones](../../../PRD.md#10-里程碑与交付计划) and stop until one is chosen.
 
-Exclude `Sources/CLibTelnet/` from edits, including documentation edits; its owner is [telnetkit-import-c-library](../telnetkit-import-c-library/SKILL.md).
+Exclude the `libtelnet/` submodule from edits, including documentation edits; its owner is [telnetkit-import-c-library](../telnetkit-import-c-library/SKILL.md).
 
 ## Workflow
 

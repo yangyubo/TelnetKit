@@ -111,21 +111,22 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 
 ## 4. 总体架构
 
-### 4.1 包结构（单包 + vendored C target + Apple 平台唯一传输层）
+### 4.1 包结构（单包 + libtelnet 子模块 + Apple 平台唯一传输层）
 
 ```
 TelnetKit/
 ├── Package.swift                       # macOS 15 / iOS 18 / watchOS 11 / tvOS 18 / visionOS 2
+├── .gitmodules                         # libtelnet 子模块的 URL
+├── libtelnet/                          # [子模块] 上游源码、COPYING 与历史原样保留
+│   └── include/module.modulemap        # 由脚本生成、未跟踪：module CLibTelnet { header "../libtelnet.h" export * }
 ├── PRD.md
 ├── README.md
 ├── LICENSE                             # 本库许可（libtelnet 为 public domain，需在 NOTICE 注明）
 ├── NOTICE
 ├── Sources/
-│   ├── CLibTelnet/                     # [C] vendored libtelnet，不对外暴露
-│   │   ├── include/
-│   │   │   ├── libtelnet.h             # 上游 0.23，仅同步，不修改
-│   │   │   └── module.modulemap        # module CLibTelnet { header "libtelnet.h" export * }
-│   │   └── libtelnet.c
+│   ├── CLibTelnet/                     # 仅来源记录与 Swift 接缝，不含上游源码
+│   │   ├── UPSTREAM.md
+│   │   └── UPSTREAM.zh.md
 │   ├── TelnetKit/                      # [Swift] 唯一公开产品
 │   │   ├── Public/                     # 公开类型（全部 Sendable 且无 C 类型）
 │   │   │   ├── TelnetConnection.swift
@@ -179,7 +180,7 @@ TelnetKit/
 
 | 决策 | 选择 | 理由 |
 | --- | --- | --- |
-| C 依赖引入方式 | 单包内 vendored C target + `module.modulemap` | 上游无 `Package.swift`；避免额外仓库与 submodule 复杂度，fork 可控（已确认） |
+| C 依赖引入方式 | git 子模块 + 指向子模块根的 C target | 上游无 `Package.swift`；子模块保留上游代码、许可证与历史，升级只需切换 commit，且模块映射由脚本生成、不污染 pin |
 | 并发边界 | `TelnetProtocolCore` 的**所有权绑定到 NIO EventLoop**，不入 actor | libtelnet 状态机非线程安全，且其回调会同步产生出站字节；绑定 EventLoop 可零锁、零抢占 |
 | 公开并发类型 | `TelnetConnection` 用 `actor`，事件用 `AsyncStream` 包装 | 对外天然 `Sendable`，调用方无需理解 EventLoop |
 | 事件传递 | `AsyncStream<TelnetEvent>` + 有界缓冲策略 | 提供背压语义；避免无界增长 |
@@ -704,7 +705,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 | 里程碑 | 内容 | 出口标准 |
 | --- | --- | --- |
-| M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、`CLibTelnet` vendored target + modulemap + `UPSTREAM.md`（记录上游 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**C target 与构建流程已在原型中验证可行**） |
+| M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 生成 modulemap 的 `prepare-libtelnet.sh` + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**C target 与构建流程已在原型中验证可行**） |
 | M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 |
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；无泄露 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 |
@@ -782,9 +783,14 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.0"),
     ],
     targets: [
-        // vendored libtelnet：仅内部可见，product 不对外暴露。
-        // 不定义 HAVE_ZLIB：Apple SDK 自带 zlib 可直接 -lz，首版仍不链接（理由与启用条件见 §1.3 与 §6.3 FR-NEG-11），无其他自定义编译宏。
-        .target(name: "CLibTelnet"),
+        // libtelnet 以 libtelnet/ 子模块引入；target path 指向子模块根，因为 SwiftPM 从那里编译 .c
+        // 且要求公开头文件位于该路径之下；include/ 由 ./.doc-tools/prepare-libtelnet.sh 生成且未跟踪。
+        // 不定义 HAVE_ZLIB：Apple SDK 自带 zlib 可直接 -lz，首版仍不链接（理由与启用条件见 §1.3 与 §6.3 FR-NEG-11）。
+        .target(
+            name: "CLibTelnet",
+            path: "libtelnet",
+            publicHeadersPath: "include"
+        ),
         .target(
             name: "TelnetKit",
             dependencies: [
@@ -808,19 +814,22 @@ let package = Package(
 
 > 说明：原型验证中 `CLibTelnet` 未使用任何自定义编译宏与互操作模式，仅靠 `module.modulemap` 即可被 Swift 正常 `import`，故正式实现同样保持最小配置。
 > `swiftLanguageModes` 亦可在包级统一声明（`swiftLanguageModes: [.v6]`），此处按 target 声明以便未来对测试目标放宽。
+> 克隆后须先执行 `git submodule update --init --recursive`，再执行 `./.doc-tools/prepare-libtelnet.sh` 生成 module map。
+> `path: "libtelnet"` 与 `publicHeadersPath: "include"` 是 SwiftPM 的要求：`.c` 从 target path 编译，公开头文件必须位于该路径之下。
+> 若改为 `Sources/CLibTelnet/` 副本（不使用子模块），则只需 `.target(name: "CLibTelnet")`，路径与头文件目录都用默认值。
 
 ## 附录 B：`CLibTelnet` 目录与 modulemap
 
 ```c
-// Sources/CLibTelnet/include/module.modulemap
+// libtelnet/include/module.modulemap（由脚本生成，未跟踪）
 module CLibTelnet {
-    header "libtelnet.h"
+    header "../libtelnet.h"   // 相对 module map 自身解析，不是相对 include 搜索路径
     export *
 }
 ```
 
-- `libtelnet.c`、`include/libtelnet.h` 直接取自上游 `develop` 分支（版本注释 `\version 0.23`），**不做任何修改**。
-- 记录来源 commit SHA 于 `Sources/CLibTelnet/UPSTREAM.md`，升级时通过脚本 diff 核对。
+- `libtelnet.c` 与 `libtelnet.h` 来自 `libtelnet/` 子模块，pin 住的 commit 为 `5f5ecee`（版本注释 `\version 0.23`），**上游文件不做任何修改**。
+- pin 由 gitlink 承载，另在 `Sources/CLibTelnet/UPSTREAM.md` 记录；升级即切换子模块 commit 并重跑生成脚本。
 - 宏 `telnet_finish_sb` / `telnet_finish_newenviron` / `telnet_finish_zmp` 在 Swift 侧由 `TelnetProtocolCore` 等价实现，不依赖 C 宏导出。
 
 ## 附录 C：典型用法示例（Demo/README 使用）

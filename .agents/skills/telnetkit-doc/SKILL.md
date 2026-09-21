@@ -25,7 +25,7 @@ TelnetKit documentation has one home per fact and states whether each fact is de
 
 Require a scope: a document path, a directory, or a named change. If the scope is "documentation", list the documents that exist and ask which one, rather than rewriting the corpus.
 
-Exclude `Sources/CLibTelnet/libtelnet.c`, `Sources/CLibTelnet/include/libtelnet.h`, and `Sources/CLibTelnet/UPSTREAM.md` from prose edits: the sources are upstream copies, and `UPSTREAM.md` records facts rather than prose.
+Exclude the `libtelnet/` submodule from prose edits, and treat `Sources/CLibTelnet/UPSTREAM.md` as a fact record rather than prose.
 
 ## Workflow
 

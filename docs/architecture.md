@@ -23,7 +23,7 @@ NIOTSConnectionBootstrap + NIOTSEventLoopGroup
         |
 Network.framework                            path, proxy, VPN, power
         |
-CLibTelnet (C target)                       vendored libtelnet 0.23, parsing only
+CLibTelnet (C target)                       libtelnet submodule 0.23, parsing only
 ```
 
 One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, and one `NIOTSEventLoop`. No state is shared between connections, so two sessions cannot observe each other's bytes.
@@ -78,11 +78,11 @@ Step 3 is libtelnet's; steps 1 and 2 are ours. The option ledger exists because 
 
 ## The C seam
 
-**Verified.** `Sources/CLibTelnet/libtelnet.c` and `include/libtelnet.h` compile with no warnings as a SwiftPM C target when `include/module.modulemap` declares `module CLibTelnet { header "libtelnet.h" export * }`. Swift imports the functions directly.
+**Verified.** The submodule's `libtelnet.c` compiles with no warnings when the C target points at the submodule root and `include/module.modulemap` declares `module CLibTelnet { header "../libtelnet.h" export * }`. Swift imports the functions directly, and the header path is relative to the map itself.
 
 The seam is narrow on purpose. `TelnetProtocolCore` is the only file in the package that imports `CLibTelnet`; every other file works in Swift types. Three libtelnet facilities are macros and therefore invisible to Swift, so the core supplies them: `telnet_finish_sb` as `telnet_iac(handle, TELNET_SE)`, `telnet_finish_newenviron` and `telnet_finish_zmp` as that same call.
 
-Provenance, copying, and the upstream upgrade procedure are owned by `Sources/CLibTelnet/UPSTREAM.md` and the [import skill](../.agents/skills/telnetkit-import-c-library/SKILL.md).
+The pin, the generated module map, and the upstream upgrade procedure are owned by `Sources/CLibTelnet/UPSTREAM.md` and the [import skill](../.agents/skills/telnetkit-import-c-library/SKILL.md).
 
 ## Option and command modeling
 

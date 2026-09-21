@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-An async Telnet terminal session for Swift, built on SwiftNIO and a vendored libtelnet.
+An async Telnet terminal session for Swift, built on Network.framework through NIOTS and a pinned libtelnet submodule.
 
 TelnetKit gives you one `async` object per connection. You await the connection, consume a stream of parsed events, and send text; SwiftNIO owns the socket, and the RFC 1143 option state machine stays behind the public API.
 
@@ -34,6 +34,13 @@ targets: [
 ```
 
 ## Quick start
+
+After cloning, initialise the submodule once; the first build fails without it:
+
+```sh
+git submodule update --init --recursive
+./.doc-tools/prepare-libtelnet.sh
+```
 
 Run the local echo server, then the demo client:
 
@@ -114,4 +121,4 @@ The library treats peer input as hostile: every parse path has a length bound, a
 
 ## License
 
-TelnetKit is MIT licensed. The vendored libtelnet sources in `Sources/CLibTelnet/` are public domain; see [Sources/CLibTelnet/UPSTREAM.md](Sources/CLibTelnet/UPSTREAM.md) and `NOTICE`.
+TelnetKit is MIT licensed. libtelnet arrives as the `libtelnet/` submodule and is public domain; its pin is recorded in [Sources/CLibTelnet/UPSTREAM.md](Sources/CLibTelnet/UPSTREAM.md), and `NOTICE` repeats the license.

@@ -23,7 +23,7 @@ NIOTSConnectionBootstrap + NIOTSEventLoopGroup
         |
 Network.framework                            path, proxy, VPN, power
         |
-CLibTelnet (C target)                       vendored libtelnet 0.23, parsing only
+CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing only
 ```
 
 一条连接恰好拥有一个 `TelnetProtocolCore`、一个 handler、一个 channel 与一个 `NIOTSEventLoop`。连接之间不共享状态，因此两个会话无法看到彼此的字节。
@@ -78,11 +78,11 @@ CLibTelnet (C target)                       vendored libtelnet 0.23, parsing onl
 
 ## C 接缝
 
-**已验证。** 当 `include/module.modulemap` 声明 `module CLibTelnet { header "libtelnet.h" export * }` 时，`Sources/CLibTelnet/libtelnet.c` 与 `include/libtelnet.h` 作为 SwiftPM C target 编译无警告。Swift 直接导入这些函数。
+**已验证。** 当 C target 指向子模块根、且 `include/module.modulemap` 声明 `module CLibTelnet { header "../libtelnet.h" export * }` 时，子模块的 `libtelnet.c` 编译无警告。Swift 直接导入这些函数，且 header 路径相对 module map 自身解析。
 
 接缝刻意收窄。`TelnetProtocolCore` 是本包中唯一导入 `CLibTelnet` 的文件；其他文件都在 Swift 类型中工作。libtelnet 有三项能力是宏，因此对 Swift 不可见，由 core 补齐：`telnet_finish_sb` 用 `telnet_iac(handle, TELNET_SE)`，`telnet_finish_newenviron` 与 `telnet_finish_zmp` 用同一个调用。
 
-来源、复制与上游升级流程由 `Sources/CLibTelnet/UPSTREAM.md` 与[引入 skill](../.agents/skills/telnetkit-import-c-library/SKILL.md) 负责。
+pin、生成的 module map 与上游升级流程由 `Sources/CLibTelnet/UPSTREAM.md` 与[引入 skill](../.agents/skills/telnetkit-import-c-library/SKILL.md) 负责。
 
 ## 选项与命令建模
 

@@ -21,13 +21,14 @@ Never present a designed behavior as verified. When design and PRD disagree, fix
 ```
 Package.swift                  swift-tools-version 6.2, five Apple platforms
 PRD.md                         requirement source: goals, requirements, acceptance criteria
-Sources/CLibTelnet/            vendored libtelnet C source and include/module.modulemap
+libtelnet/                     git submodule: upstream libtelnet, pinned; include/ is generated
+Sources/CLibTelnet/            provenance record and the Swift seam
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
 Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
 Sources/TelnetDemo/            CLI demo executable
 Sources/TelnetEchoServer/      macOS-only local echo server, also the integration fixture
-Tests/TelnetKitTests/          Swift Testing suites: Protocol/, PublicAPI/, Integration/
+Tests/TelnetKitTests/Protocol/ the libtelnet suite that ships with M0
 Examples/TelnetKitDemoApp/     SwiftUI demo application
 docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
@@ -38,6 +39,7 @@ Package products: library `TelnetKit`, executables `TelnetDemo` and `TelnetEchoS
 ## Commands
 
 ```sh
+git submodule update --init --recursive   # then: ./.doc-tools/prepare-libtelnet.sh
 swift build                       # debug build of every target
 swift test                        # Swift Testing suites; must run offline and finish under 60s
 swift test --filter TelnetKitTests.Protocol   # one suite while iterating
@@ -58,7 +60,7 @@ xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name
 - **Apple platforms only.** Deployment floors are macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2. Linux, Windows, and Android are out of scope: do not add a platform entry, an abstraction, or a conditional branch for them. Do not add an API newer than the floors.
 - **Network.framework is the only transport.** The connection runs on `NIOTSConnectionBootstrap` and `NIOTSEventLoopGroup`. `NIOPosix`, raw `socket()`, and `select`/`kqueue` do not appear in this package, including in tests. A new transport need is met by a Network.framework option, not by a second stack.
 - **Swift 6 language mode.** All targets compile in Swift 6 mode with `StrictConcurrency` complete and zero warnings. A `@unchecked Sendable` conformance needs a comment naming the invariant that makes it safe and a concurrency test that exercises it.
-- **Vendored C is read-only.** `Sources/CLibTelnet/libtelnet.c` and `include/libtelnet.h` are byte-identical upstream copies. Never edit them, never add a patch there. When upstream must change, record the new upstream commit in `Sources/CLibTelnet/UPSTREAM.md` and re-copy; a required behavior change belongs in our Swift code instead.
+- **The libtelnet submodule is read-only.** `libtelnet/` is upstream at the commit `Sources/CLibTelnet/UPSTREAM.md` records, so its code, license, and history stay intact. Never commit into it and never patch a file there; the generated `libtelnet/include/module.modulemap` is the one exception and stays untracked. A version bump is a submodule checkout plus `./.doc-tools/prepare-libtelnet.sh`, and a required behavior change belongs in our Swift code.
 - **One thread owns `telnet_t`.** Every `telnet_*` call for a connection happens on the `EventLoop` that created it. No lock may be added to compensate for a cross-thread call; fix the call site instead.
 - **Callback data does not escape.** Buffers, strings, and argument arrays reachable from a `telnet_event_t` are valid only during its callback. Copy inside the callback; never store the pointer.
 - **No reentry inside a callback.** A `telnet_send*` call from inside an event callback reenters a state machine that is mid-parse. Queue the outbound bytes and flush after the callback returns.

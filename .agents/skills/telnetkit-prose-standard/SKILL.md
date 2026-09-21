@@ -28,7 +28,7 @@ Accept `mode: automatic | interactive`, defaulting to `automatic`. In automatic 
 
 Mode controls questions, not write authority: a review reports findings without editing, and an explicit fix request applies clear changes.
 
-Exclude `Sources/CLibTelnet/` from edits at every scope.
+Exclude the `libtelnet/` submodule from edits at every scope.
 
 ## Preserve the complete proposition
 

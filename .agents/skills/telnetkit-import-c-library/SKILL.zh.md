@@ -1,6 +1,6 @@
 ---
 name: telnetkit-import-c-library
-description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet C 源码，并修复 Swift 与 C 接缝上的故障。用于新增 Sources/CLibTelnet、记录或更换上游 commit、编写 include/module.modulemap、复现 libtelnet 行为，或诊断 C 头文件与 Swift 封装不一致的问题。
+description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libtelnet git 子模块，并修复 Swift 与 C 接缝上的故障。用于添加或移动 libtelnet 子模块、记录或更换 pin 住的 commit、恢复 include/module.modulemap、复现 libtelnet 行为，或诊断 C 头文件与 Swift 封装不一致的问题。
 ---
 
 # 引入 libtelnet C 库
@@ -9,45 +9,44 @@ description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet
 
 ## 概要
 
-`Sources/CLibTelnet` 携带一份未经修改的 [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) 副本，使 Swift Package 能够构建它。本工作流覆盖复制、module map、来源记录、Swift 接缝与升级流程。它是有固定验证路径的指导，不是生成器：在手写路径被评审过一次之前，不要为复制过程写脚本。
+[seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) 以 git 子模块 `libtelnet/` 的形式进入本包，因此上游代码、许可证与历史保持原样，升级只是一次检出。本工作流覆盖子模块的添加、SwiftPM 所需的 module map、来源记录、Swift 接缝与升级流程。它是有固定验证路径的指导，不是生成器。
 
 ## 目录
 
-- [约束复制的既定事实](#约束复制的既定事实)
-- [工作流：首次 vendoring](#工作流首次-vendoring)
+- [约束布局的既定事实](#约束布局的既定事实)
+- [工作流：添加子模块](#工作流添加子模块)
 - [工作流：升级 pin](#工作流升级-pin)
 - [编写 Swift 接缝](#编写-swift-接缝)
 - [规则](#规则)
 - [校验](#校验)
 - [Dev Note](#dev-note)
 
-## 约束复制的既定事实
+## 约束布局的既定事实
 
 对照上游 `develop` 分支、commit `5f5ecee776b9bdaa4e981e5f807079a9c79d633e`（2020-08-14）、头文件版本 0.23 已验证：
 
-- 上游仓库没有 `Package.swift`。`libtelnet.c` 与 `libtelnet.h` 就是整个库；`CMakeLists.txt`、autotools 文件、`test/`、`doc/`、`util/` 都不需要，也不得复制。
+- 上游没有 `Package.swift`，因此本包把 C target 指向子模块，而不是依赖一个 Swift 包。`libtelnet.c` 与 `libtelnet.h` 就是整个库，检出中的其他内容一概不动。
 - C 源码用 `clang -c libtelnet.c -I include -Wall` 编译无警告，并导出 23 个 `telnet_*` 符号。
 - `libtelnet.c` 有一个位于 `HAVE_ZLIB` 之后的可选依赖，用于 MCCP2。不要定义它：压缩支持不在范围内，且 Swift 代码必须以 `wont` 回应 COMPRESS2 请求。
-- `libtelnet.h` 声明为 `public domain`。在声明文件中记录这一点；不要把我们的许可证附到 vendored 文件上。
+- `libtelnet.h` 声明为 `public domain`。在声明文件中记录这一点；不要把我们的许可证附到子模块上。
 - 有三项能力是宏，因此对 Swift 不可见：`telnet_finish_sb`、`telnet_finish_newenviron`、`telnet_finish_zmp`。接缝要补齐这三者。
 - 上游不导出任何协商选项状态的查询。Swift 层维护自己的账本；绝不要新增伸手读 `struct telnet_t` 的 C 辅助函数。
 
-## 工作流：首次 vendoring
+## 工作流：添加子模块
 
-1. 在仓库之外克隆上游并 pin 到指定 commit：`git clone https://github.com/seanmiddleditch/libtelnet.git`，再 `git checkout <commit>`。
-2. 只复制两个文件：`libtelnet.c` 到 `Sources/CLibTelnet/libtelnet.c`，`libtelnet.h` 到 `Sources/CLibTelnet/include/libtelnet.h`。不要重排格式，不要加许可证头，不要打补丁。
-3. 写入 `Sources/CLibTelnet/include/module.modulemap`，内容为 `module CLibTelnet { header "libtelnet.h" export * }`。
-4. 写入 `Sources/CLibTelnet/UPSTREAM.md`，包含上游 URL、branch、完整 commit 标识、头文件版本、复制日期，以及一句声明不存在本地修改的话。
-5. 在 `Package.swift` 中声明 target：`.target(name: "CLibTelnet")`，不加任何自定义 C 设置，并且不放进 `products`。
-6. 首次构建之前，用 `shasum -a 256` 比对两侧，确认副本与上游逐字节一致。
-7. 执行[校验](#校验)步骤。
+1. `git submodule add https://github.com/seanmiddleditch/libtelnet.git libtelnet`，然后在 `libtelnet/` 中检出 `UPSTREAM.md` 记录的 commit。pin 由 gitlink 承载，不需要别的东西。
+2. 执行 `./.doc-tools/prepare-libtelnet.sh`，它写出 SwiftPM 在子模块内唯一需要的文件：`libtelnet/include/module.modulemap`，处于未跟踪状态以保持 pin 干净。
+3. 在 `Package.swift` 中声明 target：`.target(name: "CLibTelnet", path: "libtelnet", publicHeadersPath: "include")`，不加任何自定义 C 设置，并且不放进 `products`。
+4. 确认 module map 能找到同级头文件。SwiftPM 按 module map 自身解析 `header` 路径，因此必须写成 `header "../libtelnet.h"`；写成裸的 `libtelnet.h` 会报 `header 'libtelnet.h' not found`。
+5. 用子模块路径、URL、commit 与头文件版本更新 `Sources/CLibTelnet/UPSTREAM.md`。
+6. 执行[校验](#校验)步骤。
 
 ## 工作流：升级 pin
 
-1. 拉取上游，确定新的 commit 与头文件版本。
-2. 把两个文件与 vendored 副本做 diff，并把结果记入变更说明。
-3. 阅读 diff，留意公开签名变更、新增宏、`telnet_event_t` 成员变更，或新增的 `HAVE_ZLIB` 路径。每一项都是 Swift 侧的跟进工作，而不是一次合并冲突。
-4. 复制文件、更新 `UPSTREAM.md`，并执行完整校验。
+1. 在 `libtelnet/` 中拉取上游 remote 并检出目标 commit。
+2. 重新执行 `./.doc-tools/prepare-libtelnet.sh`，因为新 commit 可能重命名或移动头文件。
+3. 把检出与上一个 pin 做 diff，检查是否有公开签名变更、新增宏、`telnet_event_t` 成员变更，或新增的 `HAVE_ZLIB` 路径。每一项都是 Swift 侧的跟进工作，而不是一次合并冲突。
+4. 更新 `UPSTREAM.md` 并执行完整校验；暂存包根目录，使 gitlink 与记录一起落地。
 5. 重跑协议套件。`libtelnet.c` 的行为变更会表现为协议测试失败；选项表变更会表现为协商测试期望值变化。只有当新行为符合测试所引用的 RFC 时才修改期望值。
 
 ## 编写 Swift 接缝
@@ -63,7 +62,7 @@ description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet
 
 ## 规则
 
-- vendored 文件只读。需要改变行为时改 Swift 代码；怀疑上游有缺陷时报告并记录到 `UPSTREAM.md`，而不是就地打补丁。
+- 子模块只读。绝不向它提交，也绝不在其中打补丁；需要改变行为时改 Swift 代码，怀疑上游有缺陷时报告并记录到 `UPSTREAM.md`。唯一例外是由脚本生成的 `include/module.modulemap`，它始终处于未跟踪状态。
 - 不允许其他文件导入 `CLibTelnet`。当第二个文件需要协议数据时，扩展 core 的 Swift 接口。
 - 不要在回调内调用 `telnet_send*`。追加到出站队列，在 `telnet_recv` 返回后 flush。
 - 不要读取当前事件类型未选择的 union 成员。读取以该事件命名的成员。
@@ -73,9 +72,9 @@ description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet
 
 按顺序执行并保留观测输出：
 
-1. 对 vendored 文件执行 `shasum -a 256`，与记录 commit 处的上游检出结果一致。
+1. `git -C libtelnet rev-parse HEAD` 等于 `UPSTREAM.md` 中的 commit，且 `git -C libtelnet status --porcelain` 只列出 `include/`。
 2. `swift build` 成功，且 C target 没有任何警告；同一 target 在五个平台下限（macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2）下都能构建。
-3. `swift test --filter TelnetKitTests.Protocol` 通过，包括协商事件与字节转义用例。
+3. `swift test` 通过，包括协商事件与字节转义用例。
 4. 一个接缝测试喂入 `FF FB 01`（IAC WILL ECHO）再喂 `68 69 0D 0A`，断言先收到一条 `.negotiation` 事件，随后是 `.data("hi\r\n")`。
 5. 一个接缝测试在已协商 ECHO 的前提下，经公开路径调用 `telnet_send_text` 发送 `hi\n`，断言出站字节包含 `IAC DO ECHO` 并完成 CR LF 转换，且以 `IOData` 写出。
 6. 一个关闭测试释放 handle，并断言不再有任何事件到达回调。

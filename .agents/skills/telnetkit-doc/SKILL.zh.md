@@ -25,7 +25,7 @@ TelnetKit 文档遵循一个事实一个家，并标明每个事实是设计中�
 
 必须有明确范围：一个文档路径、一个目录，或一次具名变更。若范围是「文档」，先列出已存在的文档并让用户选一个，而不是重写整个语料。
 
-把 `Sources/CLibTelnet/libtelnet.c`、`Sources/CLibTelnet/include/libtelnet.h` 与 `Sources/CLibTelnet/UPSTREAM.md` 排除在文字编辑之外：源码是上游副本，而 `UPSTREAM.md` 记录的是事实而非文字。
+把 `libtelnet/` 子模块排除在文字编辑之外，并把 `Sources/CLibTelnet/UPSTREAM.md` 视为事实记录而非文字。
 
 ## 工作流
 

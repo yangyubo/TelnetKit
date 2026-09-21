@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-基于 SwiftNIO 与 vendored libtelnet 构建的 Swift 异步 Telnet 终端会话库。
+基于 Network.framework（经 NIOTS）与 pin 住的 libtelnet 子模块构建的 Swift 异步 Telnet 终端会话库。
 
 TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已解析的事件流并发送文本；socket 由 SwiftNIO 托管，RFC 1143 选项状态机不暴露在公开接口之外。
 
@@ -34,6 +34,13 @@ targets: [
 ```
 
 ## 快速开始
+
+克隆后先初始化子模块，只做一次；缺这一步首次构建会失败：
+
+```sh
+git submodule update --init --recursive
+./.doc-tools/prepare-libtelnet.sh
+```
 
 先启动本地回显服务端，再启动演示客户端：
 
@@ -114,4 +121,4 @@ Telnet 是明文协议：凭据与会话内容不经加密传输，链路中间�
 
 ## 许可
 
-TelnetKit 使用 MIT 许可。`Sources/CLibTelnet/` 中 vendored 的 libtelnet 源码属于公有领域，参见 [Sources/CLibTelnet/UPSTREAM.md](Sources/CLibTelnet/UPSTREAM.md) 与 `NOTICE`。
+TelnetKit 使用 MIT 许可。libtelnet 以 `libtelnet/` 子模块引入，属于公有领域；其 pin 记录在 [Sources/CLibTelnet/UPSTREAM.md](Sources/CLibTelnet/UPSTREAM.md)，`NOTICE` 中重复该许可。

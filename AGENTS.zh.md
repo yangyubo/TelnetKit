@@ -21,13 +21,14 @@ TelnetKit 是一个仅面向 Apple 平台的 Swift Package，为 Swift 调用方
 ```
 Package.swift                  swift-tools-version 6.2，五个 Apple 平台
 PRD.md                         需求来源：目标、需求、验收标准
-Sources/CLibTelnet/            vendored libtelnet C 源码与 include/module.modulemap
+libtelnet/                     git 子模块：上游 libtelnet，已 pin；include/ 为生成物
+Sources/CLibTelnet/            来源记录与 Swift 接缝
 Sources/TelnetKit/Public/      公开类型；调用方唯一可见的符号
 Sources/TelnetKit/Protocol/    对 telnet_t 的内部 Swift 封装
 Sources/TelnetKit/Transport/   内部 NIOTS handler、bootstrap 与路径事件映射
 Sources/TelnetDemo/            CLI 演示可执行文件
 Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端，同时是集成测试夹具
-Tests/TelnetKitTests/          Swift Testing 套件：Protocol/、PublicAPI/、Integration/
+Tests/TelnetKitTests/Protocol/ 随 M0 一起落地的 libtelnet 套件
 Examples/TelnetKitDemoApp/     SwiftUI 演示应用
 docs/                          架构、公开接口契约、测试方案、文档标准
 .agents/skills/                可复用工作流
@@ -38,6 +39,7 @@ docs/                          架构、公开接口契约、测试方案、文�
 ## 命令
 
 ```sh
+git submodule update --init --recursive   # 然后执行：./.doc-tools/prepare-libtelnet.sh
 swift build                       # 构建全部 target 的 debug 版本
 swift test                        # Swift Testing 套件；必须离线运行且 60s 内结束
 swift test --filter TelnetKitTests.Protocol   # 迭代时只跑一个套件
@@ -58,7 +60,7 @@ xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name
 - **仅 Apple 平台。** 部署下限是 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2。Linux、Windows、Android 不在范围内：不得为它们添加平台声明、抽象层或条件分支。不得引入比这些下限更新的 API。
 - **Network.framework 是唯一传输层。** 连接跑在 `NIOTSConnectionBootstrap` 与 `NIOTSEventLoopGroup` 上。本包（含测试）中不出现 `NIOPosix`、裸 `socket()`、`select`/`kqueue`。新的传输需求用 Network.framework 的选项解决，而不是引入第二套协议栈。
 - **Swift 6 语言模式。** 所有 target 以 Swift 6 模式编译，`StrictConcurrency` 完整检查且零警告。`@unchecked Sendable` 需要注释说明使其安全的那个不变量，并配一个覆盖它的并发测试。
-- **vendored C 只读。** `Sources/CLibTelnet/libtelnet.c` 与 `include/libtelnet.h` 是与上游逐字节一致的副本。绝不修改它们，绝不在那里打补丁。上游必须更新时，在 `Sources/CLibTelnet/UPSTREAM.md` 记录新的上游 commit 后重新复制；需要改变行为时改我们的 Swift 代码。
+- **libtelnet 子模块只读。** `libtelnet/` 是 `Sources/CLibTelnet/UPSTREAM.md` 所记录 commit 处的上游，其代码、许可证与历史保持完整。绝不向它提交，也绝不在其中打补丁；唯一例外是脚本生成的 `libtelnet/include/module.modulemap`，它始终未跟踪。升级版本 = 切换子模块 commit 加执行 `./.doc-tools/prepare-libtelnet.sh`；需要改变行为时改我们的 Swift 代码。
 - **`telnet_t` 单线程所有。** 一条连接的所有 `telnet_*` 调用都发生在创建它的 `EventLoop` 上。不得用加锁来弥补跨线程调用；改调用点。
 - **回调数据不外逃。** 从 `telnet_event_t` 可达的 buffer、字符串与参数数组只在回调期间有效。在回调内拷贝；绝不保存指针。
 - **回调内不得重入。** 在事件回调里调用 `telnet_send*` 会重入正在解析中的状态机。把出站字节入队，等回调返回后再 flush。

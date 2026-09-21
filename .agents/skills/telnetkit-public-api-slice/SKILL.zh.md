@@ -24,7 +24,7 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 
 必须有一个明确的切片：一个具名公开符号或一个具名事件 case。若请求是「实现这个库」，先从[里程碑](../../../PRD.zh.md#10-里程碑与交付计划)提出一个切片清单，等选定其中一个再动手。
 
-把 `Sources/CLibTelnet/` 排除在编辑之外，包括文档编辑；它的归属方是 [telnetkit-import-c-library](../telnetkit-import-c-library/SKILL.md)。
+把 `libtelnet/` 子模块排除在编辑之外，包括文档编辑；它的归属方是 [telnetkit-import-c-library](../telnetkit-import-c-library/SKILL.md)。
 
 ## 工作流
 

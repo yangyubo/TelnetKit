@@ -2,32 +2,43 @@
 
 English | [中文](UPSTREAM.zh.md)
 
-`Sources/CLibTelnet/` carries an unmodified copy of libtelnet so that a Swift Package can build it. This file records the pin and states whether the copy differs from upstream. The copying, verification, and upgrade procedure is [.agents/skills/telnetkit-import-c-library/SKILL.md](../../.agents/skills/telnetkit-import-c-library/SKILL.md).
+libtelnet reaches this package as the git submodule `libtelnet/`, so the upstream sources, the upstream `COPYING`, and the upstream history stay exactly as published, and moving to a new version is a submodule checkout rather than a file copy. This file records the pin and states what, if anything, we add to the submodule. The procedure is [.agents/skills/telnetkit-import-c-library/SKILL.md](../../.agents/skills/telnetkit-import-c-library/SKILL.md).
 
-## Pin
+## Submodule pin
 
 | Field | Value |
 |---|---|
 | Upstream | https://github.com/seanmiddleditch/libtelnet |
-| Branch | `develop` |
-| Commit | `5f5ecee776b9bdaa4e981e5f807079a9c79d633e` (2020-08-14) |
+| Submodule path | `libtelnet` |
+| URL recorded in | the package root `.gitmodules` |
+| Commit | `5f5ecee776b9bdaa4e981e5f807079a9c79d633e`, recorded as the gitlink in the package root |
+| Branch | `develop` at clone time |
 | Header version | `0.23`, from the `\version` tag in `libtelnet.h` |
-| Files copied | `libtelnet.c`, `libtelnet.h` |
-| Destination | `libtelnet.c`; `include/libtelnet.h` |
-| License | Public domain dedication, from the upstream `COPYING` file |
+| License | Public domain dedication, shipped in the submodule as `COPYING` |
 
-## Local modifications
+## What we add inside the submodule
 
-None. When the copy lands, the two files are byte-identical to upstream at the pinned commit, and the SHA-256 digest of each file matches the upstream checkout.
+One file, written by [.doc-tools/prepare-libtelnet.sh](../../.doc-tools/prepare-libtelnet.sh) and never committed anywhere:
 
-`include/module.modulemap` is ours and is not part of upstream:
+```text
+libtelnet/include/module.modulemap     untracked in the submodule, so it does not dirty the pin
+```
 
 ```c
 module CLibTelnet {
-    header "libtelnet.h"
+    header "../libtelnet.h"
     export *
 }
 ```
+
+SwiftPM compiles the `.c` from the target path and requires the public headers to live under that path, which is why the map is written there instead of into our own tree.
+
+Two details decide whether this builds:
+
+- The `header` path is relative to the module map, not to an include search path, so `../libtelnet.h` is correct here. A bare `libtelnet.h` fails with `header 'libtelnet.h' not found`.
+- `libtelnet/include` is the first `-I` path for clang, which is what lets the map reach the sibling header.
+
+Any clone must run `./.doc-tools/prepare-libtelnet.sh` once after `git submodule update --init --recursive`. The script is idempotent and fails loudly when the submodule is absent.
 
 ## Build settings
 
@@ -35,7 +46,8 @@ The C target compiles with no custom macro. `HAVE_ZLIB` stays undefined, so libt
 
 ## Upgrade checklist
 
-1. Fetch upstream and record the new commit and header version in the pin table.
-2. Diff both files and read the diff for a changed public signature, a new macro, a changed `telnet_event_t` member, or a new `HAVE_ZLIB` path.
-3. Copy the two files and confirm no local modification is reintroduced.
+1. In `libtelnet/`, fetch the upstream remote and check out the target commit; then record the new commit and header version here.
+2. Re-run `./.doc-tools/prepare-libtelnet.sh`, because a new commit could rename or move the header.
+3. Read the diff for a changed public signature, a new macro, a changed `telnet_event_t` member, or a new `HAVE_ZLIB` path; each is a Swift-side follow-up rather than a merge conflict.
 4. Re-run the [import skill validation](../../.agents/skills/telnetkit-import-c-library/SKILL.md#validation), then the protocol suite.
+5. Stage the package root, so the new gitlink and the record here land in one commit.
