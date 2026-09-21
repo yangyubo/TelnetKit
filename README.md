@@ -106,6 +106,7 @@ The library treats peer input as hostile: every parse path has a length bound, a
 - [docs/architecture.md](docs/architecture.md): layers, concurrency model, event flow, extension points.
 - [docs/public-api.md](docs/public-api.md): the caller contract for every public symbol.
 - [AGENTS.md](AGENTS.md): contributor standing orders.
+- Every document is a bilingual pair: this README pairs with [README.zh.md](README.zh.md), and [PRD.md](PRD.md) pairs with [PRD.en.md](PRD.en.md).
 
 ## License
 

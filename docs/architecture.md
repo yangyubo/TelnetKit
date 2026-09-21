@@ -1,5 +1,7 @@
 # TelnetKit Architecture
 
+English | [中文](architecture.zh.md)
+
 Read this before changing anything under `Sources/`. It is the design contract: the package is not implemented yet, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status) rather than in this file. Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
 
 ## Composition

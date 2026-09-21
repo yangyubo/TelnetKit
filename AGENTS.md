@@ -1,5 +1,7 @@
 # AGENTS.md
 
+English | [中文](AGENTS.zh.md)
+
 TelnetKit is a macOS 15+ Swift Package that gives Swift callers an async Telnet terminal session over TCP: SwiftNIO owns the connection, a vendored libtelnet C target owns the protocol state machine, and the public API exposes neither.
 
 Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. The public surface contract is [docs/public-api.md](docs/public-api.md); do not change a public symbol without updating it in the same change. Write, review, or trim prose by [.agents/skills/telnetkit-prose-standard/SKILL.md](.agents/skills/telnetkit-prose-standard/SKILL.md); place and validate documents by [.agents/skills/telnetkit-doc/SKILL.md](.agents/skills/telnetkit-doc/SKILL.md).
@@ -75,6 +77,8 @@ swift run TelnetDemo --host 127.0.0.1 --port 2323
 ## Documentation
 
 One home per fact, under the tiers in [docs/AGENTS.md](docs/AGENTS.md). `AGENTS.md` carries standing orders and links; [docs/architecture.md](docs/architecture.md) maps composition; [docs/public-api.md](docs/public-api.md) defines the public contract; [PRD.md](PRD.md) owns requirements, acceptance criteria, and milestone scope; package READMEs serve consumers; [.agents/skills/](.agents/skills/) holds reusable workflows. Generated or copied content is never hand-edited except at its owner.
+
+**Every document is bilingual.** The English file and its `.zh.md` counterpart land in the same change, with the same headings, lists, tables, code, link targets, and physical line count, so `docs/architecture.md` pairs with `docs/architecture.zh.md`. `PRD.md` is the one reversed pair: its canonical side is Chinese and its English counterpart is `PRD.en.md`. Name the counterpart in the first three lines of the file and link back from the other side. An untranslated document is a failing document, not a follow-up. Full mechanics, translation rules, and the validation command are in [docs/AGENTS.md](docs/AGENTS.md#bilingual-pairs).
 
 Update the affected README and the public API contract in the same change as the code. State current behavior in present tense; keep history in commits and the PRD changelog, not in prose.
 

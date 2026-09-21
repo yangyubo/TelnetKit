@@ -106,6 +106,7 @@ Telnet 是明文协议：凭据与会话内容不经加密传输，链路中间�
 - [docs/architecture.md](docs/architecture.md)：分层、并发模型、事件流、扩展点。
 - [docs/public-api.md](docs/public-api.md)：每个公开符号的调用方契约。
 - [AGENTS.md](AGENTS.md)：贡献者常驻规则。
+- 每份文档都是中英双语配对：本 README 与 [README.md](README.md) 配对，[PRD.md](PRD.md) 与 [PRD.en.md](PRD.en.md) 配对。
 
 ## 许可
 

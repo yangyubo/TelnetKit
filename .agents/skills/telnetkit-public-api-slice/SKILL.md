@@ -5,6 +5,8 @@ description: Implement one slice of the TelnetKit public API end to end, from th
 
 # Implementing a public API slice
 
+English | [中文](SKILL.zh.md)
+
 ## Summary
 
 A slice is one caller-visible capability, complete: contract, protocol handling, transport wiring, public surface, test, and documentation. This workflow keeps the layers in order so a slice never lands as untested public surface. It is guidance, not a checklist to fill mechanically; skip a step only when the slice genuinely does not touch that layer, and say so in the report.

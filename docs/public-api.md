@@ -1,5 +1,7 @@
 # TelnetKit Public API
 
+English | [中文](public-api.zh.md)
+
 This document is the caller contract for the `TelnetKit` library product. It defines every public type, method, and case, and it is the contract of record: when code and this document disagree, one of them is a defect and the change fixes both. The package is not implemented yet, so every signature below is **Designed** under the [design-status rule](../AGENTS.md#design-status); requirements and acceptance criteria live in [PRD.md](../PRD.md), and internal design lives in [architecture.md](architecture.md).
 
 ## Public surface rules

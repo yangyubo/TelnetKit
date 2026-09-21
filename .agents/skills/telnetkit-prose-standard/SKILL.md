@@ -5,6 +5,8 @@ description: Decide what a TelnetKit comment, doc comment, README, or document m
 
 # TelnetKit Prose Standard
 
+English | [中文](SKILL.zh.md)
+
 ## Summary
 
 Write enough to preserve the contract, then remove reasoning transcripts, repetition, and decoration. A contract is an obligation, invariant, precondition, postcondition, or compatibility promise that a caller or callee relies on. This skill owns sentence-level judgment and required coverage; use [telnetkit-doc](../telnetkit-doc/SKILL.md) for placement, tiers, budgets, and validation.

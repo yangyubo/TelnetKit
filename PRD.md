@@ -1,5 +1,7 @@
 # TelnetKit 产品需求文档（PRD）
 
+[English](PRD.en.md) | 中文
+
 | 项目 | 内容 |
 | --- | --- |
 | 产品名称 | TelnetKit |
@@ -701,7 +703,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | Q2 | 是否首版就提供 TLS over Telnet？ | 首版不提供，仅预留配置位与文档说明 |
 | Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
 | Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
-| Q5 | 是否同步发布中文文档？ | README 中英双语，DocC 以中文为主 |
+| Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.md#双语配对)；本 PRD 以中文为正本，对照版为 [PRD.en.md](PRD.en.md) |
 
 ---
 

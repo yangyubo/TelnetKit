@@ -5,6 +5,8 @@ description: Create, restructure, review, or validate TelnetKit Markdown documen
 
 # TelnetKit documentation
 
+English | [中文](SKILL.zh.md)
+
 ## Summary
 
 TelnetKit documentation has one home per fact and states whether each fact is designed or verified. This workflow places a document in its tier, writes it to that tier's rules, and validates it. Use [telnetkit-prose-standard](../telnetkit-prose-standard/SKILL.md) for sentence-level judgment and contract coverage; this skill owns placement, structure, budgets, and checks.
@@ -63,7 +65,7 @@ A skill document carries YAML frontmatter with `name` and `description`, a `## S
 - Do not annotate status in a heading. Status lives in the [design-status rule](../../../AGENTS.md#design-status) and the PRD milestone table.
 - Code fences carry a language tag; a `swift` fence must be valid Swift, and a `text` fence is for composition diagrams.
 - Every relative link resolves to a file in this repository; an upstream file is referenced by URL.
-- A Chinese counterpart, once one exists, updates in the same change with its headings, tables, code, and link targets aligned.
+- A Chinese counterpart updates in the same change, with the same heading sequence, table and code structure, and physical line count; [PRD.md](../../../PRD.md) pairs with `PRD.en.md` under the reversed rule.
 
 ## Validation
 
@@ -74,7 +76,8 @@ Run what applies and report the observed result for each:
 3. Heading uniqueness: no two headings in one file produce the same anchor.
 4. Statement kind: every present-tense behavior claim in a changed file is verified, upstream, or explicitly designed; report any that is none of the three.
 5. Duplication: grep a distinctive phrase from each new rule across the repository and confirm it appears once as a rule, with links elsewhere.
-6. No hand edit inside `Sources/CLibTelnet/`.
+6. Bilingual pair: both sides exist, the structural line kinds match line for line, and `wc -l` reports the same count for each side.
+7. No hand edit inside `Sources/CLibTelnet/`.
 
 ## Dev Note
 

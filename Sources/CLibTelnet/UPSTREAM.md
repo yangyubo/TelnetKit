@@ -1,5 +1,7 @@
 # Vendored source provenance
 
+English | [中文](UPSTREAM.zh.md)
+
 `Sources/CLibTelnet/` carries an unmodified copy of libtelnet so that a Swift Package can build it. This file records the pin and states whether the copy differs from upstream. The copying, verification, and upgrade procedure is [.agents/skills/telnetkit-import-c-library/SKILL.md](../../.agents/skills/telnetkit-import-c-library/SKILL.md).
 
 ## Pin

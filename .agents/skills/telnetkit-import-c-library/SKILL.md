@@ -5,6 +5,8 @@ description: Vendor, pin, verify, or upgrade the libtelnet C sources inside the 
 
 # Importing the libtelnet C library
 
+English | [中文](SKILL.zh.md)
+
 ## Summary
 
 `Sources/CLibTelnet` carries an unmodified copy of [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) so that a Swift Package can build it. This workflow covers the copy, the module map, the provenance record, the Swift seam, and the upgrade procedure. It is guidance with a fixed verification path, not a generator: do not script the copy until the manual path has been reviewed once.

@@ -1,5 +1,7 @@
 # AGENTS.md — The documentation standard
 
+English | [中文](AGENTS.zh.md)
+
 This file defines TelnetKit document tiers, placement, writing rules, and word ceilings. Use [telnetkit-doc](../.agents/skills/telnetkit-doc/SKILL.md) for placement and validation. Standing orders live in the [root AGENTS.md](../AGENTS.md).
 
 ## Document structure
@@ -48,7 +50,7 @@ The ceilings below are guardrails, not reduction targets. Measure with `wc -w` o
 | Document | Ceiling (words) |
 |---|---|
 | `AGENTS.md` | 1,400 |
-| `docs/AGENTS.md` | 1,100 |
+| `docs/AGENTS.md` | 1,500: this file also owns the bilingual pairing mechanics |
 | `docs/architecture.md` | 1,800 |
 | `docs/public-api.md` | 3,200: the caller contract is exhaustive about every public symbol, and a member table row costs words that cannot be relocated without losing the contract |
 | `README.md` | 900 |
@@ -60,6 +62,26 @@ When a document exceeds its ceiling, apply this order and stop at the first step
 1. **Relocate** content that belongs in another tier, leaving a one-line link.
 2. **Condense** content that belongs here but carries avoidable words.
 3. **Raise** the ceiling when the required content genuinely needs the space, and state the reason in the same change. A too-low ceiling is a documentation defect.
+
+## Bilingual pairs
+
+Every human-facing document has an English original and a Chinese counterpart: `foo.md` beside `foo.zh.md`, so `AGENTS.md` pairs with `AGENTS.zh.md`. [PRD.md](../PRD.md) is the one pair whose canonical side is Chinese and whose English counterpart is `PRD.en.md`, because Chinese is the requirement source language. Both sides land in the same change. [README.md](../README.md) and [README.zh.md](../README.zh.md) are the reference pair.
+
+A pair keeps the same heading sequence, list and table structure, code blocks, and link targets, and the same number of physical lines, so a reviewer can diff line n against line n. Identifier lines differ, since a relative link resolves against the file's own directory and a Chinese filename sits beside its English original. Count with:
+
+```sh
+wc -l AGENTS.md AGENTS.zh.md
+```
+
+Translation rules:
+
+- Translate prose, headings, table text, and code comments. Never translate a code identifier, a command, a path, a wire byte sequence, a `TelnetError` case, or a link target.
+- Keep one term per concept in Chinese and reuse it: 选项 (option)、协商 (negotiation)、子协商 (subnegotiation)、命令 (command)、事件 (event)、连接 (connection)、会话 (session)、调用方契约 (caller contract)、常驻规则 (standing orders).
+- Prefer the shorter Chinese clause when both carry the same proposition. Do not pad a line to reach parity; rewrite the English line instead.
+- Update both sides in one pass. A statement true on one side and stale on the other is a defect in the pair, not a translation backlog.
+- Do not add a third locale file. A second language other than Chinese needs a decision recorded in this file first.
+
+Without a translation tool configured, produce the counterpart by hand and leave a line-level surface check plus the line-count comparison as the evidence. Never merge a pair with a missing side.
 
 ## The slop checklist
 
