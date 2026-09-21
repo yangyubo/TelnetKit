@@ -582,16 +582,15 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | `data_passthrough` | `"hello\r\n"` → `.data("hello\r\n")` |
 | `iac_escape_unescaped` | `FF FF` → `.data([0xFF])` |
 | `will_wont_do_dont_events` | `FF FB 01` / `FF FC 01` / `FF FD 01` / `FF FE 01` → 4 条 `.negotiation` 且 remote 标记正确 |
-| `iac_command_events` | `FF F1`(NOP)、`FF F9`(GA)、`FF EF`(EOF) → `.command(...)` |
+| `iac_command_events` | `FF F1`(NOP)、`FF F9`(GA)、`FF EC`(EOF) → `.command(...)` |
 | `subnegotiation_payload` | `FF FA 18 00 78 74 65 72 6D FF F0` → `.terminalType("xterm")` |
 | `subnegotiation_with_escaped_ff` | payload 含 `FF FF` → 还原为 `0xFF` |
 | `truncated_iac_sequence_warns` | `FF FB`（流结束）→ `.warning`，不崩溃 |
 | `garbage_stream_no_crash` | 10 万随机字节 → 无崩溃，事件自洽 |
-| `subnegotiation_limit_exceeded` | 超限 → `.subnegotiationTooLarge` |
+| `subnegotiation_limit_exceeded` | 入站块超限 → `.protocolError(.invalidSubnegotiation(option:))`；出站 payload 超限抛 `.subnegotiationTooLarge` |
 | `newenviron_parsing` | VAR/USERVAR/VALUE/ESC 组合 → 结构化变量正确 |
 | `mssp_parsing` | `1 name 2 value` → `["name": "value"]` |
 | `zmp_parsing` | 多参数命令 → `["cmd", "a", "b"]` |
-| `proxy_flag_behavior` | proxy 模式下不自动应答 |
 | `nvt_eol_flag_behavior` | 两种 newline 策略字节差异断言 |
 
 **C. 协商与终端能力（对应 FR-NEG）**
@@ -611,7 +610,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | 用例 | 断言 |
 | --- | --- |
 | `send_text_crlf` / `send_text_crNul` / `send_text_lf` / `send_text_none` | 出站字节精确匹配 |
-| `send_text_escapes_iac` | 文本含 `0xFF` → 出站 `FF FF` |
+| `send_escapes_iac` | 含 `0xFF` 的应用字节 → 出站 `FF FF`；UTF-8 文本不会出现 `0xFF` 字节 |
 | `binary_mode_disables_newline_translation` | BINARY 协商后 `0x0A` 原样 |
 | `send_raw_bytes_not_escaped` | `sendRaw([0xFF])` 出站为单字节 |
 
@@ -708,16 +707,18 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 ## 10. 里程碑与交付计划
 
-| 里程碑 | 内容 | 出口标准 |
+| 里程碑 | 内容 | 出口标准 | 状态 |
 | --- | --- | --- |
-| M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 我们纳入版本控制的 module map 与两个符号链接 + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**C target 与构建流程已在原型中验证可行**） |
-| M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 |
-| M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；无泄露 |
-| M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 |
-| M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 |
-| M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 |
-| M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 |
-| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` |
+| M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 我们纳入版本控制的 module map 与两个符号链接 + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**） | 已交付 |
+| M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 | 已交付 |
+| M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；无泄露 | 部分完成 |
+| M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 | 部分完成 |
+| M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 | 部分完成 |
+| M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 | 计划中 |
+| M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
+| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
+
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M2 与 M3 的代码已存在，但 A/C 组用例门槛与无泄露验证仍未完成，M5 尚未开始。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 

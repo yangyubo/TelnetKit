@@ -256,6 +256,19 @@ struct TelnetProtocolCoreTests {
         }
     }
 
+    @Test("BINARY negotiation disables outgoing newline translation")
+    func binaryModeDisablesNewlineTranslation() throws {
+        let harness = try ProtocolHarness(
+            options: TelnetOptions(local: [.init(.binary)]),
+            configuration: .init(newlinePolicy: .nvt)
+        )
+        // The peer agrees to BINARY, so this end's transmit-binary state turns on and the
+        // CR LF translation is skipped.
+        _ = harness.feed([0xFF, 0xFD, 0x00])
+        let outbound = try harness.core.perform(.sendText("a\n", .crlf)).bytes
+        #expect(outbound == [0x61, 0x0A])
+    }
+
     @Test("send(_:) escapes a literal 0xFF and sendRaw does not")
     func escapingDifference() throws {
         let harness = try ProtocolHarness()

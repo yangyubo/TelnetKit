@@ -30,7 +30,7 @@ One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, 
 
 ## Platform and transport decision
 
-**Verified.** The library builds for the macOS 15 and iOS 18 simulator floors, and the C target builds for the watchOS 11, tvOS 18, and visionOS 2 floors, from one source tree; Network.framework through NIOTS is the only transport. Non-Apple platforms are not promised, and no abstraction or conditional compilation is kept for them.
+**Verified.** The library builds for the macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 floors from one source tree; Network.framework through NIOTS is the only transport. Non-Apple platforms are not promised, and no abstraction or conditional compilation is kept for them.
 
 The decision record:
 

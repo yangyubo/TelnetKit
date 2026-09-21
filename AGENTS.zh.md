@@ -10,7 +10,7 @@ TelnetKit 是一个仅面向 Apple 平台的 Swift Package，为 Swift 调用方
 
 `TelnetKit` 库已经存在并通过测试；[PRD.md](PRD.md) 是需求来源，上述文档是它的设计契约。演示可执行文件处于设计阶段，尚未编写。本仓库中的陈述分为三类，正文必须标明属于哪一类：
 
-- **已验证。** 在本机实际复现过：`swift build` 与 `swift test` 均成功，共 96 个测试；`swift build -Xswiftc -strict-concurrency=complete` 无警告；`TelnetKit` target 在 macOS 15 与 iOS 18 模拟器下限下均构建成功；`swift build --target CLibTelnet --triple` 在 watchOS、tvOS、visionOS 下限下均成功。
+- **已验证。** 在本机实际复现过：`swift build` 与 `swift test` 均成功，共 97 个测试；`swift build -Xswiftc -strict-concurrency=complete` 无警告；`swift test --sanitize=address` 通过；`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功。
 - **上游事实。** 读自被 pin 的依赖而非我们的代码：例如 libtelnet 0.23 不导出任何选项状态查询函数。
 - **设计中。** 尚未编写的代码的计划行为。设计中的陈述必须写成需求，绝不能写成对既有行为的描述；行为落地后删除该标记。
 
@@ -41,7 +41,7 @@ docs/                          架构、公开接口契约、测试方案、文�
 ```sh
 git submodule update --init --recursive   # 克隆后执行一次
 swift build                       # 构建全部 target 的 debug 版本
-swift test                        # 两个测试 target 共 96 个测试；离线且在 60s 内
+swift test                        # 两个测试 target 共 97 个测试；离线且在 60s 内
 swift test --filter TelnetProtocolCoreTests   # 迭代时只跑一个套件
 swift build -Xswiftc -strict-concurrency=complete   # 并发检查
 swift build --configuration release               # release 构建与体积检查

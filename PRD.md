@@ -582,16 +582,15 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | `data_passthrough` | `"hello\r\n"` → `.data("hello\r\n")` |
 | `iac_escape_unescaped` | `FF FF` → `.data([0xFF])` |
 | `will_wont_do_dont_events` | `FF FB 01` / `FF FC 01` / `FF FD 01` / `FF FE 01` → four `.negotiation` events with the correct remote flag |
-| `iac_command_events` | `FF F1` (NOP), `FF F9` (GA), `FF EF` (EOF) → `.command(...)` |
+| `iac_command_events` | `FF F1` (NOP), `FF F9` (GA), `FF EC` (EOF) → `.command(...)` |
 | `subnegotiation_payload` | `FF FA 18 00 78 74 65 72 6D FF F0` → `.terminalType("xterm")` |
 | `subnegotiation_with_escaped_ff` | A payload containing `FF FF` restores to `0xFF` |
 | `truncated_iac_sequence_warns` | `FF FB` at end of stream produces `.warning` without a crash |
 | `garbage_stream_no_crash` | 100,000 random bytes produce no crash and self-consistent events |
-| `subnegotiation_limit_exceeded` | Exceeding the bound produces `.subnegotiationTooLarge` |
+| `subnegotiation_limit_exceeded` | An inbound block past the bound produces `.protocolError(.invalidSubnegotiation(option:))`; an outbound payload past it throws `.subnegotiationTooLarge` |
 | `newenviron_parsing` | A VAR/USERVAR/VALUE/ESC combination produces the correct structured variables |
 | `mssp_parsing` | `1 name 2 value` → `["name": "value"]` |
 | `zmp_parsing` | A multi-argument command → `["cmd", "a", "b"]` |
-| `proxy_flag_behavior` | Proxy mode sends no automatic reply |
 | `nvt_eol_flag_behavior` | The two newline policies assert their byte differences |
 
 **C. Negotiation and terminal capabilities (FR-NEG)**
@@ -611,7 +610,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | Case | Assertion |
 | --- | --- |
 | `send_text_crlf` / `send_text_crNul` / `send_text_lf` / `send_text_none` | Outbound bytes match exactly |
-| `send_text_escapes_iac` | Text containing `0xFF` produces outbound `FF FF` |
+| `send_escapes_iac` | Application bytes containing `0xFF` produce outbound `FF FF`; UTF-8 text never carries a `0xFF` byte |
 | `binary_mode_disables_newline_translation` | `0x0A` passes through after BINARY is negotiated |
 | `send_raw_bytes_not_escaped` | `sendRaw([0xFF])` emits a single byte |
 
@@ -708,16 +707,18 @@ This PRD's engineering constraints are split into development documents kept bes
 
 ## 10. Milestones and delivery plan
 
-| Milestone | Content | Exit criterion |
+| Milestone | Content | Exit criterion | Status |
 | --- | --- | --- |
-| M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the libtelnet submodule with our tracked module map, two symlinks, and `UPSTREAM.md` (recording the pinned commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**the C target and the build flow are already verified as feasible in the prototype**) |
-| M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes |
-| M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green with no leak |
-| M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop |
-| M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green |
-| M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass |
-| M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build |
-| M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived |
+| M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the libtelnet submodule with our tracked module map, two symlinks, and `UPSTREAM.md` (recording the pinned commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**verified: `swift build --target TelnetKit --triple` succeeds for the macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 floors**) | Shipped |
+| M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes | Shipped |
+| M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green with no leak | Partial |
+| M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop | Partial |
+| M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green | Partial |
+| M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass | Planned |
+| M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build | Partial |
+| M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived | Planned |
+
+> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M2 and M3 code exists, but their group A/C gates and a no-leak run are still open, and M5 has not started.
 
 > Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 

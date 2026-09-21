@@ -1,0 +1,15 @@
+TelnetKit
+Copyright (c) 2026 TelnetKit contributors
+Licensed under the MIT License; see LICENSE.
+
+Third-party notice: libtelnet
+  Upstream:  https://github.com/seanmiddleditch/libtelnet
+  Path:      libtelnet/ (git submodule)
+  Commit:    5f5ecee776b9bdaa4e981e5f807079a9c79d633e
+  Version:   header version 0.23
+  License:   public domain dedication, shipped in the submodule as COPYING
+  Use:       unmodified. Sources/CLibTelnet reaches the upstream source and
+             header through two committed relative symlinks and a module map we
+             track, and the submodule working tree is never written to. See
+             Sources/CLibTelnet/UPSTREAM.md for the pin and the upgrade
+             procedure.

@@ -30,7 +30,7 @@ CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing on
 
 ## 平台与传输层决策
 
-**已验证。** 库在 macOS 15 与 iOS 18 模拟器下限下构建成功，C target 在 watchOS 11、tvOS 18 与 visionOS 2 下限下构建成功，全部来自同一份源码；经 NIOTS 使用 Network.framework 是唯一传输层。非 Apple 平台不做承诺，也不为它们保留抽象或条件编译。
+**已验证。** 库在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均构建成功，全部来自同一份源码；经 NIOTS 使用 Network.framework 是唯一传输层。非 Apple 平台不做承诺，也不为它们保留抽象或条件编译。
 
 决策记录：
 

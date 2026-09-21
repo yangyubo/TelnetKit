@@ -1,0 +1,82 @@
+name: CI
+
+# The deterministic gates from docs/testing.md. The real-server suite and the manual
+# simulator/device checks stay on a developer Mac; this workflow never reaches the
+# external network and never needs a device.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "Sources/**"
+      - "Tests/**"
+      - "Package.swift"
+      - "Package.resolved"
+      - "libtelnet/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-suite:
+    name: macOS build and tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Toolchain
+        run: swift --version
+      - name: Build every target
+        run: swift build
+      - name: Test
+        run: swift test
+
+  strict-concurrency:
+    name: Strict concurrency (zero warnings)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: swift build --build-tests -Xswiftc -strict-concurrency=complete
+
+  sanitizers:
+    name: AddressSanitizer
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: swift test --sanitize=address
+
+  platform-matrix:
+    name: Library build (${{ matrix.platform }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            sdk: iphonesimulator
+            triple: arm64-apple-ios18.0-simulator
+          - platform: watchOS
+            sdk: watchsimulator
+            triple: arm64-apple-watchos11.0-simulator
+          - platform: tvOS
+            sdk: appletvsimulator
+            triple: arm64-apple-tvos18.0-simulator
+          - platform: visionOS
+            sdk: xrsimulator
+            triple: arm64-apple-xros2.0-simulator
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build TelnetKit for the ${{ matrix.platform }} floor
+        run: |
+          swift build --target TelnetKit \
+            --sdk "$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)" \
+            --triple ${{ matrix.triple }}
