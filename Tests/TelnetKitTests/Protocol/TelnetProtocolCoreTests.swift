@@ -285,4 +285,21 @@ struct TelnetProtocolCoreTests {
             _ = try harness.core.perform(.subnegotiate(.windowSize, [0x01, 0x02, 0x03]))
         }
     }
+
+    @Test("a 255-column NAWS report escapes the 0xFF octet")
+    func windowSizeEscapesIAC() throws {
+        let harness = try ProtocolHarness()
+        let outbound = try harness.core.perform(.sendWindowSize(columns: 255, rows: 40)).bytes
+        // width 0x00FF doubles to 00 FF FF, then height 0x0028.
+        #expect(outbound == [0xFF, 0xFA, 0x1F, 0x00, 0xFF, 0xFF, 0x00, 0x28, 0xFF, 0xF0])
+    }
+
+    @Test("a window size outside 0...65535 is rejected before any bytes are written")
+    func windowSizeRangeRejected() throws {
+        let harness = try ProtocolHarness()
+        #expect(throws: TelnetError.self) {
+            _ = try harness.core.perform(.sendWindowSize(columns: 65_536, rows: 24))
+        }
+        #expect(harness.core.drainOutbound().isEmpty)
+    }
 }

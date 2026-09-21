@@ -233,6 +233,21 @@ actor EventRecorder {
         }
         return events.contains(where: predicate)
     }
+
+    /// Waits until at least `count` events match, for a test that drives the same request
+    /// more than once.
+    func waitFor(
+        count: Int,
+        timeout: Duration = .seconds(2),
+        _ predicate: @Sendable (TelnetEvent) -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if events.count(where: predicate) >= count { return true }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return events.count(where: predicate) >= count
+    }
 }
 
 /// Records that a stream finished, so a test can wait for the finish without a fixed

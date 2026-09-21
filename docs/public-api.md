@@ -140,7 +140,7 @@ public struct TelnetOptions: Sendable {
 }
 ```
 
-`local` lists the options this end offers with `will`, and `remote` lists the options this end asks the peer for with `do`. Connect-time negotiation sends one verb per entry, honoring `enabledByDefault` and `requestOnConnect`. An option in both lists negotiates both directions, which is legal and common: `echo` and `suppressGoAhead` are negotiated in both directions by most peers.
+`local` lists the options this end offers with `will`, and `remote` lists the options this end asks the peer for with `do`. Connect-time negotiation sends one verb per entry in declaration order, honoring `enabledByDefault` and `requestOnConnect`. An option in both lists negotiates both directions, which is legal and common: `echo` and `suppressGoAhead` are negotiated in both directions by most peers.
 
 `isValid` is false for a combination the protocol rejects, currently `binary` together with `lineMode` in `local`. `connect` throws `.invalidConfiguration` rather than negotiating an invalid set.
 

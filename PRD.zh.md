@@ -597,10 +597,10 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 | 用例 | 断言 |
 | --- | --- |
-| `initial_negotiation_sent_on_connect` | 服务端收到的首字节序列符合 `TelnetOptions.standardClient` |
-| `rfc1143_no_negotiation_loop` | 模拟双方同时 WILL，协商报文数量有限（≤ N） |
+| `initial_negotiation_sent_on_connect` | 服务端收到的首批字节是每个已声明条目一个 `IAC <verb> <option>` 三元组，顺序同声明顺序 |
+| `rfc1143_no_negotiation_loop` | 重复与同时到达的动词各只应答一次；客户端字节数保持有界 |
 | `unsupported_option_rejected` | 收到 `DO ZMP` 且未声明 → 出站含 `WONT ZMP` |
-| `ttype_send_triggers_reply_or_event` | 收到 TTYPE SEND → `.terminalTypeRequested`，`replyTerminalType` 后服务端收到 IS |
+| `ttype_send_triggers_reply_or_event` | 收到 TTYPE SEND → `.terminalTypeRequested`；`replyTerminalType` 发出 IS，重复 SEND 会再次应答 |
 | `naws_reported_on_window_resize` | 变更窗口 → 服务端收到 4 字节大端尺寸 |
 | `naws_escapes_255` | 列宽 255 → payload 含 `FF FF` |
 | `compress2_unsupported` | 协商 → `WONT`，`optionStatus(.compress2)` 全 false，且不抛错 |
@@ -712,13 +712,13 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 我们纳入版本控制的 module map 与两个符号链接 + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**） | 已交付 |
 | M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 | 已交付 |
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
-| M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 | 部分完成 |
+| M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 | 部分完成 |
 | M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 | 计划中 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M3 的代码已存在但 C 组用例门槛未闭合，M4 的覆盖率与接口快照门槛开放，M6 已完成五平台构建但未跑测试矩阵，M5 尚未开始。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M4 的覆盖率与接口快照门槛开放，M6 已完成五平台构建但未跑测试矩阵，M5 尚未开始。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 

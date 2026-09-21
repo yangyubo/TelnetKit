@@ -140,7 +140,7 @@ public struct TelnetOptions: Sendable {
 }
 ```
 
-`local` 列出本端以 `will` 提供的选项，`remote` 列出本端以 `do` 向对端索取的选项。连接期协商为每个条目发送一个动词，遵循 `enabledByDefault` 与 `requestOnConnect`。同时出现在两个列表中的选项会双向协商，这既合法也常见：多数对端都会双向协商 `echo` 与 `suppressGoAhead`。
+`local` 列出本端以 `will` 提供的选项，`remote` 列出本端以 `do` 向对端索取的选项。连接期协商按声明顺序为每个条目发送一个动词，遵循 `enabledByDefault` 与 `requestOnConnect`。同时出现在两个列表中的选项会双向协商，这既合法也常见：多数对端都会双向协商 `echo` 与 `suppressGoAhead`。
 
 `isValid` 对协议拒绝的组合为 false，目前是 `local` 中同时出现 `binary` 与 `lineMode`。`connect` 会抛出 `.invalidConfiguration`，而不是协商一个非法组合。
 

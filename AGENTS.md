@@ -10,7 +10,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 The `TelnetKit` library exists and is tested; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. The demo executables are designed but not written. A statement in this repository is one of three kinds, and prose states which:
 
-- **Verified.** Reproduced on this machine: `swift test` passes 100 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2), and `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events.
+- **Verified.** Reproduced on this machine: `swift test` passes 105 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2), and `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
 - **Designed.** Planned behavior of code that is not written. Mark designed statements as requirements, never as descriptions of existing behavior, and delete the marker when the behavior ships.
 
@@ -41,7 +41,7 @@ Package products: library `TelnetKit` only; `TelnetDemo` and `TelnetEchoServer` 
 ```sh
 git submodule update --init --recursive   # required once after cloning
 swift build                       # debug build of every target
-swift test                        # 100 tests across both test targets; offline, under 60s
+swift test                        # 105 tests across both test targets; offline, under 60s
 swift test --filter TelnetProtocolCoreTests   # one suite while iterating
 swift build -Xswiftc -strict-concurrency=complete   # concurrency error check
 swift build --configuration release               # release build and binary-size check
