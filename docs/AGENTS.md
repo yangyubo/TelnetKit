@@ -23,7 +23,7 @@ Each fact has one home: the tier whose job it is. Elsewhere, link there. A state
 | [Root AGENTS.md](../AGENTS.md) | Standing orders an agent needs in every session: identity, commands, non-negotiable constraints, conventions, one to three lines each, linking the owning document | Worked examples, requirement detail, API catalogs, anything restated from a linked owner |
 | [docs/architecture.md](architecture.md) | Ordered map of the design: layers, ownership, concurrency model, event flow, extension points; read before changing `Sources/` | Type-by-type API contracts (→ public-api.md), requirement identifiers and acceptance criteria (→ PRD.md), decision history |
 | [docs/public-api.md](public-api.md) | The caller contract: every public type, method, property, and enum case with its preconditions, failures, ordering, and cancellation behavior | Requirements and priorities (→ PRD.md), internal design (→ architecture.md), test inventories (→ test files) |
-| [PRD.md](../PRD.md) | Requirements: goals, user stories, functional and non-functional requirements with identifiers, acceptance criteria, test-case inventory, demo scope, milestones, risks | API signatures as the contract of record (→ public-api.md), architecture rationale (→ architecture.md) |
+| [PRD.md](../PRD.md) (Chinese: [PRD.zh.md](../PRD.zh.md)) | Requirements: goals, user stories, functional and non-functional requirements with identifiers, acceptance criteria, test-case inventory, demo scope, milestones, risks | API signatures as the contract of record (→ public-api.md), architecture rationale (→ architecture.md) |
 | [docs/testing.md](testing.md) | The test plan: environment, framework, how to run each suite on macOS and the simulators, quality gates, and the CI matrix | Requirement identifiers and acceptance criteria (→ PRD.md), per-test design notes (→ the test source) |
 | [README.md](../README.md) | The consumer contract: what the library does, install, a runnable quick start, supported platforms, known limitations, security stance | Contributor procedure, internal design, requirement traceability |
 | [.agents/skills/](../.agents/skills/) | Reusable workflows and decision standards for repeatable tasks | Product contracts, requirement identifiers, runtime behavior |
@@ -67,7 +67,7 @@ When a document exceeds its ceiling, apply this order and stop at the first step
 
 ## Bilingual pairs
 
-Every human-facing document has an English original and a Chinese counterpart: `foo.md` beside `foo.zh.md`, so `AGENTS.md` pairs with `AGENTS.zh.md`. [PRD.md](../PRD.md) is the one pair whose canonical side is Chinese and whose English counterpart is `PRD.en.md`, because Chinese is the requirement source language. Both sides land in the same change. [README.md](../README.md) and [README.zh.md](../README.zh.md) are the reference pair.
+Every human-facing document has an English original and a Chinese counterpart: `foo.md` beside `foo.zh.md`, so `AGENTS.md` pairs with `AGENTS.zh.md`. Both sides land in the same change. [README.md](../README.md) and [README.zh.md](../README.zh.md) are the reference pair.
 
 A pair keeps the same heading sequence, list and table structure, code blocks, and link targets, and the same number of physical lines, so a reviewer can diff line n against line n. Identifier lines differ, since a relative link resolves against the file's own directory and a Chinese filename sits beside its English original. Count with:
 

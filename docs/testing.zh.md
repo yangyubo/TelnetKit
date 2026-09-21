@@ -2,7 +2,7 @@
 
 [English](testing.md) | 中文
 
-本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.md](../PRD.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。本包尚未实现，因此依据[设计状态规则](../AGENTS.md#design-status)，下文每一条都是**设计中**。
+本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.zh.md](../PRD.zh.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。本包尚未实现，因此依据[设计状态规则](../AGENTS.md#design-status)，下文每一条都是**设计中**。
 
 ## 环境
 
@@ -152,7 +152,7 @@ ipconfig getifaddr en0               # 模拟器要连接的地址
 | `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | 门槛 4 的接口快照部分 |
 | `real-server` | 开发者的 Mac，绝不进 CI | `TELNETKIT_TEST_SERVER_HOST=... swift test --filter TelnetKitTests.RealServer` | 里程碑清单的手工证据 |
 
-矩阵 job 会一次性下载并缓存 watchOS、tvOS、visionOS 运行时，且在这些平台上只跑协议套件。运行时下载体积是 [R11 风险](../PRD.md#11-风险与对策) 的成本来源，因此矩阵只在改动 `Sources/` 的 PR 与主分支上运行，而不是每次 push 都跑。
+矩阵 job 会一次性下载并缓存 watchOS、tvOS、visionOS 运行时，且在这些平台上只跑协议套件。运行时下载体积是 [R11 风险](../PRD.zh.md#11-风险与对策) 的成本来源，因此矩阵只在改动 `Sources/` 的 PR 与主分支上运行，而不是每次 push 都跑。
 
 ## 手工验收
 

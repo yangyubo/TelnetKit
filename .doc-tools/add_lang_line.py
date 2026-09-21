@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Insert an English | 中文 switch line after the H1 of each English document.
+"""Insert an English | 中文 switch line after the H1 of each primary document.
 
-The switch line is required by the bilingual rule in docs/AGENTS.md. The script is
-idempotent: a file that already carries the line is left unchanged. Run from the
-repository root:
+Every document follows one convention: an English original at `<name>.md` and a
+Chinese counterpart at `<name>.zh.md`. This script enforces the first three lines
+of that convention on the primary side. It is idempotent: a file that already
+carries the right line is left unchanged, and a stale line written under an older
+naming rule is repaired.
+
+Run from the repository root:
 
     python3 .doc-tools/add_lang_line.py
 
@@ -16,11 +20,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ENGLISH_DOCS = [
+PRIMARY_DOCS = [
     "AGENTS.md",
+    "README.md",
+    "PRD.md",
     "docs/AGENTS.md",
     "docs/architecture.md",
     "docs/public-api.md",
+    "docs/testing.md",
+    "Sources/CLibTelnet/UPSTREAM.md",
     ".agents/skills/telnetkit-public-api-slice/SKILL.md",
     ".agents/skills/telnetkit-import-c-library/SKILL.md",
     ".agents/skills/telnetkit-doc/SKILL.md",
@@ -43,6 +51,8 @@ def stale_switch_lines(path: Path) -> set[str]:
     return {
         f"English | [中文]({name}.zh.md)",
         f"English | [中文]({name.rsplit('.', 1)[0]}.md.zh.md)",
+        # the pre-convention PRD pointed at the English file from its Chinese side
+        "English | [中文](PRD.en.md)",
     }
 
 
@@ -64,10 +74,10 @@ def main() -> int:
     edited: list[str] = []
     missing: list[str] = []
 
-    for name in ENGLISH_DOCS:
+    for name in PRIMARY_DOCS:
         path = root / name
         if not path.is_file():
-            print(f"missing English document: {name}")
+            print(f"missing primary document: {name}")
             missing.append(name)
             continue
 

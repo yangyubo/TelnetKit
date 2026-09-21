@@ -1,5 +1,7 @@
 # TelnetKit
 
+[English](README.md) | 中文
+
 基于 SwiftNIO 与 vendored libtelnet 构建的 Swift 异步 Telnet 终端会话库。
 
 TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已解析的事件流并发送文本；socket 由 SwiftNIO 托管，RFC 1143 选项状态机不暴露在公开接口之外。
@@ -8,7 +10,7 @@ TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已�
 
 ## 状态
 
-本包已完成设计，尚未实现。需求来源是 [PRD.md](PRD.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。当前请勿依赖本包。
+本包已完成设计，尚未实现。需求来源是 [PRD.zh.md](PRD.zh.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。当前请勿依赖本包。
 
 ## 环境要求
 
@@ -104,11 +106,11 @@ Telnet 是明文协议：凭据与会话内容不经加密传输，链路中间�
 
 ## 文档
 
-- [PRD.md](PRD.md)：目标、需求、验收标准、测试清单、Demo 范围、里程碑、风险。
+- [PRD.zh.md](PRD.zh.md)：目标、需求、验收标准、测试清单、Demo 范围、里程碑、风险。
 - [docs/architecture.md](docs/architecture.md)：分层、并发模型、事件流、扩展点。
 - [docs/public-api.md](docs/public-api.md)：每个公开符号的调用方契约。
 - [AGENTS.md](AGENTS.md)：贡献者常驻规则。
-- 每份文档都是中英双语配对：本 README 与 [README.md](README.md) 配对，[PRD.md](PRD.md) 与 [PRD.en.md](PRD.en.md) 配对。
+- 每份文档都是中英双语配对：本 README 与 [README.md](README.md) 配对，[PRD.zh.md](PRD.zh.md) 与 [PRD.zh.md](PRD.zh.md) 配对。
 
 ## 许可
 

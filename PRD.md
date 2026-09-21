@@ -1,133 +1,133 @@
-# TelnetKit 产品需求文档（PRD）
+# TelnetKit Product Requirements Document (PRD)
 
-[English](PRD.en.md) | 中文
+English | [中文](PRD.zh.md)
 
-| 项目 | 内容 |
+| Item | Content |
 | --- | --- |
-| 产品名称 | TelnetKit |
-| 版本 | v0.1（首版需求） |
-| 文档状态 | 待评审 |
-| 撰写日期 | 2026-09-21 |
-| 目标仓库 | `TelnetKit`（Swift Package，目录 `/Users/yang/workspace/CodinnCode/CoreSSH/TelnetKit`） |
-| 上游依赖 | [apple/swift-nio](https://github.com/apple/swift-nio)、[seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) |
-| 交付形态 | Swift Package（library product `TelnetKit` + 测试 + Demo 可执行产物）；支持 macOS 15+ 与 iOS 18+ |
+| Product | TelnetKit |
+| Version | v0.1 (first release requirements) |
+| Status | In review |
+| Date | 2026-09-21 |
+| Target repository | `TelnetKit` (Swift Package, directory `/Users/yang/workspace/CodinnCode/CoreSSH/TelnetKit`) |
+| Upstream dependencies | [apple/swift-nio](https://github.com/apple/swift-nio), [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) |
+| Delivery form | Swift Package (library product `TelnetKit` plus tests and demo executables); macOS 15+ and iOS 18+ |
 
 ---
 
-## 1. 背景与目标
+## 1. Background and goals
 
-### 1.1 背景
+### 1.1 Background
 
-Telnet 协议（RFC 854/855 及其大量选项扩展）仍是 BBS、网络设备、嵌入式设备、工业终端等场景的通用交互通道。Swift 生态目前缺少一个「现代、安全并发、开箱即用」的 Telnet 客户端库：
+The Telnet protocol (RFC 854/855 and its many option extensions) is still a common interactive channel for BBS systems, network devices, embedded devices, and industrial terminals. The Swift ecosystem lacks a Telnet client library that is modern, safe under concurrency, and usable out of the box:
 
-- `libtelnet` 是成熟的 C 实现，覆盖 RFC 854/855/1091/1143/1408/1572，支持 Q-method（RFC 1143）选项协商、ZMP、MCCP2、MSSP、NEW-ENVIRON，但它只做**协议状态机**，不管理 TCP，且是**回调式 API + 大量宏/常量/裸指针**，用起来非常"非 Swift"。
-- 手写连接层（无论是直接用 Network.framework 还是裸 socket）同样要自己重写一遍 RFC 1143 状态机，工程量大且易错。
+- `libtelnet` is a mature C implementation covering RFC 854/855/1091/1143/1408/1572, with Q-method (RFC 1143) option negotiation, ZMP, MCCP2, MSSP, and NEW-ENVIRON. It implements only the **protocol state machine**, it does not manage TCP, and its **callback API with many macros, constants, and raw pointers** is deeply un-Swift.
+- Hand-writing the connection layer, whether directly on Network.framework or on raw sockets, still means rewriting the RFC 1143 state machine: a large amount of work with a high error rate.
 
-TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封装成一个类型安全、可测试、零 C 泄漏的异步 Telnet 终端能力库，同时覆盖 macOS 15+ 与 iOS 18+ 两个平台。**
+TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and SwiftNIO into a type-safe, testable, C-free async Telnet terminal capability library that serves both macOS 15+ and iOS 18+.**
 
-### 1.2 产品目标
+### 1.2 Product goals
 
-| 编号 | 目标 | 度量方式 |
+| ID | Goal | Measurement |
 | --- | --- | --- |
-| G1 | 提供 Swift 原生异步 Telnet 接口 | 调用方全程使用 `async/await` 与 `AsyncSequence`，无需任何回调闭包 |
-| G2 | 连接生命周期由库托管 | 连接、超时、优雅关闭、背压、取消传播、网络路径变化全部由 `TelnetConnection` 负责 |
-| G3 | 完全隔离 C 实现细节 | 公开接口零 `OpaquePointer`、零 `UInt8` 命令码宏、零 `telnet_*` 符号 |
-| G4 | 协议正确性与可验证性 | 协商、子协商、TTYPE/NEW-ENVIRON/NAWS 等公开行为均有测试用例覆盖 |
-| G5 | 可交付的示例工程 | Demo 覆盖全部公开接口，可直接连真实 Telnet 服务并交互 |
-| G6 | 以 Apple 平台最优方案为唯一技术路线 | 传输层用 NIOTS（Network.framework），不引入 POSIX/BSD socket 路径，不为其他平台保留分支 |
+| G1 | Provide a native Swift async Telnet interface | Callers use only `async/await` and `AsyncSequence`; no callback closure anywhere |
+| G2 | Let the library own the connection lifecycle | Connect, timeout, graceful close, backpressure, cancellation propagation, and network path changes are all `TelnetConnection`'s responsibility |
+| G3 | Isolate every C implementation detail | The public API exposes no `OpaquePointer`, no `UInt8` command macro, and no `telnet_*` symbol |
+| G4 | Protocol correctness that can be verified | Negotiation, subnegotiation, TTYPE, NEW-ENVIRON, and NAWS behavior each has test coverage |
+| G5 | A deliverable example project | The demo covers every public interface and can talk to a real Telnet service |
+| G6 | One Apple-first technical route | Network.framework through NIOTS is the transport, with no POSIX/BSD socket path and no branch kept for another platform |
 
-### 1.3 非目标（Out of Scope）
+### 1.3 Non-goals (out of scope)
 
-- ❌ 终端模拟器（VT100/xterm 屏幕模型、光标、行编辑、颜色渲染）——Demo 只做**最小可交互**演示，不做完整 TERM。
-- ❌ SSH / RLogin / Mosh 协议。
-- ❌ BBS 业务逻辑（ANSI 图、文件传输协议 ZMODEM 等）。
-- ❌ MCCP2 压缩（`HAVE_ZLIB`）。Apple 三个 SDK 都自带 zlib（我已验证 macOS/iOS/iPadOS 均可 `-lz` 链接），所以关闭不是依赖问题，而是取舍：目标用户（开发者、运维人员、极客）不依赖它；而一旦接受压缩流，inflate 会引入解压炸弹、压缩态事件流与失败模式三项未设计的契约。首版对其一律 `wont`，v0.2 按 §6.3 的启用条件评估。
-- ❌ Telnet 服务端框架（`NIOTSListenerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
-- ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
-- ❌ Telnet over TLS/SSL（`telnets`/992、START-TLS、TELNET ENCRYPT 与 AUTHENTICATION 选项）。设备与服务端极少，标准已废弃，Apple 与 Homebrew 的 telnet 都不支持；上游 libtelnet 也未实现 ENCRYPT/AUTHENTICATION。需要保密时由部署方使用 VPN 或跳板机，本库只承载明文 Telnet，并在文档中显著标注这一事实。
-- ❌ 非 Apple 平台支持（Linux、Windows、Android 明确不做，也不为它们保留抽象或条件编译）。
-- ❌ POSIX/BSD socket 传输路径（`NIOPosix`、裸 `socket()`、`select`/`kqueue`）；传输层只有 Network.framework 一条路。
-- ❌ 服务端/监听侧（`NIOTSListenerBootstrap`）产品化；测试夹具中的回显服务端不计入产品接口。
+- ❌ Terminal emulation (VT100/xterm screen model, cursor, line editing, color rendering). The demo is a **minimal interactive** demonstration, not a full TERM.
+- ❌ SSH, RLogin, and Mosh protocols.
+- ❌ BBS business logic (ANSI art, ZMODEM and other file-transfer protocols).
+- ❌ MCCP2 compression (`HAVE_ZLIB`). All three Apple SDKs ship zlib (I verified `-lz` links for macOS, iOS, and iPadOS), so leaving it off is a tradeoff rather than a dependency gap: the target users (developers, operators, and technical enthusiasts) do not rely on it, and accepting a compressed stream would add three undesigned contracts: an inflation-ratio bound, event-flow behavior under compression, and a compressed-state failure mode. The first release answers `wont`, and v0.2 evaluates the enablement conditions in §6.3.
+- ❌ A Telnet server framework productized on `NIOTSListenerBootstrap`; the echo server in the test fixture is not part of the product interface.
+- ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
+- ❌ Telnet over TLS/SSL (`telnets`/992, START-TLS, the TELNET ENCRYPT and AUTHENTICATION options). Devices and servers that offer it are rare, the standard was abandoned, Apple's and Homebrew's telnet both lack it, and upstream libtelnet implements neither ENCRYPT nor AUTHENTICATION. A deployment that needs confidentiality uses a VPN or a bastion host; this library carries plaintext Telnet only and states that fact prominently in its documentation.
+- ❌ Non-Apple platforms (Linux, Windows, and Android are out of scope, with no abstraction or conditional compilation kept for them).
+- ❌ A POSIX/BSD socket transport (`NIOPosix`, raw `socket()`, `select`/`kqueue`); Network.framework is the only transport.
+- ❌ A productized server or listener side (`NIOTSListenerBootstrap`); the echo server in the test fixture is not part of the product interface.
 
 ---
 
-## 2. 目标用户与使用场景
+## 2. Target users and scenarios
 
-### 2.1 用户画像
+### 2.1 User profiles
 
-1. **应用开发者**：需要在 macOS 或 iOS App 中内嵌一个 Telnet 会话（设备调试台、串口转 Telnet 网关客户端、老系统对接）。
-2. **运维人员**：写 CLI 工具批量连接网络设备与服务器，跑命令、采集输出、做自动化巡检。
-3. **极客与协议研究者**：需要观察或注入 Telnet 协商，验证对端实现是否符合 RFC 1143，或把老设备接到自己的工具链上。
+1. **Application developer**: needs an embedded Telnet session in a macOS or iOS app (device console, serial-over-Telnet gateway client, legacy system integration).
+2. **Operator**: writes CLI tools that connect to many network devices and servers to run commands, collect output, and automate inspection.
+3. **Technical enthusiast and protocol researcher**: needs to observe or inject Telnet negotiation, check whether a peer follows RFC 1143, or wire an old device into a personal toolchain.
 
-### 2.2 核心用户故事
+### 2.2 Core user stories
 
-| ID | 用户故事 | 优先级 |
+| ID | User story | Priority |
 | --- | --- | --- |
-| US-1 | 作为开发者，我可以用一行 `try await TelnetConnection.connect(host:port:)` 建立连接并拿到会话对象 | P0 |
-| US-2 | 作为开发者，我可以用 `for await event in conn.events` 消费服务端数据与协商事件，不需要注册回调 | P0 |
-| US-3 | 作为开发者，我可以用 `send(text:)` 发送一行命令，库自动处理 CR/LF（NVT）转换与 `0xFF` 转义 | P0 |
-| US-4 | 作为开发者，我可以声明本端支持的选项（`will`/`wont`/`do`/`dont`），库自动完成 RFC 1143 协商而不产生协商回环 | P0 |
-| US-5 | 作为开发者，服务端请求 `TTYPE` 时我能自动/手动回应终端类型；请求 `NAWS` 时自动上报窗口尺寸 | P1 |
-| US-6 | 作为开发者，连接异常（DNS 失败、超时、对端断开、缓冲区溢出）会以类型化错误抛出，我可以用 `switch` 精确处理 | P0 |
-| US-7 | 作为开发者，我可以随时 `await conn.close()`，且未消费的事件不会导致任务泄漏或崩溃 | P0 |
-| US-8 | 作为开发者，我可以用 `withTimeout`/`Task` 取消一个连接建立过程，取消会传递到 socket | P0 |
-| US-9 | 作为开发者，我可以通过 `.telnet` SwiftUI 视图或参考 Demo 代码，10 分钟内跑通一个可交互客户端 | P1 |
-| US-10 | 作为维护者，我能在 CI 上跑完协议单测 + 回环集成测试，且测试不依赖外部网络 | P0 |
+| US-1 | As a developer, I establish a connection and get a session object with one line, `try await TelnetConnection.connect(host:port:)` | P0 |
+| US-2 | As a developer, I consume server data and negotiation events with `for await event in conn.events`, without registering a callback | P0 |
+| US-3 | As a developer, I send a command line with `send(text:)`, and the library handles the CR/LF (NVT) translation and `0xFF` escaping | P0 |
+| US-4 | As a developer, I declare the options this end supports (`will`/`wont`/`do`/`dont`), and the library completes RFC 1143 negotiation without a negotiation loop | P0 |
+| US-5 | As a developer, I answer the terminal type when the server requests `TTYPE`, and the window size is reported when it requests `NAWS` | P1 |
+| US-6 | As a developer, connection failures (DNS failure, timeout, peer disconnect, buffer overflow) are thrown as typed errors I can handle with `switch` | P0 |
+| US-7 | As a developer, I can `await conn.close()` at any time, and unconsumed events cause no task leak or crash | P0 |
+| US-8 | As a developer, I cancel a connection attempt with `withTimeout` or `Task`, and the cancellation reaches the socket | P0 |
+| US-9 | As a developer, I follow the demo code and have an interactive client running within ten minutes | P1 |
+| US-10 | As a maintainer, I run the protocol tests and the loopback integration tests in CI without external network access | P0 |
 
 ---
 
-## 3. 已核实的上游事实（写作依据）
+## 3. Verified upstream facts (basis for this document)
 
-以下事实在撰写本文档前已实际核实（2026-09-21，本机 Xcode 27.0 / Swift 6.4 / macOS 27.0）：
+These facts were verified before writing this document (2026-09-21, this machine: Xcode 27.0, Swift 6.4, macOS 27.0):
 
-| 项 | 结论 |
+| Item | Conclusion |
 | --- | --- |
-| 工具链 | `Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)`，SDK 为 MacOSX27.0 |
-| swift-nio 最新发布 | **2.103.0**（2026-09-17） |
-| libtelnet 仓库结构 | 仅有 `libtelnet.c`、`libtelnet.h`、`CMakeLists.txt`、autotools 文件、`test/`、`doc/`、`util/` |
-| libtelnet 是否有 Package.swift | **没有**（`develop` 与 `master` 分支均无）。必须由我们在 Swift Package 内 vendor C 源文件 + `module.modulemap`（已与需求方确认采用此方案） |
-| libtelnet 公开面 | `telnet_init/free/recv/iac/negotiate/send/send_text/begin_sb/subnegotiation/begin_compress2/printf/raw_printf/begin_newenviron/newenviron_value/ttype_send/ttype_is/send_zmp/send_zmpv/send_vzmpv/begin_zmp/zmp_arg`，以及 `telnet_finish_sb`、`telnet_finish_newenviron`、`telnet_finish_zmp` 三个**宏**（Swift 不可见，必须用自己的实现补齐） |
-| libtelnet 无选项状态查询 | 头文件**不导出**任何查询协商结果的函数。因此 `optionStatus(_:)` 必须由本库在 Swift 侧依据观测到的协商事件自行维护账本，不能读 C 结构体内部状态 |
-| libtelnet 不实现安全选项 | 头文件只定义 `TELNET_TELOPT_AUTHENTICATION`(37) 与 `TELNET_TELOPT_ENCRYPT`(38) 两个选项号；`libtelnet.c` 中二者的实现代码为零（`grep -c` = 0），也没有任何 TLS/START-TLS 相关符号。因此「Telnet 协议层加密/认证」在上游永远不会有，加密只能由外部传输层提供 |
-| libtelnet 事件模型 | `telnet_event_handler_t(telnet_t*, telnet_event_t*, void *user_data)`，`telnet_event_t` 是 union，事件类型 15 种 |
-| libtelnet 压缩 | 由 `HAVE_ZLIB` 编译开关控制，默认关闭 |
-| 传输层 | NIOTS（`swift-nio-transport-services` 1.x）把 Network.framework 的 EventLoop、Channel 与 Bootstrap 接入 SwiftNIO；要求 swift-nio ≥ 2.83.0，支持 macOS 10.14+/iOS 12+/tvOS 12+/watchOS 6+，我们的部署下限远高于它 |
-| Apple 自带 telnet | 源码在 `apple-oss-distributions/remote_cmds`。`telnet(1)` 与 `telnetd(8)` 手册页全文无 TLS/SSL/certificate 字样；Xcode 工程的预定义宏只有 `AUTHENTICATION`、`KRB5`、`SKEY`、`IPSEC`、`INET6` 等，**从未定义 `ENCRYPTION`**（`grep -c ENCRYPTION project.pbxproj` = 0），即 TELNET ENCRYPT 选项（RFC 2946）整段被编掉，`-x` 手册页描述的「默认已开启加密」与实现不符。结论：Apple 自带 telnet 能认证（Kerberos V5/S/Key），从不加密、从不支持 TLS |
-| Homebrew telnet | `brew install telnet` 装的是 **netkit-telnet 308**，用法为 `telnet [-4] [-6] [-8] [-E] [-K] [-L] [-N] [-S tos] [-X atype] …`，同样没有任何 TLS/SSL 选项 |
-| Telnet over TLS 的标准状态 | 两份 IETF 草案都没成为 RFC：[draft-altman-telnet-starttls](https://datatracker.ietf.org/doc/draft-altman-telnet-starttls/)（个人提交，IESG 状态 **Dead**，Expired）与 [draft-ietf-tn3270e-telnet-tls](https://datatracker.ietf.org/doc/draft-ietf-tn3270e-telnet-tls/)（tn3270e 工作组，2002 年 Expired，Intended status 为 None）。IANA 的 `telnets 992/tcp` 无 RFC 引用、无联系人。带 TLS 的实现只有 OpenSSL 系的 `telnet-ssl`/`telnetd-ssl`（Debian 仍在维护），FreeBSD/Apple 这条线从未合并 |
-| libtelnet 许可证 | 公有领域（public domain dedication，见 `COPYING`） |
+| Toolchain | `Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)`, SDK MacOSX27.0 |
+| Latest swift-nio release | **2.103.0** (2026-09-17) |
+| libtelnet repository layout | Only `libtelnet.c`, `libtelnet.h`, `CMakeLists.txt`, autotools files, `test/`, `doc/`, and `util/` |
+| Does libtelnet have Package.swift | **No** (neither the `develop` nor the `master` branch). We must vendor the C sources plus a `module.modulemap` inside the Swift Package (agreed with the requester) |
+| libtelnet public surface | `telnet_init/free/recv/iac/negotiate/send/send_text/begin_sb/subnegotiation/begin_compress2/printf/raw_printf/begin_newenviron/newenviron_value/ttype_send/ttype_is/send_zmp/send_zmpv/send_vzmpv/begin_zmp/zmp_arg`, plus the macros `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` (invisible to Swift, so the seam must supply them) |
+| libtelnet has no option-status query | The header exports **no** function that reports the result of `WILL`/`WONT`/`DO`/`DONT` negotiation. `optionStatus(_:)` must therefore be derived by this library in Swift from observed negotiation events; reading C struct internals is forbidden |
+| libtelnet implements no security option | The header defines only the option numbers `TELNET_TELOPT_AUTHENTICATION` (37) and `TELNET_TELOPT_ENCRYPT` (38); `libtelnet.c` contains zero implementation code for either (`grep -c` is 0) and no TLS or START-TLS symbol. Protocol-level Telnet encryption or authentication will therefore never exist upstream, and confidentiality has to come from the transport or the deployment |
+| libtelnet event model | `telnet_event_handler_t(telnet_t*, telnet_event_t*, void *user_data)`; `telnet_event_t` is a union with 15 event types |
+| libtelnet compression | Controlled by the `HAVE_ZLIB` build switch, off by default |
+| Transport | NIOTS (`swift-nio-transport-services` 1.x) brings Network.framework's EventLoop, Channels, and Bootstraps into SwiftNIO; it needs swift-nio >= 2.83.0 and supports macOS 10.14+, iOS 12+, tvOS 12+, and watchOS 6+, all far below our floors |
+| Apple's own telnet | The source lives in `apple-oss-distributions/remote_cmds`. The `telnet(1)` and `telnetd(8)` man pages never mention TLS, SSL, or certificates; the Xcode project defines only `AUTHENTICATION`, `KRB5`, `SKEY`, `IPSEC`, and `INET6` among security switches and **never defines `ENCRYPTION`** (`grep -c ENCRYPTION project.pbxproj` is 0), so the TELNET ENCRYPT option (RFC 2946) is compiled out and the `-x` man page claim that stream encryption is now the default contradicts the binary. Apple's telnet authenticates with Kerberos V5 or S/Key and never encrypts or speaks TLS |
+| Homebrew telnet | `brew install telnet` installs **netkit-telnet 308**, whose usage is `telnet [-4] [-6] [-8] [-E] [-K] [-L] [-N] [-S tos] [-X atype] ...`, again with no TLS or SSL option |
+| Standard status of Telnet over TLS | Neither IETF draft became an RFC: [draft-altman-telnet-starttls](https://datatracker.ietf.org/doc/draft-altman-telnet-starttls/) (individual submission, IESG state **Dead**, expired) and [draft-ietf-tn3270e-telnet-tls](https://datatracker.ietf.org/doc/draft-ietf-tn3270e-telnet-tls/) (tn3270e working group, expired in 2002 with intended status None). IANA's `telnets 992/tcp` has no RFC reference and no contact. TLS-capable implementations exist only in the OpenSSL family, `telnet-ssl` and `telnetd-ssl`, which Debian still maintains and the FreeBSD and Apple line never merged |
+| libtelnet license | Public domain dedication (see `COPYING`) |
 
-**原型验证结果（已实跑，非推测）**：
+**Prototype results (actually run, not inferred)**:
 
-1. `clang -c libtelnet.c -I include -Wall` → **0 warning / 0 error**，导出 23 个 `_telnet*` 符号。
-2. 把 `libtelnet.c/.h` 放进 `Sources/CLibTelnet/`（内含 `module.modulemap`）后 `swift build` 成功，`swift test`（Swift Testing）通过。
-3. Swift 侧通过 `telnet_init` 注册闭包回调 + `Unmanaged` user_data，喂入 `FF FB 01`（IAC WILL ECHO）与 `FF FA 18 01 FF F0`（IAC SB TTYPE SEND IAC SE）后，仅收到纯数据 `hello\r\n` —— 协商字节被正确吞掉，**协议解析链路可用**。
-4. `telnet_send_text` 发送 `"hi\n"` 产生的出站字节为 `FF FD 01 68 69 0D 0A`：即先补 `IAC DO ECHO`（因为对端已 WILL ECHO），再发送经 NVT 转换的文本，`0x0D 0x0A` 正确 —— **出站编码与协商应答链路可用**。
-5. 传输层方案已在官方文档层面核实：NIOTS（`swift-nio-transport-services` 1.x）把 Network.framework 的 EventLoop、Channel、Bootstrap 接入 SwiftNIO，官方声明「普通 NIO 应用只需更换 EventLoopGroup 与 Bootstrap」，并要求 swift-nio ≥ 2.83.0；支持范围为 macOS 10.14+、iOS 12+、tvOS 12+、watchOS 6+。`NIOAsyncChannel` 等异步 API 在 swift-nio 2.x 中为正式 API，参考 [swiftonserver 客户端教程](https://swiftonserver.com/building-swiftnio-clients/)。
+1. `clang -c libtelnet.c -I include -Wall` produced **0 warnings and 0 errors** and 23 exported `_telnet*` symbols.
+2. With `libtelnet.c/.h` in `Sources/CLibTelnet/` (containing `module.modulemap`), `swift build` succeeded and `swift test` (Swift Testing) passed.
+3. On the Swift side, registering a closure callback through `telnet_init` with an `Unmanaged` user_data, then feeding `FF FB 01` (IAC WILL ECHO) and `FF FA 18 01 FF F0` (IAC SB TTYPE SEND IAC SE) yielded only the plain data `hello\r\n`: the negotiation bytes were swallowed correctly, so **the parse path works**.
+4. `telnet_send_text("hi\n")` produced the outbound bytes `FF FD 01 68 69 0D 0A`: it first adds `IAC DO ECHO` (because the peer had sent WILL ECHO), then the NVT-translated text with a correct `0x0D 0x0A`, so **the outbound coding and negotiation reply path works**.
+5. The transport choice is verified against official documentation: NIOTS (`swift-nio-transport-services` 1.x) brings Network.framework's EventLoop, Channels, and Bootstraps into SwiftNIO, states that a regular NIO application only changes its event loop group and bootstrap, needs swift-nio >= 2.83.0, and supports macOS 10.14+, iOS 12+, tvOS 12+, and watchOS 6+. `NIOAsyncChannel` and the related async APIs are official in swift-nio 2.x; see the [swiftonserver client tutorial](https://swiftonserver.com/building-swiftnio-clients/).
 
-> 环境提示：本机沙箱下 SwiftPM 编译 manifest 需要 `sandbox-exec` 权限，验证时使用了放宽的沙箱模式；常规开发不受影响。
+> Environment note: under this machine's sandbox, compiling a SwiftPM manifest needs `sandbox-exec` permission, so verification used a wider sandbox mode; ordinary development is unaffected.
 
 ---
 
-## 4. 总体架构
+## 4. Overall architecture
 
-### 4.1 包结构（单包 + vendored C target + Apple 平台唯一传输层）
+### 4.1 Package structure (single package, vendored C target, Apple-only transport)
 
 ```
 TelnetKit/
 ├── Package.swift                       # macOS 15 / iOS 18 / watchOS 11 / tvOS 18 / visionOS 2
 ├── PRD.md
 ├── README.md
-├── LICENSE                             # 本库许可（libtelnet 为 public domain，需在 NOTICE 注明）
+├── LICENSE                             # this library's license (libtelnet is public domain; note it in NOTICE)
 ├── NOTICE
 ├── Sources/
-│   ├── CLibTelnet/                     # [C] vendored libtelnet，不对外暴露
+│   ├── CLibTelnet/                     # [C] vendored libtelnet, not exposed
 │   │   ├── include/
-│   │   │   ├── libtelnet.h             # 上游 0.23，仅同步，不修改
+│   │   │   ├── libtelnet.h             # upstream 0.23, synced only, never modified
 │   │   │   └── module.modulemap        # module CLibTelnet { header "libtelnet.h" export * }
 │   │   └── libtelnet.c
-│   ├── TelnetKit/                      # [Swift] 唯一公开产品
-│   │   ├── Public/                     # 公开类型（全部 Sendable 且无 C 类型）
+│   ├── TelnetKit/                      # [Swift] the only public product
+│   │   ├── Public/                     # public types (all Sendable, no C type)
 │   │   │   ├── TelnetConnection.swift
 │   │   │   ├── TelnetOptions.swift
 │   │   │   ├── TelnetEvent.swift
@@ -135,80 +135,80 @@ TelnetKit/
 │   │   │   ├── TelnetOption.swift
 │   │   │   ├── TelnetError.swift
 │   │   │   └── TelnetLogger.swift
-│   │   ├── Protocol/                   # 对 libtelnet 的 Swift 化封装（internal）
+│   │   ├── Protocol/                   # Swift wrapper over libtelnet (internal)
 │   │   │   ├── TelnetProtocolCore.swift
 │   │   │   └── TelnetWireCoding.swift
-│   ├── Transport/                  # NIOTS/Network.framework 集成（internal）
+│   ├── Transport/                  # NIOTS/Network.framework integration (internal)
 │   │   ├── TelnetChannelHandler.swift
 │   │   ├── TelnetConnectionBootstrap.swift
 │   │   └── TelnetNetworkEventMapping.swift
-│   ├── TelnetDemo/                     # [可执行，仅 macOS] CLI Demo
+│   ├── TelnetDemo/                     # [executable, macOS only] CLI demo
 │   │   └── main.swift
-│   └── TelnetEchoServer/               # [可执行，仅 macOS] 本地回环服务端（Demo + 集成测试夹具）
+│   └── TelnetEchoServer/               # [executable, macOS only] local loopback server (demo + integration fixture)
 │       └── main.swift
 ├── Tests/
 │   └── TelnetKitTests/
-│       ├── PublicAPI/                  # 黑盒：只 import TelnetKit
-│       ├── Protocol/                   # 白盒：@testable import，逐事件断言
-│       └── Integration/                # 回环集成：真实连接 + NIOTS
+│       ├── PublicAPI/                  # black box: only import TelnetKit
+│       ├── Protocol/                   # white box: @testable import, per-event assertions
+│       └── Integration/                # loopback: a real connection through NIOTS
 └── Examples/
-    └── TelnetKitDemoApp/               # SwiftUI Demo（Xcode 工程；macOS 与 iOS 目标）
+    └── TelnetKitDemoApp/               # SwiftUI demo (Xcode project; macOS and iOS targets)
 ```
 
-### 4.2 分层与职责
+### 4.2 Layers and responsibilities
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Public API  TelnetConnection(actor) / TelnetEvent / Options   │  ← 用户只碰这一层
+│ Public API  TelnetConnection(actor) / TelnetEvent / Options   │  ← the only layer a caller touches
 ├──────────────────────────────────────────────────────────────┤
-│ Protocol    TelnetProtocolCore：封装 telnet_t 生命周期、       │
-│             事件回调 → Swift enum、选项表、NVT 编码            │
+│ Protocol    TelnetProtocolCore: telnet_t lifetime,            │
+│             event callback → Swift enum, option table, NVT     │
 ├──────────────────────────────────────────────────────────────┤
-│ Transport   TelnetChannelHandler：ChannelDuplexHandler，       │
-│             把 ByteBuffer(入) / IOData(出) ↔ ProtocolCore      │
+│ Transport   TelnetChannelHandler: ChannelDuplexHandler,        │
+│             joining ByteBuffer (in) / IOData (out) ↔ Core      │
 ├──────────────────────────────────────────────────────────────┤
 │ NIOTS       NIOTSConnectionBootstrap + NIOTSEventLoopGroup     │
 ├──────────────────────────────────────────────────────────────┤
-│ System      Network.framework（路径、代理、VPN、能耗）         │
+│ System      Network.framework (path, proxy, VPN, power)       │
 ├──────────────────────────────────────────────────────────────┤
-│ C           CLibTelnet（libtelnet.c，只做协议解析）            │
+│ C           CLibTelnet (libtelnet.c, protocol parsing only)    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**关键设计决策**
+**Key design decisions**
 
-| 决策 | 选择 | 理由 |
+| Decision | Choice | Reason |
 | --- | --- | --- |
-| C 依赖引入方式 | 单包内 vendored C target + `module.modulemap` | 上游无 `Package.swift`；避免额外仓库与 submodule 复杂度，fork 可控（已确认） |
-| 并发边界 | `TelnetProtocolCore` 的**所有权绑定到 NIO EventLoop**，不入 actor | libtelnet 状态机非线程安全，且其回调会同步产生出站字节；绑定 EventLoop 可零锁、零抢占 |
-| 公开并发类型 | `TelnetConnection` 用 `actor`，事件用 `AsyncStream` 包装 | 对外天然 `Sendable`，调用方无需理解 EventLoop |
-| 事件传递 | `AsyncStream<TelnetEvent>` + 有界缓冲策略 | 提供背压语义；避免无界增长 |
-| 出站调用 | `actor` 方法 → `eventLoop.execute` / `NIOAsyncWriter` 串行化 | 保证与 `telnet_*` 调用同线程，规避数据竞争 |
-| 错误模型 | Swift `Error` 枚举，映射 libtelnet `telnet_error_t` | 不泄漏 C 错误码 |
-| 关闭语义 | `close()` 幂等；`events` 流在通道关闭后 `finish()` | 避免 `for await` 永久挂起 |
+| How the C dependency enters | Vendored C target plus `module.modulemap` in this package | Upstream has no `Package.swift`; avoids an extra repository and submodule complexity and keeps the fork controllable (confirmed) |
+| Concurrency boundary | `TelnetProtocolCore` is **owned by the NIO EventLoop** and is not an actor | The libtelnet state machine is not thread-safe and its callback synchronously produces outbound bytes; EventLoop ownership needs no lock and no preemption |
+| Public concurrency type | `TelnetConnection` is an `actor`; events are wrapped in `AsyncStream` | Naturally `Sendable` for callers, who need no knowledge of EventLoop |
+| Event delivery | `AsyncStream<TelnetEvent>` with a bounded buffer policy | Gives backpressure semantics and prevents unbounded growth |
+| Outbound calls | `actor` method → `eventLoop.execute` / `NIOAsyncWriter` serialization | Keeps the call on the same thread as the `telnet_*` call and avoids a data race |
+| Error model | A Swift `Error` enum mapped from libtelnet's `telnet_error_t` | No C error code leaks |
+| Close semantics | `close()` is idempotent; the `events` stream finishes when the channel closes | Prevents `for await` from hanging forever |
 
-### 4.3 线程/并发模型（必须遵守的约束）
+### 4.3 Threading and concurrency model (mandatory constraints)
 
-1. **单线程所有权**：`telnet_t*` 只在创建它的 EventLoop 上被访问；所有 `telnet_recv`、`telnet_send*`、`telnet_iac`、`telnet_negotiate` 都必须在同一个 `NIOTSEventLoop`（底层为串行 `DispatchQueue`）上调用。
-2. **`user_data` 生命周期**：传给 `telnet_init` 的 `Unmanaged` 指针指向 handler 内部状态，`telnet_free` 之后绝不能再被回调使用；handler 的 `deinit` 中先 `telnet_free` 再释放状态。
-3. **回调内不得逃逸**：`telnet_event_t` 里的 `buffer`/`name`/`argv` 指针**仅在回调期间有效**，必须在回调内立即拷贝成 Swift 值类型。
-4. **回调内不得重入**：事件回调中不能递归调用 `telnet_send*`；需要发送时必须转成"待发出站队列"，在回调返回后由 handler 顺序 flush。
-5. **Swift 6 严格并发**：全包启用 `StrictConcurrency`，公开类型全部 `Sendable`；测试中不得使用 `@unchecked Sendable` 掩盖真实竞争（C 封装点除外，且必须注释说明理由 + 有并发测试覆盖）。
+1. **Single-thread ownership**: `telnet_t*` is accessed only on the EventLoop that created it; every `telnet_recv`, `telnet_send*`, `telnet_iac`, and `telnet_negotiate` call happens on the same `NIOTSEventLoop` (a serial `DispatchQueue` underneath).
+2. **`user_data` lifetime**: the `Unmanaged` pointer passed to `telnet_init` refers to handler state and must never reach a callback after `telnet_free`; the handler deinit calls `telnet_free` before releasing that state.
+3. **No escape from the callback**: the `buffer`, `name`, and `argv` pointers in a `telnet_event_t` are valid **only during the callback** and must be copied into Swift value types immediately.
+4. **No reentry inside the callback**: an event callback must not recursively call `telnet_send*`; a send becomes an outbound queue entry that the handler flushes in order after the callback returns.
+5. **Swift 6 strict concurrency**: `StrictConcurrency` is on for the whole package, every public type is `Sendable`, and tests must not use `@unchecked Sendable` to hide a real race (the C wrapper is the only exception, and it needs a comment stating why plus a concurrency test).
 
 ---
 
-## 5. 公开 API 设计
+## 5. Public API design
 
-> 以下为**接口契约草案**（进入开发后以 Swift Interface 快照测试固化）。所有类型 `Sendable`，所有方法不出现任何 C 类型。
+> The signatures below are a **contract draft**, to be frozen by a Swift interface snapshot test once development starts. Every type is `Sendable` and no method mentions a C type.
 
-### 5.1 枚举与基础类型
+### 5.1 Enums and base types
 
 ```swift
-/// 选项码建模为 struct + static 常量而非 enum：
-/// 因为 RFC 1073/1572 等存在大量未内建选项，需要无名兜底值，enum 的 rawValue 无法表达。
+/// Option codes are modeled as a struct with static constants, not an enum:
+/// RFC 1073 and RFC 1572 leave many options unmodeled, needing an unnamed fallback.
 public struct TelnetOption: RawRepresentable, Sendable, Hashable, CaseIterable {
     public let rawValue: UInt8
-    public init(rawValue: UInt8) { self.rawValue = rawValue }   // 任意码，含未内建
+    public init(rawValue: UInt8) { self.rawValue = rawValue }   // any code, modeled or not
 
     public static let binary: TelnetOption = .init(rawValue: 0)
     public static let echo: TelnetOption = .init(rawValue: 1)
@@ -229,9 +229,9 @@ public struct TelnetOption: RawRepresentable, Sendable, Hashable, CaseIterable {
     public static let zmp: TelnetOption = .init(rawValue: 93)
     public static let extendedOptionsList: TelnetOption = .init(rawValue: 255)
 
-    /// 已内建建模的选项（供 UI 展示与测试遍历）
+    /// The modeled options, for UI display and test traversal
     public static var allCases: [TelnetOption] { [...] }
-    /// 人类可读名（未内建 → "option(\(rawValue))"）
+    /// A human-readable name (unmodeled codes render as "option(\(rawValue))")
     public var displayName: String { get }
 }
 
@@ -243,17 +243,17 @@ public enum TelnetCommand: UInt8, Sendable, Hashable {
     case will = 251, wont = 252, do_ = 253, dont = 254
 }
 
-/// 协商指令（用 Swift 命名，取代 WILL/WONT/DO/DONT 宏）
+/// Negotiation verbs, with Swift spellings replacing the WILL/WONT/DO/DONT macros
 public enum TelnetNegotiation: Sendable, Hashable { case will, wont, `do`, dont }
 
 public struct TelnetOptionStatus: Sendable, Hashable {
-    public var locallyEnabled: Bool     // 本端 WILL
-    public var remotelyEnabled: Bool    // 对端 WILL
-    public var localRequested: Bool     // 已发出 WILL/WONT 待确认
-    public var remoteRequested: Bool    // 已发出 DO/DONT 待确认
+    public var locallyEnabled: Bool     // this end sent WILL
+    public var remotelyEnabled: Bool    // the peer sent WILL
+    public var localRequested: Bool     // a WILL/WONT is outstanding
+    public var remoteRequested: Bool    // a DO/DONT is outstanding
 }
 
-// MARK: 事件配套值类型（均为纯 Swift 值类型，无 C 依赖）
+// MARK: Event value types (plain Swift values, no C dependency)
 
 public enum EnvironmentScope: Sendable, Hashable { case variable, userVariable }
 public struct EnvironmentVariable: Sendable, Hashable {
@@ -262,36 +262,36 @@ public struct EnvironmentVariable: Sendable, Hashable {
     public var scope: EnvironmentScope
 }
 
-/// 可恢复的协议异常（仅产生 .warning，不断连）
+/// A recoverable protocol problem (produces .warning only, never a disconnect)
 public enum TelnetWarning: Error, Sendable, Equatable {
-    case truncatedSequence([UInt8])           // 流结束时的半截 IAC 序列
+    case truncatedSequence([UInt8])           // a half IAC sequence at end of stream
     case unexpectedByte(UInt8, context: String)
     case subnegotiationTruncated(option: TelnetOption)
-    case eventBufferOverflowDropped(count: Int)  // 事件缓冲丢弃（见 FR-CONN-08 策略）
+    case eventBufferOverflowDropped(count: Int)  // dropped events, see the FR-CONN-08 policy
     case compressionUnavailable
 }
 
-/// 不可恢复的协议错误（产生 .protocolError 并关闭连接）
+/// A fatal protocol error (produces .protocolError and closes the connection)
 public enum TelnetProtocolError: Error, Sendable, Equatable {
-    case stateMachineFailure(code: TNLErrorCode, message: String)   // libtelnet errcode 的结构化映射
+    case stateMachineFailure(code: TNLErrorCode, message: String)   // structured mapping of a libtelnet errcode
     case invalidSubnegotiation(option: TelnetOption)
     case outOfMemory
 }
 
-/// libtelnet `telnet_error_t` 的 Swift 化映射（公开面不出现 C 枚举）
+/// Swift-side mapping of libtelnet's `telnet_error_t` (no C enum on the public surface)
 public enum TNLErrorCode: Sendable, Equatable { case badValue, outOfMemory, overflow, protocol, compression }
 ```
 
-### 5.2 选项配置
+### 5.2 Option configuration
 
 ```swift
 public struct TelnetOptions: Sendable {
-    public struct LocalOption: Sendable, Hashable {   // 本端能力
+    public struct LocalOption: Sendable, Hashable {   // this end's capabilities
         public var option: TelnetOption
         public var enabledByDefault: Bool
         public init(_ option: TelnetOption, enabledByDefault: Bool = true)
     }
-    public struct RemoteOption: Sendable, Hashable {  // 希望对端提供的能力
+    public struct RemoteOption: Sendable, Hashable {  // capabilities wanted from the peer
         public var option: TelnetOption
         public var requestOnConnect: Bool
         public init(_ option: TelnetOption, requestOnConnect: Bool = true)
@@ -299,47 +299,47 @@ public struct TelnetOptions: Sendable {
     public var local: [LocalOption]
     public var remote: [RemoteOption]
 
-    /// 常用预设：BINARY + SGA + ECHO（客户端语义）
+    /// A common preset: BINARY + SGA + ECHO with client semantics
     public static var standardClient: TelnetOptions { get }
-    /// 服务端向客户端主动请求 TTYPE / NAWS / NEW-ENVIRON
+    /// A server-side caller actively requests TTYPE / NAWS / NEW-ENVIRON from the client
     public static func serverRequesting(_ options: [TelnetOption]) -> TelnetOptions
-    public var isValid: Bool   // BINARY+LINEMODE 冲突等非法组合检测
+    public var isValid: Bool   // rejects illegal combinations such as BINARY with LINEMODE
 }
 ```
 
-### 5.3 事件模型
+### 5.3 Event model
 
 ```swift
 public enum TelnetEvent: Sendable {
-    /// 应用数据（已剥离协商字节、已按 NVT 规则还原换行）
-    case data(ByteBuffer)                    // 库内部使用 NIOCore.ByteBuffer 作为二进制载体
+    /// Application data (negotiation bytes stripped, NVT newlines restored)
+    case data(ByteBuffer)                    // the library uses NIOCore.ByteBuffer as the binary carrier
     case negotiation(TelnetNegotiation, option: TelnetOption, remote: Bool)
     case subnegotiation(option: TelnetOption, payload: [UInt8])
     case command(TelnetCommand)
-    case terminalTypeRequested                       // 收到 TTYPE SEND
-    case terminalType(String)                        // 收到 TTYPE IS
+    case terminalTypeRequested                       // received TTYPE SEND
+    case terminalType(String)                        // received TTYPE IS
     case environmentRequested(EnvironmentScope)      // SEND
     case environment(EnvironmentScope, [EnvironmentVariable])
-    case localEchoChanged(enabled: Bool)             // 结构化便捷事件
+    case localEchoChanged(enabled: Bool)             // derived convenience event
     case mssp([String: String])
     case zmp([String])
     case compressionEnabled(Bool)
-    case warning(TelnetWarning)                      // 可恢复：协议异常、SB 超长等
-    case protocolError(TelnetProtocolError)          // 不可恢复：状态机报错
+    case warning(TelnetWarning)                      // recoverable: protocol anomaly, oversized SB
+    case protocolError(TelnetProtocolError)          // fatal: the state machine reported an error
 }
 
 public extension TelnetEvent {
-    /// 把 .data 转成 UTF-8 文本（调用方最常用）
+    /// Converts .data to UTF-8 text (the most common caller need)
     var text: String? { get }
 }
 ```
 
-### 5.4 连接对象
+### 5.4 The connection object
 
 ```swift
 public actor TelnetConnection {
 
-    // MARK: 建立
+    // MARK: Establish
     public static func connect(
         host: String,
         port: Int = 23,
@@ -347,421 +347,422 @@ public actor TelnetConnection {
         configuration: TelnetConfiguration = .init()
     ) async throws(TelnetError) -> TelnetConnection
 
-    // MARK: 事件流（单消费者语义）
+    // MARK: Event stream (single-consumer semantics)
     public nonisolated var events: AsyncStream<TelnetEvent> { get }
 
-    // MARK: 状态
+    // MARK: State
     public var isConnected: Bool { get }
     public var remoteAddress: String? { get }
     public var localAddress: String? { get }
     public func optionStatus(_ option: TelnetOption) -> TelnetOptionStatus
 
-    // MARK: 发送
-    public func send(_ bytes: [UInt8]) async throws(TelnetError)      // 原始字节，自动转义 IAC
-    public func send(text: String) async throws(TelnetError)          // 自动 NVT 换行转换
+    // MARK: Send
+    public func send(_ bytes: [UInt8]) async throws(TelnetError)      // raw bytes, IAC escaped
+    public func send(text: String) async throws(TelnetError)          // automatic NVT newline translation
     public func send(text: String, lineEnding: TelnetLineEnding) async throws(TelnetError)
-    public func sendRaw(_ bytes: [UInt8]) async throws(TelnetError)   // 不做 NVT 转换
+    public func sendRaw(_ bytes: [UInt8]) async throws(TelnetError)   // no NVT translation
 
-    // MARK: 协商
+    // MARK: Negotiation
     @discardableResult
     public func negotiate(_ action: TelnetNegotiation, option: TelnetOption) async throws(TelnetError) -> Bool
-    public func requestOption(_ option: TelnetOption) async throws(TelnetError)   // DO/WILL 语义糖
+    public func requestOption(_ option: TelnetOption) async throws(TelnetError)   // DO/WILL sugar
     public func subnegotiate(option: TelnetOption, payload: [UInt8]) async throws(TelnetError)
     public func send(command: TelnetCommand) async throws(TelnetError)
 
-    // MARK: 功能封装
+    // MARK: Capability helpers
     public func replyTerminalType(_ type: String) async throws(TelnetError)
     public func sendEnvironment(_ values: [EnvironmentVariable], scope: EnvironmentScope) async throws(TelnetError)
     public func sendWindowSize(columns: Int, rows: Int) async throws(TelnetError)
 
-    // MARK: 关闭
+    // MARK: Close
     public func close() async
 }
 
 public enum TelnetLineEnding: Sendable { case crlf, crNul, lf, none }
 
 public struct TelnetConfiguration: Sendable {
-    public var connectTimeout: Duration            // 默认 .seconds(10)
-    public var waitForConnectivity: Bool           // 默认 true：无路由时挂起等待而非立即失败
-    public var idleTimeout: Duration?              // 默认 nil
-    public var inboundBufferLimit: Int             // 默认 64 KiB，超限抛 .bufferOverflow
-    public var subnegotiationLimit: Int            // 默认 8 KiB，防 SB 洪泛
-    public var maxInflatedBytes: Int               // 默认 16 MiB；v0.2 启用 zlib 后约束单次 inflate 输出，防解压炸弹
+    public var connectTimeout: Duration            // default .seconds(10)
+    public var waitForConnectivity: Bool           // default true: wait for a route instead of failing at once
+    public var idleTimeout: Duration?              // default nil
+    public var inboundBufferLimit: Int             // default 64 KiB; exceeding it throws .bufferOverflow
+    public var subnegotiationLimit: Int            // default 8 KiB, against SB flooding
+    public var maxInflatedBytes: Int               // default 16 MiB; bounds one inflate output once zlib ships in v0.2, against bombs
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
-    public var logger: Logger?                     // swift-log；默认 nil（静默）
+    public var logger: Logger?                     // swift-log; nil by default (silent)
 }
 ```
 
-### 5.5 错误模型
+### 5.5 Error model
 
 ```swift
 public enum TelnetError: Error, Sendable, Equatable {
-    case invalidHost(String)                       // DNS 失败
+    case invalidHost(String)                       // DNS failure
     case connectionRefused(host: String, port: Int)
     case connectTimeout(Duration)
     case notConnected
     case alreadyClosed
-    case transportFailed(TelnetTransportFailure)   // 底层 IO 错误（字符串化，不泄漏 NIO 类型到公开泛型）
+    case transportFailed(TelnetTransportFailure)   // underlying IO failure (stringified; no NIO generic leaks)
     case protocolViolation(TelnetProtocolError)
     case bufferOverflow(limit: Int)
     case subnegotiationTooLarge(option: TelnetOption, limit: Int)
-    case unsupportedFeature(String)                // 本构建未提供的能力（首版没有触发点）
+    case unsupportedFeature(String)                // a capability this build lacks (no trigger in the first release)
     case invalidConfiguration(String)
     case cancelled
 }
 
-/// 传输层失败的结构化描述：保留可诊断信息，但公开面不出现 NIOCore 的具体错误泛型，
-/// 避免上游 NIO 演进破坏 TelnetKit 的 SemVer 兼容性。
+/// A structured transport failure: diagnostic detail is kept, but the public surface
+/// never names NIOCore's concrete error generics, so NIO changes cannot break SemVer.
 public struct TelnetTransportFailure: Error, Sendable, Equatable {
     public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), tls, channelClosed, writeTimeout, other }
     public var kind: Kind
-    public var message: String        // 面向开发者的可读描述（不含业务数据）
+    public var message: String        // a developer-readable description with no payload data
     public var isRetryable: Bool
 }
 ```
 
-### 5.6 公开接口约束（硬性）
+### 5.6 Hard constraints on the public interface
 
-| 约束 | 校验方式 |
+| Constraint | Check |
 | --- | --- |
-| 不暴露 `telnet_t`、`telnet_event_t`、`telnet_telopt_t`、`OpaquePointer` 等 C 类型 | `@testable` 外的测试目标 + `swift-api-digester` / interface 快照 Review |
-| 不导出 `TELNET_*` 宏对应的 Swift 符号 | 上述快照中禁止出现 `TELNET_` 前缀常量 |
-| 公开符号均带文档注释（`///`）且含代码示例 | DocC 构建无 warning；`swift package generate-documentation` 通过 |
-| 公开方法均标注 `async`/`throws` 语义并区分错误类型 | `throws(TelnetError)` 显式类型化抛出（Swift 6 typed throws） |
-| 可执行目标（Demo / EchoServer）不作为对外产品接口 | `Package.swift` 中标注为 `.executableTarget`，README 说明 |
+| No C type such as `telnet_t`, `telnet_event_t`, `telnet_telopt_t`, or `OpaquePointer` leaks | A test target outside `@testable` plus `swift-api-digester` / interface snapshot review |
+| No Swift symbol for a `TELNET_*` macro is exported | The snapshot forbids a constant with the `TELNET_` prefix |
+| Every public symbol carries a `///` doc comment with an example | A DocC build with no warning; `swift package generate-documentation` succeeds |
+| Every public method states its `async`/`throws` semantics and distinguishes error types | Explicit typed throws, `throws(TelnetError)` |
+| Executable targets (demo, echo server) are not part of the product interface | Declared as `.executableTarget` in `Package.swift` and documented as such in the README |
 
 ---
 
-## 6. 功能需求
+## 6. Functional requirements
 
-### 6.1 连接管理（FR-CONN）
+### 6.1 Connection management (FR-CONN)
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-CONN-01 | `connect(host:port:options:configuration:)` 建立 TCP 连接 | P0 | 能连本机回环 EchoServer 并收到欢迎语 |
-| FR-CONN-02 | 支持 DNS 解析域名（`SocketAddress.makeAddressResolvingHost`） | P0 | `localhost` 与 `127.0.0.1` 均可连通 |
-| FR-CONN-03 | 连接超时可配置，超时抛 `.connectTimeout` | P0 | 连接黑洞地址（如 `10.255.255.1:23`）在 1s 配置下 1.5s 内抛错 |
-| FR-CONN-04 | 连接建立期支持 `Task` 取消，取消抛 `.cancelled` 并关闭 socket | P0 | 取消后 `lsof`/服务端无残留连接 |
-| FR-CONN-05 | `close()` 幂等、优雅半关闭、再次调用不报错 | P0 | 连续 `close()` 两次无崩溃、无错误 |
-| FR-CONN-06 | 通道关闭（对端 FIN/RST、`idleTimeout`）时 `events` 流 `finish()` | P0 | `for await` 在 2s 内正常退出而非挂起 |
-| FR-CONN-07 | 所有公开方法在连接关闭后调用抛 `.notConnected` | P0 | 关闭后 `send` 抛错 |
-| FR-CONN-08 | 出站写满时提供背压（`writeAndFlush` 基于 promise + NIO 水位） | P1 | 灌入 100 MB 数据时内存不线性增长 |
-| FR-CONN-09 | 入站缓冲超过 `inboundBufferLimit` 时抛 `.bufferOverflow` 并关闭 | P1 | 恶意无换行洪泛被拦截 |
-| FR-CONN-10 | 可选 `idleTimeout`：静默超时主动关闭并抛/通知 | P2 | 配置 1s 后无数据，连接在 ~1s 内关闭 |
+| FR-CONN-01 | `connect(host:port:options:configuration:)` establishes a TCP connection | P0 | Connects to a loopback echo server and receives its greeting |
+| FR-CONN-02 | DNS names resolve (`SocketAddress.makeAddressResolvingHost`) | P0 | Both `localhost` and `127.0.0.1` connect |
+| FR-CONN-03 | The connect timeout is configurable and throws `.connectTimeout` | P0 | A black-hole address (such as `10.255.255.1:23`) throws within 1.5 s at a 1 s setting |
+| FR-CONN-04 | A connection attempt honours `Task` cancellation, throws `.cancelled`, and closes the socket | P0 | No connection is left behind on either side after cancellation |
+| FR-CONN-05 | `close()` is idempotent, performs a graceful half-close, and does not fail when called again | P0 | Two consecutive `close()` calls neither crash nor error |
+| FR-CONN-06 | The `events` stream finishes when the channel closes (peer FIN/RST, `idleTimeout`) | P0 | `for await` exits within 2 s instead of hanging |
+| FR-CONN-07 | Every public call after close throws `.notConnected` | P0 | `send` after close throws |
+| FR-CONN-08 | Outbound writes provide backpressure (promise-based `writeAndFlush` plus NIO watermarks) | P1 | Writing 100 MB does not grow memory linearly |
+| FR-CONN-09 | Exceeding `inboundBufferLimit` throws `.bufferOverflow` and closes | P1 | A malicious newline-free flood is stopped |
+| FR-CONN-10 | Optional `idleTimeout` closes a silent connection and reports it | P2 | With a 1 s setting and no data, the connection closes in about 1 s |
 
-### 6.2 协议解析与事件（FR-PROTO）
+### 6.2 Protocol parsing and events (FR-PROTO)
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-PROTO-01 | 完整解析 15 种 libtelnet 事件并映射为 `TelnetEvent` | P0 | 逐事件单测（见 §8）全绿 |
-| FR-PROTO-02 | 剥离所有 `IAC` 序列，`.data` 只含应用数据 | P0 | 混合输入下 `.data` 内容精确匹配期望 |
-| FR-PROTO-03 | `IAC IAC`（转义）还原为单字节 `0xFF` 并归入 `.data` | P0 | 单测断言字节 |
-| FR-PROTO-04 | 非法/截断 `IAC` 序列产生 `.warning` 而非崩溃 | P0 | 模糊输入（随机字节流 10 万次）无崩溃 |
-| FR-PROTO-05 | 子协商内容完整保真（含 `IAC` 转义还原） | P0 | TTYPE/NAWS/NEW-ENVIRON 子协商 payload 精确匹配 |
-| FR-PROTO-06 | `TELNET_FLAG_PROXY` 与 `TELNET_FLAG_NVT_EOL` 通过 `configuration` 暴露，不暴露宏 | P1 | 两种模式各有测试 |
-| FR-PROTO-07 | 子协商长度超 `subnegotiationLimit` 时抛 `.subnegotiationTooLarge` | P1 | 超大 SB 被拦截 |
-| FR-PROTO-08 | 回调缓冲零拷贝拷贝策略正确（不出现悬垂指针） | P0 | AddressSanitizer 下跑协议单测无报错 |
+| FR-PROTO-01 | Parse all 15 libtelnet events and map them to `TelnetEvent` | P0 | The per-event unit tests pass |
+| FR-PROTO-02 | Strip every `IAC` sequence so `.data` carries application data only | P0 | `.data` content matches exactly under mixed input |
+| FR-PROTO-03 | Restore the `IAC IAC` escape to one `0xFF` byte inside `.data` | P0 | The test asserts the bytes |
+| FR-PROTO-04 | An illegal or truncated `IAC` sequence produces `.warning`, never a crash | P0 | 100,000 iterations of random bytes do not crash |
+| FR-PROTO-05 | Subnegotiation content survives intact, including `IAC` escape restoration | P0 | The TTYPE, NAWS, and NEW-ENVIRON payloads match exactly |
+| FR-PROTO-06 | `TELNET_FLAG_PROXY` and `TELNET_FLAG_NVT_EOL` are exposed through `configuration`, never as macros | P1 | Each mode has a test |
+| FR-PROTO-07 | A subnegotiation longer than `subnegotiationLimit` throws `.subnegotiationTooLarge` | P1 | An oversized SB is stopped |
+| FR-PROTO-08 | The callback copy strategy holds no dangling pointer | P0 | The protocol tests pass under AddressSanitizer |
 
-### 6.3 选项协商与终端能力（FR-NEG）
+### 6.3 Option negotiation and terminal capabilities (FR-NEG)
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-NEG-01 | 按 `TelnetOptions` 在连接建立后自动发起初始协商 | P0 | 与 EchoServer 握手后 `optionStatus(.echo)` 正确 |
-| FR-NEG-02 | 遵循 RFC 1143 Q-method，拒绝回环协商 | P0 | 双方同时 WILL 时不产生无限循环（计数断言） |
-| FR-NEG-03 | 收到 `WILL/WONT/DO/DONT` 时产生 `.negotiation` 事件 | P0 | 事件顺序与内容精确断言 |
-| FR-NEG-04 | 未声明支持的选项默认 `DONT/WONT` 拒绝 | P0 | 服务端 `DO ZMP` 时本端回 `WONT ZMP` |
-| FR-NEG-05 | 支持 `TTYPE`：请求、上报、多类型轮询（重复类型终止） | P1 | 模拟服务端轮询逻辑通过 |
-| FR-NEG-06 | 支持 `NAWS`：窗口尺寸变更时自动上报（4×UInt16 大端，含 255 转义） | P1 | SwiftUI Demo 缩放窗口后服务端收到新尺寸 |
-| FR-NEG-07 | 支持 `NEW-ENVIRON`：接收变量表并结构化；可主动发送 | P1 | 变量/值/转义（`ESC`）字节序列正确 |
-| FR-NEG-08 | 支持 `MSSP` 解析为 `[String: String]` | P2 | 标准 MSSP 报文解析正确 |
-| FR-NEG-09 | 支持 `ZMP` 命令与参数解析 | P2 | 多参数/空参数边界正确 |
-| FR-NEG-10 | 不在 `TelnetOptions` 中登记 `compress2`：本端对协商回 `WONT`，绝不接受压缩流 | P1 | 收到 `DO COMPRESS2` 时出站 `WONT COMPRESS2`；`optionStatus(.compress2)` 全为 false |
-| FR-NEG-11 | 启用压缩（v0.2）的前置条件写清楚：解压上限、压缩态事件流契约、压缩流失败模式三者都有设计才可开启 | P2 | 三项设计各自有测试；缺任一项则 `HAVE_ZLIB` 保持未定义 |
-| FR-NEG-11 | `optionStatus(_:)` 实时反映协商状态 | P1 | 协商前后状态断言 |
-| FR-NEG-12 | `sendWindowSize`、`replyTerminalType` 等能力可从 Demo 手动触发 | P1 | Demo 中有对应入口 |
+| FR-NEG-01 | Send the initial negotiation from `TelnetOptions` after connecting | P0 | `optionStatus(.echo)` is correct after the handshake with the echo server |
+| FR-NEG-02 | Follow RFC 1143 Q-method rules and refuse a negotiation loop | P0 | Simultaneous WILL from both ends produces a bounded message count |
+| FR-NEG-03 | Produce a `.negotiation` event for each received `WILL`/`WONT`/`DO`/`DONT` | P0 | Event order and content match exactly |
+| FR-NEG-04 | Refuse an option that was not declared, with `DONT`/`WONT` | P0 | A server `DO ZMP` receives `WONT ZMP` |
+| FR-NEG-05 | Support `TTYPE`: request, report, and multi-type cycling (a repeated type ends it) | P1 | A simulated server polling loop passes |
+| FR-NEG-06 | Support `NAWS`: report the window size on change (4 × UInt16 big-endian, `255` escaped) | P1 | The server receives a new size after the SwiftUI demo window is resized |
+| FR-NEG-07 | Support `NEW-ENVIRON`: receive a variable list structurally and send one on demand | P1 | The variable, value, and `ESC` byte sequences are correct |
+| FR-NEG-08 | Parse `MSSP` into `[String: String]` | P2 | A standard MSSP message parses correctly |
+| FR-NEG-09 | Parse `ZMP` commands and arguments | P2 | Multi-argument and empty-argument boundaries are correct |
+| FR-NEG-10 | `compress2` is not registered in `TelnetOptions`: this end answers negotiations with `WONT` and never accepts a compressed stream | P1 | A `DO COMPRESS2` receives `WONT COMPRESS2`, and `optionStatus(.compress2)` reports all-false |
+| FR-NEG-11 | The precondition for enabling compression (v0.2) is explicit: the inflation bound, event-flow behavior under compression, and the compressed-stream failure mode must all be designed | P2 | Each of the three has a test; `HAVE_ZLIB` stays undefined while any is missing |
+| FR-NEG-11 | `optionStatus(_:)` reflects negotiation state live | P1 | State is asserted before and after negotiation |
+| FR-NEG-12 | Capabilities such as `sendWindowSize` and `replyTerminalType` can be triggered from the demo | P1 | The demo exposes an entry point for each |
 
-### 6.4 文本与编码（FR-TEXT）
+### 6.4 Text and encoding (FR-TEXT)
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-TEXT-01 | `send(text:)` 默认 CRLF 行尾（`TelnetLineEnding.crlf`） | P0 | 出站字节断言 `0D 0A` |
-| FR-TEXT-02 | 支持 `crNul` / `lf` / `none` 行尾策略 | P1 | 三种策略字节断言 |
-| FR-TEXT-03 | BINARY 模式已协商时不做 CR/LF 转换（与 `TELNET_FLAG_NVT_EOL` 语义一致） | P0 | 二进制模式下 `0x0A` 保真 |
-| FR-TEXT-04 | 所有文本按 UTF-8 编码；非法字符按 `.lossy` 策略替换并记 warning | P1 | 非 UTF-8 输入不崩溃 |
-| FR-TEXT-05 | `send(_ bytes:)` 自动转义 `0xFF`，`sendRaw` 不转义（供高级用法） | P0 | 字节断言 |
+| FR-TEXT-01 | `send(text:)` uses a CRLF line ending by default (`TelnetLineEnding.crlf`) | P0 | Outbound bytes assert `0D 0A` |
+| FR-TEXT-02 | Support the `crNul`, `lf`, and `none` line endings | P1 | All three assert their bytes |
+| FR-TEXT-03 | Skip CR/LF translation when BINARY is negotiated (matching `TELNET_FLAG_NVT_EOL` semantics) | P0 | `0x0A` survives intact in binary mode |
+| FR-TEXT-04 | Encode all text as UTF-8; replace illegal input lossily and log a warning | P1 | Non-UTF-8 input does not crash |
+| FR-TEXT-05 | `send(_ bytes:)` escapes `0xFF` automatically; `sendRaw` does not (for advanced use) | P0 | The byte assertions pass |
 
-### 6.5 网络路径与连接可用性（FR-PATH）
+### 6.5 Network path and connection availability (FR-PATH)
 
-NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEvents`），这是只用一个传输层换来的能力，因此作为需求而非可选项。
+NIOTS exposes Network.framework path events to SwiftNIO (`NIOTSNetworkEvents`). That capability is why a single transport is worth it, so it is a requirement rather than an option.
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-PATH-01 | `waitForConnectivity: true` 时，无可用路由的连接请求挂起等待，而不是立即失败 | P0 | 模拟无路由环境，连接不抛错且不结束；路由恢复后连接建立成功 |
-| FR-PATH-02 | 路径变化映射为 `.pathChanged(viable:expensive:constrained:)` 事件 | P0 | 切蜂窝↔Wi‑Fi 时收到事件，且 `viable` 取值与 `NWPath` 一致 |
-| FR-PATH-03 | 出现更优路径时发出 `.betterPathAvailable`，消失时发出 `.betterPathUnavailable` | P1 | 事件按 `NIOTSNetworkEvents` 语义成对出现 |
-| FR-PATH-04 | 连接被系统暂停（等待连通性）时发出 `.waitingForConnectivity(error:description:)`，连接不被关闭 | P0 | 事件可观测，后续恢复不产生重复的连接建立事件 |
-| FR-PATH-05 | 路径事件不改变协议状态：`optionStatus(_:)` 与协商状态在路径切换前后一致 | P0 | 切换前后断言 `optionStatus` 相同 |
-| FR-PATH-06 | 路径事件在公开接口中以 Swift 值表达，不泄漏 `NWPath` 类型 | P1 | 快照中不出现 `NWPath`、`NWError`、`nw_*` |
-| FR-PATH-07 | 仅在通道激活之后才发出 `.pathChanged` | P1 | 测试断言连接事件之前没有路径事件 |
+| FR-PATH-01 | With `waitForConnectivity: true`, a connect request with no available route waits instead of failing immediately | P0 | In a simulated no-route state the call neither throws nor finishes, and the connection completes once a route returns |
+| FR-PATH-02 | A path change maps to `.pathChanged(viable:expensive:constrained:)` | P0 | Switching between cellular and Wi-Fi produces the event, and `viable` matches `NWPath` |
+| FR-PATH-03 | A better path produces `.betterPathAvailable`, and its loss produces `.betterPathUnavailable` | P1 | The pair follows `NIOTSNetworkEvents` semantics |
+| FR-PATH-04 | A connection the system suspends (waiting for connectivity) emits `.waitingForConnectivity(error:description:)` without closing | P0 | The event is observable and recovery emits no duplicate connection event |
+| FR-PATH-05 | A path event leaves protocol state untouched: `optionStatus(_:)` and negotiation state match before and after a path switch | P0 | `optionStatus` is asserted unchanged across the switch |
+| FR-PATH-06 | Path events reach the public API as Swift values with no `NWPath` leak | P1 | The snapshot contains no `NWPath`, `NWError`, or `nw_*` |
+| FR-PATH-07 | `.pathChanged` is emitted with the current viability only after the channel is active | P1 | A test asserts no path event precedes the connection event |
 
-### 6.6 错误与诊断（FR-ERR）
+### 6.6 Errors and diagnostics (FR-ERR)
 
-| ID | 需求 | 优先级 | 验收标准 |
+| ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-ERR-01 | libtelnet `telnet_error_t` 全量映射到 `TelnetError` | P0 | 映射表单测；无 `default: fatalError` |
-| FR-ERR-02 | `.protocolError` 触发后连接关闭且 `events` 结束 | P0 | 断言关闭与流结束 |
-| FR-ERR-03 | `.warning` 不中断连接 | P0 | 警告后仍可收发 |
-| FR-ERR-04 | 可选 `Logger`（swift-log）输出：协议帧（trace）、状态变更（debug）、连接事件（info）、错误（error） | P1 | 注入内存 Logger 断言至少 4 类日志 |
-| FR-ERR-05 | 默认不记录应用数据内容（防泄漏敏感信息），需显式开启 | P1 | 默认配置下日志不含 payload |
+| FR-ERR-01 | Map every libtelnet `telnet_error_t` value to `TelnetError` | P0 | A mapping-table test; no `default: fatalError` arm |
+| FR-ERR-02 | A `.protocolError` closes the connection and finishes the event stream | P0 | Closure and stream finish are asserted |
+| FR-ERR-03 | A `.warning` does not interrupt the connection | P0 | The session still sends and receives after a warning |
+| FR-ERR-04 | The optional `Logger` (swift-log) emits protocol frames at trace, state changes at debug, connection events at info, and errors at error | P1 | An injected in-memory logger captures at least four categories |
+| FR-ERR-05 | Application payload is not logged by default, to avoid leaking sensitive data; it needs an explicit opt-in | P1 | The default configuration logs no payload |
 
 ---
 
-## 7. 非功能需求
+## 7. Non-functional requirements
 
-| 类别 | 需求 |
+| Category | Requirement |
 | --- | --- |
-| 语言与工具链 | Swift 6 语言模式（`swiftLanguageModes: [.v6]`），`swift-tools-version: 6.2`，最低 Xcode 26 / Swift 6.2 |
-| 部署目标 | `platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)]`；库产物只在这五个 Apple 平台上承诺，非 Apple 平台不做也不保留分支 |
-| 严格并发 | 全包 `StrictConcurrency` 完整检查，0 warning |
-| 依赖 | `swift-nio`（2.103.0 起）、`swift-log`（1.x，用于可选日志）；不引入其他第三方运行时依赖 |
-| 二进制体积 | 单架构 release 下 TelnetKit 增量 < 500 KiB（含 C 源） |
-| 性能 | 单连接吞吐 ≥ 50 MB/s（回环、64 KiB 缓冲）；协议解析每字节额外分配次数为 0（除事件边界） |
-| 内存 | 单连接常驻内存 < 2 MiB（不含 NIO EventLoop 池）；10 万条输入事件无泄漏（`leaks`/`valgrind` 或 Instruments） |
-| 安全 | 不信任对端输入：所有解析路径有长度上限；`IAC` 状态机对截断输入安全；默认不打印业务数据 |
-| 可测试性 | 协议层可脱离网络单测（纯 `recv → [TelnetEvent]`）；网络层可对回环服务端集成测试；测试不访问外网 |
-| 文档 | 每个公开符号有 DocC 注释与可运行示例；README 覆盖 5 分钟上手；CHANGELOG 遵循 Keep a Changelog |
-| 兼容性策略 | SemVer；公开 API 快照测试（interface snapshot）纳入 CI，破坏性变更须显式提交快照 |
-| 可观测性 | 与 swift-log 集成；可选 `NIOAsyncChannel` 的 metrics/`swift-metrics`（P2） |
+| Language and toolchain | Swift 6 language mode (`swiftLanguageModes: [.v6]`), `swift-tools-version: 6.2`, minimum Xcode 26 / Swift 6.2 |
+| Deployment target | `platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)]`; build products are promised for these five Apple platforms only, and non-Apple platforms get neither support nor a branch |
+| Strict concurrency | Complete `StrictConcurrency` checking for the whole package, 0 warnings |
+| Dependencies | `swift-nio` (2.103.0 or later) and `swift-log` (1.x, for optional logging); no other third-party runtime dependency |
+| Binary size | Under a single-architecture release build, the TelnetKit delta is under 500 KiB including the C source |
+| Performance | Single-connection throughput of at least 50 MB/s over loopback with a 64 KiB buffer; zero extra allocations per byte in the parse path outside event boundaries |
+| Memory | Under 2 MiB resident per connection excluding the NIO EventLoop pool; no leak after 100,000 input events (`leaks`/`valgrind` or Instruments) |
+| Security | Peer input is untrusted: every parse path has a length bound, the `IAC` state machine is safe on truncated input, and application data is not logged by default |
+| Testability | The protocol layer is unit-testable without a network (`recv → [TelnetEvent]` only); the network layer is integration-testable against a loopback server; tests never touch the external network |
+| Documentation | Every public symbol has a DocC comment and a runnable example; the README covers a five-minute start; the CHANGELOG follows Keep a Changelog |
+| Compatibility policy | SemVer; a public API snapshot test runs in CI and a breaking change must commit the new snapshot explicitly |
+| Observability | Integration with swift-log; optional `NIOAsyncChannel` metrics through `swift-metrics` (P2) |
 
 ---
 
-## 8. 测试策略与用例清单
+## 8. Test strategy and case inventory
 
-### 8.1 分层
+### 8.1 Layers
 
-本节的用例清单是需求清单；环境、命令、质量门槛与 CI 矩阵由 [docs/testing.md](docs/testing.md) 负责。
+The case inventory below is the requirement list; [docs/testing.md](docs/testing.md) owns the environment, commands, quality gates, and CI matrix.
 
-| 层 | 目标 | 手段 |
+| Layer | Goal | Method |
 | --- | --- | --- |
-| L1 协议单测（白盒） | 逐事件、逐字节正确性 | `@testable import TelnetKit` + `TelnetProtocolCore` 直接喂字节 |
-| L2 公开接口测试（黑盒） | 契约稳定性、无 C 泄漏、错误语义 | 只 `import TelnetKit`，配合 `TelnetEchoServer` 回环 |
-| L3 集成测试 | 真实连接、超时、取消、并发多连接、路径事件 | `NIOTSConnectionBootstrap` 连本地 `NIOTSListenerBootstrap` 夹具 |
-| L4 健壮性 | 模糊输入、资源上限 | 随机/恶意字节流、超大 SB、洪泛 |
-| L5 静态保障 | 接口、并发与五平台构建 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job、iOS/watchOS/tvOS/visionOS 模拟器构建 |
+| L1 protocol unit tests (white box) | Per-event, per-byte correctness | `@testable import TelnetKit` and a direct byte feed into `TelnetProtocolCore` |
+| L2 public interface tests (black box) | Contract stability, no C leak, error semantics | `import TelnetKit` only, against a loopback `TelnetEchoServer` |
+| L3 integration tests | A real connection, timeout, cancellation, concurrent connections, path events | `NIOTSConnectionBootstrap` against a local `NIOTSListenerBootstrap` fixture |
+| L4 robustness | Fuzz input and resource bounds | Random and malicious byte streams, oversized SB, flooding |
+| L5 static assurance | Interface, concurrency, and five platform builds | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job, and iOS, watchOS, tvOS, and visionOS simulator builds |
 
-框架统一使用 **Swift Testing**（`import Testing`，`@Test`/`@Suite`/`#expect`/`#require`），异步用 `async` 测试函数；需要超时保护的用 `withTimeout` 辅助（测试内自建）。协议层与公开接口测试在五个平台都能跑；集成测试（会落 socket/回显服务端）只在 macOS 与 iOS 模拟器上跑。
+Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`/`#require`) with `async` test functions; a test that needs timeout protection uses a `withTimeout` helper defined in the test target. The protocol and public interface suites run on all five platforms; the integration suite, which binds a socket and starts an echo server, runs on macOS and the iOS simulator.
 
-### 8.2 用例清单（公开接口必测）
+### 8.2 Case inventory (required for the public interface)
 
-**A. 连接生命周期（对应 FR-CONN）**
+**A. Connection lifecycle (FR-CONN)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `connect_loopback_succeeds` | 返回非 nil，`isConnected == true`，`remoteAddress == "127.0.0.1:<port>"` |
-| `connect_refused_throws_connectionRefused` | 关闭端口连接抛 `.connectionRefused` |
-| `connect_unresolvable_host_throws_invalidHost` | 抛 `.invalidHost` |
-| `connect_timeout_throws_connectTimeout` | 黑洞地址 + `connectTimeout: .seconds(1)` → `.connectTimeout` |
-| `connect_cancellation_throws_cancelled` | `Task` 取消 → `.cancelled`，服务端无残留连接 |
-| `close_is_idempotent` | 两次 `close()` 无错误 |
-| `events_finish_on_remote_close` | 服务端关闭后 `for await` 正常结束（带 2s 超时保护） |
-| `send_after_close_throws_notConnected` | 抛 `.notConnected` |
-| `optionStatus_reflects_negotiation` | 握手后 echo/SGA 状态正确 |
-| `inbound_buffer_limit_enforced` | 超限抛 `.bufferOverflow` 且连接关闭 |
+| `connect_loopback_succeeds` | Returns non-nil, `isConnected == true`, `remoteAddress == "127.0.0.1:<port>"` |
+| `connect_refused_throws_connectionRefused` | Connecting to a closed port throws `.connectionRefused` |
+| `connect_unresolvable_host_throws_invalidHost` | Throws `.invalidHost` |
+| `connect_timeout_throws_connectTimeout` | Black-hole address with `connectTimeout: .seconds(1)` produces `.connectTimeout` |
+| `connect_cancellation_throws_cancelled` | `Task` cancellation produces `.cancelled` and no connection left on the server |
+| `close_is_idempotent` | Two `close()` calls produce no error |
+| `events_finish_on_remote_close` | `for await` ends normally after the server closes, under a 2 s timeout guard |
+| `send_after_close_throws_notConnected` | Throws `.notConnected` |
+| `optionStatus_reflects_negotiation` | echo and SGA state is correct after the handshake |
+| `inbound_buffer_limit_enforced` | Exceeding the bound throws `.bufferOverflow` and closes the connection |
 
-**B. 协议解析（对应 FR-PROTO，白盒逐事件）**
+**B. Protocol parsing (FR-PROTO, white box, per event)**
 
-| 用例 | 输入 → 期望 |
+| Case | Input → expectation |
 | --- | --- |
 | `data_passthrough` | `"hello\r\n"` → `.data("hello\r\n")` |
 | `iac_escape_unescaped` | `FF FF` → `.data([0xFF])` |
-| `will_wont_do_dont_events` | `FF FB 01` / `FF FC 01` / `FF FD 01` / `FF FE 01` → 4 条 `.negotiation` 且 remote 标记正确 |
-| `iac_command_events` | `FF F1`(NOP)、`FF F9`(GA)、`FF EF`(EOF) → `.command(...)` |
+| `will_wont_do_dont_events` | `FF FB 01` / `FF FC 01` / `FF FD 01` / `FF FE 01` → four `.negotiation` events with the correct remote flag |
+| `iac_command_events` | `FF F1` (NOP), `FF F9` (GA), `FF EF` (EOF) → `.command(...)` |
 | `subnegotiation_payload` | `FF FA 18 00 78 74 65 72 6D FF F0` → `.terminalType("xterm")` |
-| `subnegotiation_with_escaped_ff` | payload 含 `FF FF` → 还原为 `0xFF` |
-| `truncated_iac_sequence_warns` | `FF FB`（流结束）→ `.warning`，不崩溃 |
-| `garbage_stream_no_crash` | 10 万随机字节 → 无崩溃，事件自洽 |
-| `subnegotiation_limit_exceeded` | 超限 → `.subnegotiationTooLarge` |
-| `newenviron_parsing` | VAR/USERVAR/VALUE/ESC 组合 → 结构化变量正确 |
+| `subnegotiation_with_escaped_ff` | A payload containing `FF FF` restores to `0xFF` |
+| `truncated_iac_sequence_warns` | `FF FB` at end of stream produces `.warning` without a crash |
+| `garbage_stream_no_crash` | 100,000 random bytes produce no crash and self-consistent events |
+| `subnegotiation_limit_exceeded` | Exceeding the bound produces `.subnegotiationTooLarge` |
+| `newenviron_parsing` | A VAR/USERVAR/VALUE/ESC combination produces the correct structured variables |
 | `mssp_parsing` | `1 name 2 value` → `["name": "value"]` |
-| `zmp_parsing` | 多参数命令 → `["cmd", "a", "b"]` |
-| `proxy_flag_behavior` | proxy 模式下不自动应答 |
-| `nvt_eol_flag_behavior` | 两种 newline 策略字节差异断言 |
+| `zmp_parsing` | A multi-argument command → `["cmd", "a", "b"]` |
+| `proxy_flag_behavior` | Proxy mode sends no automatic reply |
+| `nvt_eol_flag_behavior` | The two newline policies assert their byte differences |
 
-**C. 协商与终端能力（对应 FR-NEG）**
+**C. Negotiation and terminal capabilities (FR-NEG)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `initial_negotiation_sent_on_connect` | 服务端收到的首字节序列符合 `TelnetOptions.standardClient` |
-| `rfc1143_no_negotiation_loop` | 模拟双方同时 WILL，协商报文数量有限（≤ N） |
-| `unsupported_option_rejected` | 收到 `DO ZMP` 且未声明 → 出站含 `WONT ZMP` |
-| `ttype_send_triggers_reply_or_event` | 收到 TTYPE SEND → `.terminalTypeRequested`，`replyTerminalType` 后服务端收到 IS |
-| `naws_reported_on_window_resize` | 变更窗口 → 服务端收到 4 字节大端尺寸 |
-| `naws_escapes_255` | 列宽 255 → payload 含 `FF FF` |
-| `compress2_unsupported` | 协商 → `WONT`，`optionStatus(.compress2)` 全 false，且不抛错 |
+| `initial_negotiation_sent_on_connect` | The first bytes the server receives match `TelnetOptions.standardClient` |
+| `rfc1143_no_negotiation_loop` | Simultaneous WILL from both ends produces a bounded message count (≤ N) |
+| `unsupported_option_rejected` | `DO ZMP` for an undeclared option produces an outbound `WONT ZMP` |
+| `ttype_send_triggers_reply_or_event` | TTYPE SEND produces `.terminalTypeRequested`, and the server receives IS after `replyTerminalType` |
+| `naws_reported_on_window_resize` | A window change makes the server receive four big-endian bytes |
+| `naws_escapes_255` | A 255-column width makes the payload contain `FF FF` |
+| `compress2_unsupported` | Negotiation produces `WONT`, `optionStatus(.compress2)` reports all-false, and no error is thrown |
 
-**D. 文本与编码（对应 FR-TEXT）**
+**D. Text and encoding (FR-TEXT)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `send_text_crlf` / `send_text_crNul` / `send_text_lf` / `send_text_none` | 出站字节精确匹配 |
-| `send_text_escapes_iac` | 文本含 `0xFF` → 出站 `FF FF` |
-| `binary_mode_disables_newline_translation` | BINARY 协商后 `0x0A` 原样 |
-| `send_raw_bytes_not_escaped` | `sendRaw([0xFF])` 出站为单字节 |
+| `send_text_crlf` / `send_text_crNul` / `send_text_lf` / `send_text_none` | Outbound bytes match exactly |
+| `send_text_escapes_iac` | Text containing `0xFF` produces outbound `FF FF` |
+| `binary_mode_disables_newline_translation` | `0x0A` passes through after BINARY is negotiated |
+| `send_raw_bytes_not_escaped` | `sendRaw([0xFF])` emits a single byte |
 
-**E. 错误与日志（对应 FR-ERR）**
+**E. Errors and logging (FR-ERR)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `error_code_mapping_exhaustive` | 遍历 `telnet_error_t` 全量 → 均有非崩溃映射 |
-| `protocol_error_closes_connection` | 触发 `.protocolError` 后 `isConnected == false` 且流结束 |
-| `warning_does_not_close` | warning 后可继续收发 |
-| `logger_receives_expected_categories` | 内存 Logger 捕获 info/debug/error |
-| `logger_redacts_payload_by_default` | 默认配置日志不含业务内容 |
+| `error_code_mapping_exhaustive` | Every `telnet_error_t` value maps to a non-crashing result |
+| `protocol_error_closes_connection` | After `.protocolError`, `isConnected == false` and the stream finishes |
+| `warning_does_not_close` | The session still sends and receives after a warning |
+| `logger_receives_expected_categories` | An in-memory logger captures info, debug, and error |
+| `logger_redacts_payload_by_default` | The default configuration logs no application data |
 
-**F. 并发与资源（对应 NFR）**
+**F. Concurrency and resources (NFR)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `concurrent_connections_are_isolated` | 8 条并发连接各自收到正确回显，无交叉串包 |
-| `concurrent_sends_serialized` | 100 个并发 `send(text:)` 全部完整到达、无交错截断 |
-| `memory_stable_after_100k_events` | 10 万事件后常驻内存增幅 < 阈值 |
-| `no_dangling_buffer_with_asan` | ASan 构建下全量协议测试通过 |
+| `concurrent_connections_are_isolated` | Eight concurrent connections each receive their own echo with no cross-talk |
+| `concurrent_sends_serialized` | 100 concurrent `send(text:)` calls all arrive intact with no interleaved truncation |
+| `memory_stable_after_100k_events` | Resident memory growth after 100,000 events stays under the threshold |
+| `no_dangling_buffer_with_asan` | The full protocol suite passes under an ASan build |
 
-**H. 真实服务端（经 Homebrew 安装的 Apple telnetd）**
+**H. Real server (Apple's telnetd from Homebrew)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `real_server_connects` | TCP 连接完成，且首批字节是合法 Telnet（前导窗口内出现 `FF`，或为不含游离 `FF` 的纯文本） |
-| `real_server_negotiation_settles` | 协商在有限条报文内收敛，不回环 |
-| `real_server_session_stays_usable` | 会话在有限时长内持续收发，且不产生 `.protocolError` |
-| `real_server_closes_cleanly` | `close()` 使事件流恰好结束一次，且没有未完成的写入 |
-| `real_server_suite_skips_without_server` | 未设置 `TELNETKIT_TEST_SERVER_HOST` 时套件报告跳过而不是失败 |
+| `real_server_connects` | The TCP connection completes and the first bytes are valid Telnet (`FF` in the leading window or plain text with no stray `FF`) |
+| `real_server_negotiation_settles` | Negotiation stops within a bounded number of messages and does not loop |
+| `real_server_session_stays_usable` | The session sends and receives for a bounded period without `.protocolError` |
+| `real_server_closes_cleanly` | `close()` finishes the event stream exactly once and leaves no pending write |
+| `real_server_suite_skips_without_server` | With `TELNETKIT_TEST_SERVER_HOST` unset the suite reports a skip rather than a failure |
 
-**G. 公开接口契约（对应 §5.6）**
+**G. Public interface contract (§5.6)**
 
-| 用例 | 断言 |
+| Case | Assertion |
 | --- | --- |
-| `publicAPI_has_no_clibtelnet_symbols` | 反射/接口快照中无 `telnet_`、`TELNET_`、`OpaquePointer` |
-| `publicAPI_snapshot_matches` | `swift-api-digester` 快照无未审核变更 |
-| `documentation_builds` | DocC 构建 0 warning |
+| `publicAPI_has_no_clibtelnet_symbols` | No `telnet_`, `TELNET_`, or `OpaquePointer` in reflection or an interface snapshot |
+| `publicAPI_snapshot_matches` | The `swift-api-digester` snapshot has no unreviewed change |
+| `documentation_builds` | A DocC build with 0 warnings |
 
-### 8.3 质量门槛
+### 8.3 Quality gates
 
-- 公开接口测试（L2）**必须覆盖 §5 中列出的每一个公开符号**（方法/属性/枚举 case），覆盖率报告对比公开符号清单核对，缺失即不通过。
-- 协议层语句覆盖率 ≥ 90%，分支覆盖率 ≥ 80%。
-- 全部测试必须能离线运行，`swift test` 单次耗时 < 60s。
+- The public interface tests (L2) **must cover every public symbol listed in §5** (method, property, enum case); the coverage report is checked against the public symbol list and a gap fails the gate.
+- Protocol-layer statement coverage of at least 90% and branch coverage of at least 80%.
+- Every test runs offline, and one `swift test` invocation finishes in under 60 s.
 
 ---
 
-## 9. Demo 项目需求
+## 9. Demo project requirements
 
-### 9.1 交付物
+### 9.1 Deliverables
 
-| 名称 | 形态 | 作用 |
+| Name | Form | Purpose |
 | --- | --- | --- |
-| `TelnetDemo` | `.executableTarget`（CLI） | 最小可验证：连接 → 打印事件 → 发送命令 → 断开；覆盖全部公开接口 |
-| `TelnetEchoServer` | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning 场景 |
-| `TelnetKitDemoApp` | SwiftUI macOS App（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
+| `TelnetDemo` | `.executableTarget` (CLI) | The minimal verifiable path: connect → print events → send a command → disconnect; covers every public interface |
+| `TelnetEchoServer` | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, and warning scenarios |
+| `TelnetKitDemoApp` | SwiftUI macOS app (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
 
-### 9.1.1 文档交付物
+### 9.1.1 Documentation deliverables
 
-本 PRD 的工程约束拆分为开发文档，与代码同仓维护，分层与写作规则见 [docs/AGENTS.md](docs/AGENTS.md)：
+This PRD's engineering constraints are split into development documents kept beside the code; tiers and writing rules are in [docs/AGENTS.md](docs/AGENTS.md):
 
-| 文档 | 职责 |
+| Document | Responsibility |
 | --- | --- |
-| [AGENTS.md](AGENTS.md) | 常驻规则：仓库结构、命令、不可协商的约束、约定 |
-| [docs/architecture.md](docs/architecture.md) | 设计地图：分层、并发模型、事件流、C 接缝、扩展点、测试布局 |
-| [docs/public-api.md](docs/public-api.md) | 公开接口调用方契约与公开符号测试清单 |
-| [README.md](README.md) / [README.zh.md](README.zh.md) | 使用方契约：能力、安装、快速开始、已知限制、安全说明 |
-| [.agents/skills/](.agents/skills/) | 可复用工作流：公开接口切片、C 库引入、文档规范、行文规范 |
+| [AGENTS.md](AGENTS.md) | Standing orders: repository layout, commands, non-negotiable constraints, conventions |
+| [docs/architecture.md](docs/architecture.md) | Design map: layers, concurrency model, event flow, C seam, extension points, test layout |
+| [docs/public-api.md](docs/public-api.md) | The caller contract and the public symbol test checklist |
+| [README.md](README.md) / [README.zh.md](README.zh.md) | The consumer contract: capabilities, install, quick start, known limitations, security |
+| [.agents/skills/](.agents/skills/) | Reusable workflows: public API slice, C library import, documentation standard, prose standard |
 
-### 9.2 Demo 必须覆盖的接口清单
+### 9.2 Interfaces the demo must cover
 
-| 接口 | Demo 中的体现 |
+| Interface | How the demo shows it |
 | --- | --- |
-| `TelnetConnection.connect(host:port:options:configuration:)` | 连接表单（主机/端口/超时/选项勾选） |
-| `TelnetConfiguration` 全部构造参数 | 设置面板（超时、缓冲上限、换行策略、日志开关） |
-| `events` + 全部 `TelnetEvent` case | 事件日志面板按 case 分类着色 |
-| `send(text:)` / `send(_:)` / `sendRaw(_:)` / `send(text:lineEnding:)` | 输入框发送 + 行尾选择 |
-| `negotiate(_:option:)` / `requestOption(_:)` / `subnegotiate(option:payload:)` / `send(command:)` | 手动协议操作按钮 |
-| `replyTerminalType(_:)` / `sendEnvironment(...)` / `sendWindowSize(columns:rows:)` | 终端设置区；窗口尺寸随 SwiftUI 窗口变化自动上报 |
-| `optionStatus(_:)` / `isConnected` / `remoteAddress` | 状态栏 |
-| `close()` | 断开按钮 + 窗口关闭时自动断开 |
-| `TelnetError` 全部 case | 错误注入菜单（连接错误端口、超时地址、超大 SB）验证错误展示 |
-| `Logger` 注入 | 控制台/面板日志级别切换 |
+| `TelnetConnection.connect(host:port:options:configuration:)` | Connection form (host, port, timeout, option checkboxes) |
+| Every `TelnetConfiguration` initializer parameter | Settings panel (timeout, buffer bounds, newline policy, logging switch) |
+| `events` and every `TelnetEvent` case | Event log panel, colored by case |
+| `send(text:)` / `send(_:)` / `sendRaw(_:)` / `send(text:lineEnding:)` | Input field plus a line-ending picker |
+| `negotiate(_:option:)` / `requestOption(_:)` / `subnegotiate(option:payload:)` / `send(command:)` | Manual protocol operation buttons |
+| `replyTerminalType(_:)` / `sendEnvironment(...)` / `sendWindowSize(columns:rows:)` | Terminal settings area; window size is reported automatically as the SwiftUI window changes |
+| `optionStatus(_:)` / `isConnected` / `remoteAddress` | Status bar |
+| `close()` | Disconnect button, plus automatic disconnect on window close |
+| Every `TelnetError` case | Error-injection menu (wrong port, black-hole address, oversized SB) that exercises error presentation |
+| `Logger` injection | Log level switch for the console and the panel |
 
-### 9.3 Demo 验收标准
+### 9.3 Demo acceptance criteria
 
-1. `swift run TelnetEchoServer` + `swift run TelnetDemo --host 127.0.0.1 --port 2323` 一条命令即可跑通，无需网络与外部服务。
-2. Demo 能连真实外部 Telnet 服务（如公开 BBS / 设备）并完成一次完整交互（登录提示可见、可输入命令）；iOS 侧以模拟器内的最小示例打同一台回环服务端，验证同一路径。
-3. `TelnetKitDemoApp` 在 macOS 15+ 打开即可用；窗口缩放触发 NAWS 上报（EchoServer 日志可见）。库本身在 iOS 18+ 模拟器上构建通过并跑完全部非网络测试。
-4. Demo 代码即文档：每个公开接口在 Demo 中至少出现一次，且在 README 中有对应代码片段。
+1. `swift run TelnetEchoServer` plus `swift run TelnetDemo --host 127.0.0.1 --port 2323` runs with one command, needing no network and no external service.
+2. The demo can reach a real external Telnet service (a public BBS or a device) and complete one full interaction: the login prompt is visible and commands can be typed; on iOS a minimal simulator example runs the same path against the loopback server.
+3. `TelnetKitDemoApp` is usable the moment it opens on macOS 15+; resizing the window triggers a NAWS report that is visible in the echo server log. The library itself builds on an iOS 18+ simulator and passes every non-network test there.
+4. The demo code is documentation: every public interface appears at least once in it, and the README carries a matching code snippet.
 
 ---
 
-## 10. 里程碑与交付计划
+## 10. Milestones and delivery plan
 
-| 里程碑 | 内容 | 出口标准 |
+| Milestone | Content | Exit criterion |
 | --- | --- | --- |
-| M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、`CLibTelnet` vendored target + modulemap + `UPSTREAM.md`（记录上游 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**C target 与构建流程已在原型中验证可行**） |
-| M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 |
-| M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；无泄露 |
-| M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 |
-| M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 |
-| M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 |
-| M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 |
-| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` |
+| M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the vendored `CLibTelnet` target with its modulemap and `UPSTREAM.md` (recording the upstream commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**the C target and the build flow are already verified as feasible in the prototype**) |
+| M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes |
+| M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green with no leak |
+| M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop |
+| M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green |
+| M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass |
+| M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build |
+| M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived |
 
-> 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
+> Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 
 ---
 
-## 11. 风险与对策
+## 11. Risks and mitigations
 
-| ID | 风险 | 影响 | 对策 |
+| ID | Risk | Impact | Mitigation |
 | --- | --- | --- | --- |
-| R1 | libtelnet 无 SwiftPM 支持，vendor 后上游更新需手工同步 | 低 | 在 `NOTICE`/`CLibTelnet/README` 记录上游 commit SHA 与版本（当前 0.23）；每季度检查上游 diff；仅同步 `libtelnet.c/.h`，不修改上游代码（如需 patch 必须单独成 patch 文件并注明） |
-| R2 | libtelnet 回调 buffer 仅在回调期间有效，Swift 侧极易写出悬垂指针 | 高 | 强制"回调内立即拷贝"；`TelnetProtocolCore` 不对外暴露指针；ASan 测试 + 专项 code review checklist |
-| R3 | `telnet_t` 非线程安全，跨线程访问导致数据竞争 | 高 | 单 EventLoop 所有权（§4.3）；所有入站/出站经 handler 串行化；`Sendable` 检查 + 并发测试 |
-| R4 | `telnet_finish_sb` / `telnet_finish_newenviron` / `telnet_finish_zmp` 是宏，Swift 不可见 | 中 | 在 `TelnetProtocolCore` 内以其等价实现替代（`telnet_iac(t, TELNET_SE)`），并在单测中覆盖 |
-| R5 | 选项协商策略自研容易产生协商回环或状态错乱 | 中 | 完全复用 libtelnet 的 RFC 1143 Q-method 实现，不自研状态机；补充"报告给用户的 `optionStatus`"与 libtelnet 内部状态一致性的断言 |
-| R6 | Telnet 明文传输（含口令），且本库不提供任何加密通道 | 高 | README 与 DocC 显著标注；`telnets`/START-TLS/ENCRYPT/AUTHENTICATION 明确列为不支持；需要保密时由部署方使用 VPN 或跳板机，并在 `TelnetConfiguration` 文档中说明本库不参与保密 |
-| R7 | 启用 MCCP2 的解压路径可能被解压炸弹放大（几 KB → GB 级内存） | 中 | 首版不启用；v0.2 启用时必须同时落地 `maxInflatedBytes` 上限、压缩态事件流契约与压缩流失败模式测试，并在 CI 增加开启变体。zlib 本身无需处理：macOS/iOS/iPadOS SDK 均内置（已实测 `-lz` 可链接） |
-| R8 | `AsyncStream` 事件缓冲策略不当导致内存暴涨或事件丢失 | 中 | 默认 `.bounded`，丢弃/终止策略可配且**丢弃时发出 `.warning`**；补大流量压测 |
-| R9 | 公开 API 与 swift-nio 类型（如 `ByteBuffer`）耦合，未来升级受限 | 低 | `TelnetEvent.data` 采用 `ByteBuffer` 作为二进制载体（与 NIO 生态一致）；同时提供 `text`/`bytes([UInt8])` 便捷访问，避免调用方必须理解 NIO |
-| R10 | 应用后台挂起会断开连接（watchOS 与 iOS 最明显），App Store 审核关注明文协议 | 中 | 文档写明「前台会话」语义与后台断开行为，不引入后台常驻能力；提供 `idleTimeout` 与应用层重连示例；`waitForConnectivity` 让恢复时的重连不必手写重试循环；README 安全章节标注明文风险 |
-| R11 | 五平台 CI 成本与模拟器资源占用 | 中 | iOS 跑完整测试；watchOS/tvOS/visionOS 只跑构建 + 协议层与公开接口测试；集成测试固定在 macOS job |
-| R12 | NIOTS 只能在有 Network.framework 的运行时验证：CI 的本机 `swift test` 无法覆盖真实路径事件 | 中 | 集成测试用 `NIOTSListenerBootstrap` 起本地夹具；路径事件用注入的 `NIOTSNetworkEvents` 在协议层单测；真机/模拟器的蜂窝↔Wi‑Fi 切换列入 M6 手工验收 |
-| R13 | 单一传输层没有退路：若 Network.framework 在某平台行为异常（例如 watchOS 的连接可用性），没有备选路径 | 中 | 只在五个 Apple 平台承诺且以官方支持的组合为前提；发现平台级缺陷时按平台文档化限制，不临时引入 POSIX 分支（那会推翻 G6） |
+| R1 | libtelnet has no SwiftPM support, so an upstream update needs a manual sync after vendoring | Low | Record the upstream commit SHA and version (currently 0.23) in `NOTICE` and `CLibTelnet/README`; check the upstream diff quarterly; sync only `libtelnet.c/.h` and do not modify upstream code (a required patch becomes a separate patch file with a note) |
+| R2 | A libtelnet callback buffer is valid only during the callback, so Swift code easily creates a dangling pointer | High | Enforce copy-inside-the-callback, keep `TelnetProtocolCore` from exposing pointers, and cover it with ASan tests plus a dedicated code review checklist |
+| R3 | `telnet_t` is not thread-safe, so a cross-thread access is a data race | High | Single-EventLoop ownership (§4.3); every inbound and outbound path serializes through the handler; `Sendable` checking plus concurrency tests |
+| R4 | `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` are macros, invisible to Swift | Medium | Supply equivalent implementations inside `TelnetProtocolCore` (`telnet_iac(t, TELNET_SE)`) and cover them in unit tests |
+| R5 | A self-written negotiation strategy easily produces a loop or state confusion | Medium | Reuse libtelnet's RFC 1143 Q-method implementation entirely and write no state machine; add an assertion that the reported `optionStatus` agrees with libtelnet's internal state |
+| R6 | Telnet is plaintext, including passwords, and this library offers no encrypted channel | High | State it prominently in the README and DocC; list `telnets`, START-TLS, ENCRYPT, and AUTHENTICATION as unsupported; a deployment that needs confidentiality uses a VPN or a bastion host, and the `TelnetConfiguration` documentation says the library takes no part in confidentiality |
+| R7 | Enabling MCCP2 exposes the inflate path to a decompression bomb (a few KB into gigabytes of memory) | Medium | Leave it off in the first release; enabling it in v0.2 requires the `maxInflatedBytes` bound, the event-flow contract under compression, and a compressed-stream failure test, plus an enabled CI variant. zlib itself needs no work: the macOS, iOS, and iPadOS SDKs all ship it (verified linkable with `-lz`) |
+| R8 | A poor `AsyncStream` buffer policy causes memory growth or event loss | Medium | Default to `.bounded` with a configurable drop or finish policy, emit a `.warning` **when an event is dropped**, and add a high-traffic stress test |
+| R9 | The public API couples to swift-nio types such as `ByteBuffer`, which limits a future upgrade | Low | Use `ByteBuffer` as the binary carrier for `TelnetEvent.data` because it matches the NIO ecosystem, and provide `text` and `bytes([UInt8])` accessors so a caller never has to understand NIO |
+| R10 | Suspending the app drops the connection (most visible on watchOS and iOS), and App Store review scrutinizes plaintext protocols | Medium | Document the foreground-session semantics and the disconnect-on-background behavior, add no background daemon, provide `idleTimeout` and a caller-side reconnect example, and let `waitForConnectivity` remove the hand-written retry loop on recovery; flag the plaintext risk in the README security section |
+| R11 | Five-platform CI cost and simulator resource use | Medium | iOS runs the full suite; watchOS, tvOS, and visionOS run the build plus the protocol and public interface suites; integration tests stay in the macOS job |
+| R12 | NIOTS can only be verified on a runtime that has Network.framework, so a local `swift test` cannot exercise real path events | Medium | The integration suite starts a local fixture with `NIOTSListenerBootstrap`; path events are tested at the protocol layer with injected `NIOTSNetworkEvents`; a real cellular-to-Wi-Fi switch on a device or simulator is a manual M6 acceptance step |
+| R13 | One transport leaves no fallback: if Network.framework misbehaves on a platform (watchOS connection availability, for example), there is no alternative path | Medium | Promise only the five Apple platforms and only officially supported combinations; document a platform-level defect as a platform limitation instead of introducing a POSIX branch, which would overturn G6 |
 
 ---
 
-## 12. 待确认问题
+## 12. Open questions
 
-| ID | 问题 | 建议默认值 |
+| ID | Question | Proposed default |
 | --- | --- | --- |
-| Q1 | `TelnetEvent.data` 用 `NIOCore.ByteBuffer` 还是自定义 `[UInt8]`？ | 用 `ByteBuffer`（零拷贝、与 NIO 生态一致），并提供 `[UInt8]`/`String` 便捷视图 |
-| Q2 | 断线重连由库提供还是仅给示例？ | 仅给示例：库负责 `waitForConnectivity` 与清晰错误，重连策略由调用方决定 |
-| Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
-| Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
-| Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.zh.md#双语配对)；本 PRD 以中文为正本，对照版为 [PRD.en.md](PRD.en.md) |
+| Q1 | Should `TelnetEvent.data` use `NIOCore.ByteBuffer` or a custom `[UInt8]`? | Use `ByteBuffer` (zero copy, consistent with the NIO ecosystem) and provide `[UInt8]` and `String` convenience views |
+| Q2 | Does the library provide reconnection, or only an example? | An example only: the library owns `waitForConnectivity` and clear errors, and the caller owns the retry policy |
+| Q3 | Should the SwiftUI demo app be an in-package executable target or a separate `Examples/` Xcode project? | A separate project under `Examples/` so that referencing SwiftUI inside the package cannot slow `swift test`, while reusing the `Sources/TelnetKit/Demos` components |
+| Q4 | Is `swift-metrics` or `swift-service-lifecycle` integration needed? | Not in the first release; swift-log is enough |
+| Q5 | Should Chinese documentation ship alongside the English? | Decided: every human-facing document is a bilingual pair under the [documentation standard](docs/AGENTS.md#bilingual-pairs), so this PRD pairs with [PRD.zh.md](PRD.zh.md) |
+| Q6 | Should the CI runner upstream open a real Telnet server for tests? | No: the real-server suite is a local and manual step, and CI runs the deterministic fixture only |
 
 ---
 
-## 13. 参考
+## 13. References
 
-- [apple/swift-nio](https://github.com/apple/swift-nio)（最新发布 2.103.0）
-- [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet)（v0.23，public domain；无 SwiftPM 清单）
+- [apple/swift-nio](https://github.com/apple/swift-nio) (latest release 2.103.0)
+- [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) (v0.23, public domain, no SwiftPM manifest)
 - [Developing a basic Swift echo server using Swift NIO](https://medium.com/processone/developing-a-basic-swift-echo-server-using-swift-nio-8a5bf3d3fef2)
 - [Building SwiftNIO clients — swiftonserver.com](https://swiftonserver.com/building-swiftnio-clients/)
-- [SwiftNIO `NIOAsyncChannel` 与 async bootstrap 文档](https://github.com/apple/swift-nio/blob/2.57.0/Sources/NIOCore/Docs.docc/swift-concurrency.md)
-- RFC 854 / RFC 855（Telnet 协议）、RFC 1143（Q-Method 选项协商）、RFC 1073（NAWS）、RFC 1091（TTYPE）、RFC 1572（NEW-ENVIRON）、RFC 859/860（MSSP 相关）
-- [Swift Testing 文档](https://developer.apple.com/documentation/testing)
+- [SwiftNIO `NIOAsyncChannel` and async bootstrap documentation](https://github.com/apple/swift-nio/blob/2.57.0/Sources/NIOCore/Docs.docc/swift-concurrency.md)
+- RFC 854 / RFC 855 (the Telnet protocol), RFC 1143 (Q-method option negotiation), RFC 1073 (NAWS), RFC 1091 (TTYPE), RFC 1572 (NEW-ENVIRON), RFC 859/860 (MSSP)
+- [Swift Testing documentation](https://developer.apple.com/documentation/testing)
 
 ---
 
-## 附录 A：`Package.swift` 草案
+## Appendix A: `Package.swift` draft
 
 ```swift
 // swift-tools-version: 6.2
@@ -781,8 +782,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.0"),
     ],
     targets: [
-        // vendored libtelnet：仅内部可见，product 不对外暴露。
-        // 不定义 HAVE_ZLIB：Apple SDK 自带 zlib 可直接 -lz，首版仍不链接（理由与启用条件见 §1.3 与 §6.3 FR-NEG-11），无其他自定义编译宏。
+        // vendored libtelnet: internal only, never exposed as a product.
+        // HAVE_ZLIB stays undefined: the Apple SDKs ship zlib and -lz links, but the first release does not link it (rationale in §1.3, enablement conditions in §6.3 FR-NEG-11).
         .target(name: "CLibTelnet"),
         .target(
             name: "TelnetKit",
@@ -795,7 +796,7 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(name: "TelnetDemo", dependencies: ["TelnetKit"]),
-        // 可执行产物只声明 macOS：watchOS/tvOS/visionOS 没有进程与回环服务端语义。
+        // Executables declare macOS only: watchOS, tvOS, and visionOS have no process or loopback-server semantics.
         .executableTarget(name: "TelnetEchoServer", dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
@@ -805,10 +806,10 @@ let package = Package(
 )
 ```
 
-> 说明：原型验证中 `CLibTelnet` 未使用任何自定义编译宏与互操作模式，仅靠 `module.modulemap` 即可被 Swift 正常 `import`，故正式实现同样保持最小配置。
-> `swiftLanguageModes` 亦可在包级统一声明（`swiftLanguageModes: [.v6]`），此处按 target 声明以便未来对测试目标放宽。
+> Note: in the prototype, `CLibTelnet` needed no custom compile macro and no interoperability mode; the `module.modulemap` alone let Swift import it, so the real implementation keeps the same minimal configuration.
+> `swiftLanguageModes` could also be declared once for the package (`swiftLanguageModes: [.v6]`); declaring it per target keeps the option of relaxing it for test targets.
 
-## 附录 B：`CLibTelnet` 目录与 modulemap
+## Appendix B: `CLibTelnet` directory and modulemap
 
 ```c
 // Sources/CLibTelnet/include/module.modulemap
@@ -818,11 +819,11 @@ module CLibTelnet {
 }
 ```
 
-- `libtelnet.c`、`include/libtelnet.h` 直接取自上游 `develop` 分支（版本注释 `\version 0.23`），**不做任何修改**。
-- 记录来源 commit SHA 于 `Sources/CLibTelnet/UPSTREAM.md`，升级时通过脚本 diff 核对。
-- 宏 `telnet_finish_sb` / `telnet_finish_newenviron` / `telnet_finish_zmp` 在 Swift 侧由 `TelnetProtocolCore` 等价实现，不依赖 C 宏导出。
+- `libtelnet.c` and `include/libtelnet.h` come straight from the upstream `develop` branch (version tag `\version 0.23`) and are **never modified**.
+- The source commit SHA is recorded in `Sources/CLibTelnet/UPSTREAM.md`, and an upgrade checks the diff with a script.
+- The macros `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` are implemented equivalently in Swift by `TelnetProtocolCore`, which does not depend on the C macro export.
 
-## 附录 C：典型用法示例（Demo/README 使用）
+## Appendix C: Typical usage example (used by the demo and the README)
 
 ```swift
 import TelnetKit
@@ -834,7 +835,7 @@ let conn = try await TelnetConnection.connect(
     configuration: .init(connectTimeout: .seconds(5))
 )
 
-// 消费事件
+// Consume events
 Task {
     for await event in conn.events {
         switch event {

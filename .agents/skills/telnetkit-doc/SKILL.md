@@ -66,7 +66,7 @@ A skill document carries YAML frontmatter with `name` and `description`, a `## S
 - Do not annotate status in a heading. Status lives in the [design-status rule](../../../AGENTS.md#design-status) and the PRD milestone table.
 - Code fences carry a language tag; a `swift` fence must be valid Swift, and a `text` fence is for composition diagrams.
 - Every relative link resolves to a file in this repository; an upstream file is referenced by URL.
-- A Chinese counterpart updates in the same change, with the same heading sequence, table and code structure, and physical line count; [PRD.md](../../../PRD.md) pairs with `PRD.en.md` under the reversed rule.
+- A Chinese counterpart updates in the same change, with the same heading sequence, table and code structure, and physical line count; [PRD.md](../../../PRD.md) pairs with [PRD.zh.md](../../../PRD.zh.md) like every other document.
 
 ## Validation
 

@@ -22,7 +22,7 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 
 ## 输入与排除项
 
-必须有一个明确的切片：一个具名公开符号或一个具名事件 case。若请求是「实现这个库」，先从[里程碑](../../../PRD.md#10-里程碑与交付计划)提出一个切片清单，等选定其中一个再动手。
+必须有一个明确的切片：一个具名公开符号或一个具名事件 case。若请求是「实现这个库」，先从[里程碑](../../../PRD.zh.md#10-里程碑与交付计划)提出一个切片清单，等选定其中一个再动手。
 
 把 `Sources/CLibTelnet/` 排除在编辑之外，包括文档编辑；它的归属方是 [telnetkit-import-c-library](../telnetkit-import-c-library/SKILL.md)。
 
@@ -34,7 +34,7 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 4. 装配传输层：只按切片所需扩展 `TelnetChannelHandler` 或 bootstrap，并遵守 EventLoop 所有权规则。重跑协议测试与相关传输测试。
 5. 暴露公开接口：把声明加到 `Sources/TelnetKit/Public/`，并带 `///` 注释说明结果、抛出条件、所有权、顺序与取消。
 6. 只经 `import TelnetKit` 编写公开 API 测试，打 `TelnetEchoServer`；若是新符号，把它加入[符号清单](../../../docs/public-api.md#symbol-checklist)。
-7. 若该切片在 Demo 范围内对调用方可见，按 [Demo 需求](../../../PRD.md#9-demo-项目需求) 更新 Demo。
+7. 若该切片在 Demo 范围内对调用方可见，按 [Demo 需求](../../../PRD.zh.md#9-demo-项目需求) 更新 Demo。
 8. 先跑窄范围检查，再跑完整套件；报告前完整重读 diff，检查是否有跨层违规。
 
 ## 分层顺序与各层归属

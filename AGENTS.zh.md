@@ -79,7 +79,7 @@ xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name
 
 ## 文档
 
-一个事实一个家，层级见 [docs/AGENTS.md](docs/AGENTS.md)。`AGENTS.md` 承载常驻规则与链接；[docs/architecture.md](docs/architecture.md) 映射组成；[docs/public-api.md](docs/public-api.md) 定义公开契约；[PRD.md](PRD.md) 拥有需求、验收标准与里程碑范围；包 README 服务使用方；[.agents/skills/](.agents/skills/) 存放可复用工作流。生成或复制而来的内容除其归属方外不得手工修改。
+一个事实一个家，层级见 [docs/AGENTS.md](docs/AGENTS.md)。`AGENTS.md` 承载常驻规则与链接；[docs/architecture.md](docs/architecture.md) 映射组成；[docs/public-api.md](docs/public-api.md) 定义公开契约；[PRD.zh.md](PRD.zh.md) 拥有需求、验收标准与里程碑范围；包 README 服务使用方；[.agents/skills/](.agents/skills/) 存放可复用工作流。生成或复制而来的内容除其归属方外不得手工修改。
 
 **每份文档都是双语的。** 英文文件与其 `.zh.md` 对照版在同一次变更中一起提交，标题、列表、表格、代码、链接目标与物理行数保持一致。英文文件前三行内要给出对照版文件名，中文文件反向链接回英文版。未翻译的文档属于失败的文档，不是待办项。完整机制、翻译规则与校验命令见 [docs/AGENTS.md](docs/AGENTS.md#bilingual-pairs)。
 

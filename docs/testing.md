@@ -2,7 +2,7 @@
 
 English | [中文](testing.zh.md)
 
-This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The package is not implemented yet, so every section below is **Designed** under the [design-status rule](../AGENTS.md#design-status).
+This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.zh.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The package is not implemented yet, so every section below is **Designed** under the [design-status rule](../AGENTS.md#design-status).
 
 ## Environment
 
@@ -152,7 +152,7 @@ A change passes when all of the following hold, and the run reports the observed
 | `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | Gate 4, for the interface snapshot |
 | `real-server` | A developer Mac, never CI | `TELNETKIT_TEST_SERVER_HOST=... swift test --filter TelnetKitTests.RealServer` | Manual evidence for the milestone checklist |
 
-The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
+The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.zh.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
 
 ## Manual verification
 

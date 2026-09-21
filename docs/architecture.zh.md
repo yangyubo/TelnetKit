@@ -2,7 +2,7 @@
 
 [English](architecture.md) | 中文
 
-修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：本包尚未实现，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载而非写在本文里。需求与验收标准见 [PRD.md](../PRD.md)；调用方可见的签名见 [public-api.md](public-api.md)。
+修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：本包尚未实现，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载而非写在本文里。需求与验收标准见 [PRD.zh.md](../PRD.zh.md)；调用方可见的签名见 [public-api.md](public-api.md)。
 
 ## 组成
 
