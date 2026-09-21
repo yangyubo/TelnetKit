@@ -18,6 +18,14 @@ func residentMemoryBytes() -> UInt64 {
     return result == KERN_SUCCESS ? info.resident_size : 0
 }
 
+/// True when the process is built with AddressSanitizer, whose shadow memory and redzones
+/// make resident-memory growth meaningless.
+func isAddressSanitizerEnabled() -> Bool {
+    guard let handle = dlopen(nil, RTLD_NOW) else { return false }
+    defer { dlclose(handle) }
+    return dlsym(handle, "__asan_init") != nil
+}
+
 @Suite("Connection soak")
 struct ConnectionSoakTests {
     @Test("hundreds of connect/close cycles leave no active connection and stable memory")
@@ -42,6 +50,8 @@ struct ConnectionSoakTests {
         let growth = after > baseline ? after - baseline : 0
 
         #expect(await server.waitForNoActiveConnections(timeout: .seconds(5)))
-        #expect(growth < 32 * 1024 * 1024, "resident memory grew by \(growth) bytes over 300 connections")
+        if !isAddressSanitizerEnabled() {
+            #expect(growth < 32 * 1024 * 1024, "resident memory grew by \(growth) bytes over 300 connections")
+        }
     }
 }
