@@ -302,4 +302,68 @@ struct TelnetProtocolCoreTests {
         }
         #expect(harness.core.drainOutbound().isEmpty)
     }
+
+    @Test("an ENVIRON list with no variables is reported as empty")
+    func emptyEnvironmentList() throws {
+        let harness = try ProtocolHarness()
+        // IAC SB NEW-ENVIRON IS IAC SE: a command with no variable list.
+        harness.feed([0xFF, 0xFA, 0x27, 0x00, 0xFF, 0xF0])
+        #expect(harness.log.contains { if case .environment(.variable, let values) = $0 { return values.isEmpty } else { return false } })
+    }
+
+    @Test("an empty MSSP block is ignored rather than reported")
+    func emptyMSSPList() throws {
+        let harness = try ProtocolHarness()
+        // IAC SB MSSP IAC SE: upstream `_mssp_telnet` returns for size 0 without an event,
+        // so the contract's `.mssp(_:)` ("the peer sent a status list") does not apply.
+        harness.feed([0xFF, 0xFA, 0x46, 0xFF, 0xF0])
+        #expect(!harness.log.contains { if case .mssp = $0 { return true } else { return false } })
+    }
+
+    @Test("requestOption rejects an option that is in neither declared list")
+    func requestOptionRejectsUndeclared() throws {
+        let harness = try ProtocolHarness()
+        #expect(throws: TelnetError.self) {
+            _ = try harness.core.perform(.requestOption(.zmp))
+        }
+    }
+
+    @Test("replyTerminalType refuses when no request is pending, then answers one")
+    func replyTerminalTypeLifecycle() throws {
+        let harness = try ProtocolHarness()
+        #expect(throws: TelnetError.self) {
+            _ = try harness.core.perform(.replyTerminalType("xterm"))
+        }
+        harness.feed([0xFF, 0xFA, 0x18, 0x01, 0xFF, 0xF0])
+        let outbound = try harness.core.perform(.replyTerminalType("xterm")).bytes
+        #expect(outbound == [0xFF, 0xFA, 0x18, 0x00] + Array("xterm".utf8) + [0xFF, 0xF0])
+    }
+
+    @Test("100,000 data events leave resident memory stable")
+    func memoryStableAfter100kEvents() throws {
+        // A counting sink, not the event log, so the test measures the parser rather than
+        // its own retention.
+        let counter = NIOLockedValueBox(0)
+        let core = try TelnetProtocolCore(
+            options: TelnetOptions(),
+            configuration: .init(newlinePolicy: .raw),
+            ledger: TelnetOptionLedger(),
+            logger: nil,
+            emit: { event in
+                if case .data = event { counter.withLockedValue { $0 += 1 } }
+            }
+        )
+        defer { core.destroy() }
+
+        for _ in 0..<1_000 { _ = core.feed([0x61]) }
+        let baseline = residentMemoryBytes()
+        for _ in 0..<100_000 { _ = core.feed([0x61]) }
+        let after = residentMemoryBytes()
+        let growth = after > baseline ? after - baseline : 0
+
+        #expect(counter.withLockedValue { $0 } == 101_000)
+        if !isAddressSanitizerEnabled() {
+            #expect(growth < 32 * 1024 * 1024, "resident memory grew by \(growth) bytes over 100,000 events")
+        }
+    }
 }

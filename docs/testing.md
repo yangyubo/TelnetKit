@@ -51,13 +51,13 @@ Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM 
 
 ```sh
 xcrun simctl list devices available                # read the installed names first
-xcodebuild -list                                   # SwiftPM names the sole scheme TelnetKit-Package
-xcodebuild build -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild -list                                   # SwiftPM names the sole scheme TelnetKit
+xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
                  -only-testing:CLibTelnetTests
 ```
 
-`xcodebuild` exposes exactly one scheme for this package, named `TelnetKit-Package` rather than after a target, so every command reads it from `xcodebuild -list` instead of assuming a name.
+`xcodebuild` exposes exactly one scheme for this package, named `TelnetKit`, so every command reads it from `xcodebuild -list` instead of assuming a name.
 
 ## Tests against a real Telnet server
 
@@ -106,12 +106,13 @@ A local-network prompt or a refused connection means the run reports the platfor
 
 | Check | Command | Applies to | Owner |
 |---|---|---|---|
-| Code coverage | `swift test --enable-code-coverage` then `xcrun llvm-cov report --instr-profile .build/debug/codecov/default.profdata` | macOS | PRD §8.3: protocol statements >= 90%, branches >= 80% |
+| Code coverage | `swift test --enable-code-coverage`, then `xcrun llvm-cov report .build/out/Products/Debug/TelnetKitTests.xctest/Contents/MacOS/TelnetKitTests -instr-profile .build/out/Products/Debug/codecov/default.profdata` | macOS | PRD §8.3: protocol lines >= 90% (92.3% now); `llvm-cov` reports no branch data for Swift |
 | Memory safety | `swift test --sanitize=address` | macOS | FR-PROTO-08, the callback copy path |
 | Data races | `swift test --sanitize=thread` | macOS | The `telnet_t` single-EventLoop rule and the outbound queue |
 | Undefined behavior | `swift test --sanitize=undefined` | macOS | The C seam and byte arithmetic |
 | Strict concurrency | `swift build -Xswiftc -strict-concurrency=complete` | All five platforms | Zero warnings, no `@unchecked Sendable` without a comment |
-| Public interface | `swift package diagnose-api-breaking-changes baseline.json` | macOS | The [symbol checklist](public-api.md#symbol-checklist) |
+| Public interface | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | macOS | The [symbol checklist](public-api.md#symbol-checklist) with no breaking change |
+| Documentation | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | macOS | 0 diagnostics for the TelnetKit target |
 
 Sanitizers run on macOS only: the iOS simulator does not support Thread Sanitizer, and mixing sanitizers with simulator hosts produces noise rather than signal. ASan and TSan jobs are separate CI jobs so one failure does not mask the other.
 
@@ -148,7 +149,8 @@ A change passes when all of the following hold, and the run reports the observed
 | `sanitizers` | macOS | `swift test --sanitize=address`, `swift test --sanitize=thread` | Gate 6 |
 | `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | Gate 7 |
 | `platform-matrix` | macOS with all four runtimes | `xcodebuild build` and `xcodebuild test` per platform | Gates 2, 3 |
-| `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | Gate 4, for the interface snapshot |
+| `api-surface` | macOS | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | Gate 4, for the interface snapshot |
+| `documentation` | macOS | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | Gate 4, for the DocC build |
 | `real-server` | A developer Mac, never CI | `TELNETKIT_TEST_SERVER_HOST=... swift test --filter TelnetKitTests.RealServer` | Manual evidence for the milestone checklist |
 
 The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.zh.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.

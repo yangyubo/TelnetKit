@@ -51,13 +51,13 @@ swift test --list-tests | wc -l                    # 覆盖率清单核对用的
 
 ```sh
 xcrun simctl list devices available                # 先读已安装的设备名
-xcodebuild -list                                   # SwiftPM 把唯一的 scheme 命名为 TelnetKit-Package
-xcodebuild build -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' \
+xcodebuild -list                                   # SwiftPM 把唯一的 scheme 命名为 TelnetKit
+xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
                  -only-testing:CLibTelnetTests
 ```
 
-本包在 `xcodebuild` 下只暴露一个 scheme，名字是 `TelnetKit-Package` 而不是某个 target 的名字，因此每条命令都用 `xcodebuild -list` 读出它，而不是假定一个名字。
+本包在 `xcodebuild` 下只暴露一个 scheme，名字是 `TelnetKit`，因此每条命令都用 `xcodebuild -list` 读出它，而不是假定一个名字。
 
 ## 连接真实 Telnet 服务端的测试
 
@@ -106,12 +106,13 @@ ipconfig getifaddr en0               # 模拟器要连接的地址
 
 | 检查 | 命令 | 适用范围 | 归属 |
 |---|---|---|---|
-| 代码覆盖率 | `swift test --enable-code-coverage`，再执行 `xcrun llvm-cov report --instr-profile .build/debug/codecov/default.profdata` | macOS | PRD §8.3：协议层语句 ≥ 90%、分支 ≥ 80% |
+| 代码覆盖率 | `swift test --enable-code-coverage`，再执行 `xcrun llvm-cov report .build/out/Products/Debug/TelnetKitTests.xctest/Contents/MacOS/TelnetKitTests -instr-profile .build/out/Products/Debug/codecov/default.profdata` | macOS | PRD §8.3：协议层行覆盖率 ≥ 90%（当前 92.3%）；Swift 下 `llvm-cov` 不产出分支数据 |
 | 内存安全 | `swift test --sanitize=address` | macOS | FR-PROTO-08，回调拷贝路径 |
 | 数据竞争 | `swift test --sanitize=thread` | macOS | `telnet_t` 单 EventLoop 规则与出站队列 |
 | 未定义行为 | `swift test --sanitize=undefined` | macOS | C 接缝与字节运算 |
 | 严格并发 | `swift build -Xswiftc -strict-concurrency=complete` | 五个平台 | 零警告；没有注释说明的 `@unchecked Sendable` 一律不接受 |
-| 公开接口 | `swift package diagnose-api-breaking-changes baseline.json` | macOS | [符号清单](public-api.md#symbol-checklist) |
+| 公开接口 | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | macOS | [符号清单](public-api.md#symbol-checklist) 且无破坏性变更 |
+| 文档构建 | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | macOS | TelnetKit target 诊断数为 0 |
 
 消毒器只在 macOS 上跑：iOS 模拟器不支持 Thread Sanitizer，把消毒器与模拟器宿主混在一起只会产生噪声而不是信号。ASan 与 TSan 拆成两个 CI job，避免一个失败掩盖另一个。
 
@@ -148,7 +149,8 @@ ipconfig getifaddr en0               # 模拟器要连接的地址
 | `sanitizers` | macOS | `swift test --sanitize=address`、`swift test --sanitize=thread` | 门槛 6 |
 | `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | 门槛 7 |
 | `platform-matrix` | 装有全部四个运行时的 macOS | 逐平台执行 `xcodebuild build` 与 `xcodebuild test` | 门槛 2、3 |
-| `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | 门槛 4 的接口快照部分 |
+| `api-surface` | macOS | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | 门槛 4 的接口快照部分 |
+| `documentation` | macOS | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | 门槛 4 的 DocC 构建部分 |
 | `real-server` | 开发者的 Mac，绝不进 CI | `TELNETKIT_TEST_SERVER_HOST=... swift test --filter TelnetKitTests.RealServer` | 里程碑清单的手工证据 |
 
 矩阵 job 会一次性下载并缓存 watchOS、tvOS、visionOS 运行时，且在这些平台上只跑协议套件。运行时下载体积是 [R11 风险](../PRD.zh.md#11-风险与对策) 的成本来源，因此矩阵只在改动 `Sources/` 的 PR 与主分支上运行，而不是每次 push 都跑。

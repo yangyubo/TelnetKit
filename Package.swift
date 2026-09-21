@@ -70,6 +70,7 @@ let package = Package(
             name: "TelnetKitTests",
             dependencies: [
                 "TelnetKit",
+                "CLibTelnet",
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
                 .product(name: "Logging", package: "swift-log"),

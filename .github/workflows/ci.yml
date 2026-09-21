@@ -80,3 +80,37 @@ jobs:
           swift build --target TelnetKit \
             --sdk "$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)" \
             --triple ${{ matrix.triple }}
+
+  coverage:
+    name: Code coverage
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: swift test --enable-code-coverage
+      - name: Report protocol-layer coverage
+        run: |
+          xcrun llvm-cov report \
+            .build/out/Products/Debug/TelnetKitTests.xctest/Contents/MacOS/TelnetKitTests \
+            -instr-profile .build/out/Products/Debug/codecov/default.profdata \
+            | grep 'Sources/TelnetKit/Protocol/'
+
+  documentation:
+    name: DocC build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'
+
+  api-surface:
+    name: Public interface baseline
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - run: swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit

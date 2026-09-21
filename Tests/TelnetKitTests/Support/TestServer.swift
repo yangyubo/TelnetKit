@@ -217,9 +217,14 @@ private final class RecordingHandler: ChannelInboundHandler, Sendable {
 /// Collects events from a stream so a test can await a condition with a generous bound.
 actor EventRecorder {
     private(set) var events: [TelnetEvent] = []
+    private(set) var finished = false
 
     func append(_ event: TelnetEvent) {
         events.append(event)
+    }
+
+    func markFinished() {
+        finished = true
     }
 
     func waitFor(
@@ -267,6 +272,7 @@ func recordEvents(_ stream: AsyncStream<TelnetEvent>) -> (EventRecorder, Task<Vo
         for await event in stream {
             await recorder.append(event)
         }
+        await recorder.markFinished()
     }
     return (recorder, task)
 }

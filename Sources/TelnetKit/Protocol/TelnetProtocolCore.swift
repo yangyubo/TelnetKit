@@ -330,14 +330,17 @@ final class TelnetProtocolCore: @unchecked Sendable {
             let bytes = Array(UnsafeRawBufferPointer(start: data.buffer, count: data.size))
             guard !bytes.isEmpty else { return }
             sawDataEventThisFeed = true
+            logger?.trace("data", metadata: ["bytes": "\(bytes.count)"])
             emit(.data(ByteBuffer(bytes: bytes)))
 
         case TELNET_EV_SEND:
             let data = event.data
             outbound.append(contentsOf: UnsafeRawBufferPointer(start: data.buffer, count: data.size))
+            logger?.trace("outbound frame", metadata: ["bytes": "\(data.size)"])
 
         case TELNET_EV_IAC:
             let code = event.iac.cmd
+            logger?.trace("command", metadata: ["command": "\(code)"])
             if let command = TelnetCommand(rawValue: code) {
                 emit(.command(command))
             } else {
@@ -363,6 +366,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
             handleZMP(event)
 
         case TELNET_EV_COMPRESS:
+            logger?.debug("compression state", metadata: ["enabled": "\(event.compress.state == 1)"])
             emit(.compressionEnabled(event.compress.state == 1))
 
         case TELNET_EV_WARNING:
@@ -387,6 +391,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
         case TELNET_EV_DO: action = .do
         default: action = .dont
         }
+        logger?.debug("negotiation", metadata: ["verb": "\(action)", "option": "\(option.rawValue)", "remote": "true"])
         ledger.recordInbound(action, option: option)
         emit(.negotiation(action, option: option, remote: true))
         if option == .echo, action == .will || action == .wont {
@@ -398,6 +403,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
         let sub = event.sub
         let option = TelnetOption(rawValue: sub.telopt)
         let payload = Array(UnsafeRawBufferPointer(start: sub.buffer, count: sub.size))
+        logger?.trace("subnegotiation", metadata: ["option": "\(option.rawValue)", "bytes": "\(payload.count)"])
         if payload.count > configuration.subnegotiationLimit {
             emit(.protocolError(.invalidSubnegotiation(option: option)))
             pendingFatal = .protocolViolation(.invalidSubnegotiation(option: option))
@@ -415,6 +421,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
 
     private func handleTerminalType(_ event: telnet_event_t) {
         let ttype = event.ttype
+        logger?.debug("terminal type event", metadata: ["request": "\(ttype.cmd == UInt8(TELNET_TTYPE_SEND))"])
         if ttype.cmd == UInt8(TELNET_TTYPE_IS) {
             guard let name = ttype.name else { return }
             emit(.terminalType(String(cString: name)))
@@ -426,6 +433,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
 
     private func handleEnvironment(_ event: telnet_event_t) {
         let environ = event.environ
+        logger?.debug("environment event", metadata: ["command": "\(environ.cmd)", "entries": "\(environ.size)"])
         if environ.cmd == UInt8(TELNET_ENVIRON_SEND) {
             emit(.environmentRequested(.variable))
             return
@@ -456,6 +464,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
 
     private func handleMSSP(_ event: telnet_event_t) {
         let mssp = event.mssp
+        logger?.debug("mssp event", metadata: ["entries": "\(mssp.size)"])
         guard let pointer = mssp.values, mssp.size > 0 else {
             emit(.mssp([:]))
             return
@@ -471,6 +480,7 @@ final class TelnetProtocolCore: @unchecked Sendable {
 
     private func handleZMP(_ event: telnet_event_t) {
         let zmp = event.zmp
+        logger?.debug("zmp event", metadata: ["arguments": "\(zmp.argc)"])
         guard let argv = zmp.argv else {
             emit(.zmp([]))
             return
@@ -503,21 +513,12 @@ final class TelnetProtocolCore: @unchecked Sendable {
     private func handleError(_ event: telnet_event_t) {
         let error = event.error
         let message = error.msg.map { String(cString: $0) } ?? ""
-        let protocolError: TelnetProtocolError
-        switch error.errcode {
-        case TELNET_EBADVAL:
-            protocolError = .stateMachineFailure(code: .badValue, message: message)
-        case TELNET_ENOMEM:
-            protocolError = .outOfMemory
-        case TELNET_EOVERFLOW:
-            protocolError = .stateMachineFailure(code: .overflow, message: message)
-        case TELNET_EPROTOCOL:
-            protocolError = .stateMachineFailure(code: .protocol, message: message)
-        case TELNET_ECOMPRESS:
-            protocolError = .stateMachineFailure(code: .compression, message: message)
-        default:
-            protocolError = .stateMachineFailure(code: .badValue, message: message)
-        }
+        // Every known code maps explicitly; an allocation failure keeps its dedicated case.
+        let code = TelnetErrorCodeMapping.code(for: error.errcode) ?? .badValue
+        let protocolError: TelnetProtocolError = code == .outOfMemory
+            ? .outOfMemory
+            : .stateMachineFailure(code: code, message: message)
+        logger?.error("libtelnet error", metadata: ["message": "\(message)"])
         pendingFatal = .protocolViolation(protocolError)
         emit(.protocolError(protocolError))
     }
