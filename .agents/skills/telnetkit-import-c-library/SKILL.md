@@ -73,7 +73,7 @@ One file, `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift`, imports `CLibTe
 Run these in order and keep the observed output:
 
 1. `git -C libtelnet rev-parse HEAD` equals the commit in `UPSTREAM.md`, and `git -C libtelnet status --porcelain` prints nothing.
-2. `swift build` succeeds with no warning from the C target, and the same target builds for the five platform floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2).
+2. `swift build --target CLibTelnet` succeeds with no warning, and `--triple` repeats it for the iOS 18, watchOS 11, tvOS 18, and visionOS 2 floors; macOS 15 is the host build. `swift test` then covers the protocol path.
 3. `swift test` passes, including the negotiation-event and byte-escape cases.
 4. A seam test feeds `FF FB 01` (IAC WILL ECHO) then `68 69 0D 0A` and asserts one `.negotiation` event followed by `.data("hi\r\n")`.
 5. A seam test calls `telnet_send_text` through the public path with `hi\n`, negotiated ECHO, and asserts the outbound bytes carry `IAC DO ECHO` and a CR LF translation, written as `IOData`.

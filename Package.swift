@@ -5,9 +5,9 @@ import PackageDescription
 // out of scope, so no platform entry, abstraction, or conditional branch exists for
 // them; see AGENTS.md and docs/architecture.md.
 //
-// This milestone declares the vendored C target alone. The Swift library, the demo
-// executables, and the Network.framework dependencies arrive in later milestones;
-// products are declared with the Swift target they belong to.
+// This milestone declares the vendored C target and its protocol suite alone. The Swift
+// library, the demo executables, and the Network.framework dependencies arrive in later
+// milestones; products are declared with the Swift target they belong to.
 let package = Package(
     name: "TelnetKit",
     platforms: [
@@ -32,10 +32,15 @@ let package = Package(
             path: "Sources/CLibTelnet",
             publicHeadersPath: "include"
         ),
-        // The libtelnet suite drives the C library directly so that a parse bug is caught
-        // without a socket. It compiles the submodule sources for the host, so it does not
-        // need CLibTelnet; the Swift-typed protocol suite replaces it once TelnetProtocolCore
-        // can read these same expectations through the public API.
-        .testTarget(name: "CLibTelnetTests", path: "Tests/CLibTelnetTests"),
+        // The libtelnet suite drives the C library directly through CLibTelnet, so that a
+        // parse bug is caught without a socket. The dependency is what lets the compiler
+        // resolve the import; without it the test target fails with "unable to resolve
+        // module dependency: 'CLibTelnet'". The Swift-typed protocol suite replaces this
+        // one once TelnetProtocolCore can read the same expectations through the public API.
+        .testTarget(
+            name: "CLibTelnetTests",
+            dependencies: ["CLibTelnet"],
+            path: "Tests/CLibTelnetTests"
+        ),
     ]
 )

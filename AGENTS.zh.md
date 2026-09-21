@@ -10,7 +10,7 @@ TelnetKit 是一个仅面向 Apple 平台的 Swift Package，为 Swift 调用方
 
 本包尚不存在；[PRD.md](PRD.md) 是需求来源，上述文档是它的设计契约。本仓库中的陈述分为三类，正文必须标明属于哪一类：
 
-- **已验证。** 在本机实际复现过：libtelnet 作为 SwiftPM C target 编译无警告，Swift 通过 module map 调用它，`FF FB 01` 与 `FF FA 18 01 FF F0` 只解析出应用数据，`telnet_send_text("hi\n")` 输出 `FF FD 01 68 69 0D 0A`。
+- **已验证。** 在本机实际复现过：`swift build --target CLibTelnet` 与 `swift test` 均成功，`Tests/CLibTelnetTests` 中 8 个测试全绿，`swift build --target CLibTelnet --triple` 在 iOS、watchOS、tvOS、visionOS 下限下均成功，且在对端 WILL ECHO 后 `telnet_send_text("hi\n")` 输出 `FF FD 01 68 69 0D 0A`。
 - **上游事实。** 读自被 pin 的依赖而非我们的代码：例如 libtelnet 0.23 不导出任何选项状态查询函数。
 - **设计中。** 尚未编写的代码的计划行为。设计中的陈述必须写成需求，绝不能写成对既有行为的描述；行为落地后删除该标记。
 
@@ -28,7 +28,7 @@ Sources/TelnetKit/Protocol/    对 telnet_t 的内部 Swift 封装
 Sources/TelnetKit/Transport/   内部 NIOTS handler、bootstrap 与路径事件映射
 Sources/TelnetDemo/            CLI 演示可执行文件
 Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端，同时是集成测试夹具
-Tests/TelnetKitTests/Protocol/ 随 M0 一起落地的 libtelnet 套件
+Tests/CLibTelnetTests/        现在已落地的 libtelnet 套件（Tests/TelnetKitTests/ 随后加入）
 Examples/TelnetKitDemoApp/     SwiftUI 演示应用
 docs/                          架构、公开接口契约、测试方案、文档标准
 .agents/skills/                可复用工作流
@@ -41,7 +41,7 @@ docs/                          架构、公开接口契约、测试方案、文�
 ```sh
 git submodule update --init --recursive   # 克隆后执行一次
 swift build                       # 构建全部 target 的 debug 版本
-swift test                        # Swift Testing 套件；必须离线运行且 60s 内结束
+swift test                        # Tests/CLibTelnetTests 的 8 个测试；离线且在 60s 内
 swift test --filter TelnetKitTests.Protocol   # 迭代时只跑一个套件
 swift build -Xswiftc -strict-concurrency=complete   # 并发检查
 swift build --configuration release               # release 构建与体积检查
@@ -49,8 +49,8 @@ swift package describe            # target 与 product 清单
 swift package diagnose-api-breaking-changes baseline.json   # 公开接口快照比对
 swift run TelnetEchoServer        # 本地夹具，端口 2323
 swift run TelnetDemo --host 127.0.0.1 --port 2323
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 16'   # iOS 下限检查
-xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)'
+xcodebuild -list                  # 唯一的 scheme 是 TelnetKit-Package（由 SwiftPM 命名）
+swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" --triple arm64-apple-ios18.0-simulator   # 下限检查
 ```
 
 `swift test` 是本地证据。只报告实际运行过的命令及其观测结果；没有执行的检查不能声称已通过。覆盖以公开符号为准，而不是只看源码行：一个没有测试的公开符号属于失败的工作，不是部分完成的工作。

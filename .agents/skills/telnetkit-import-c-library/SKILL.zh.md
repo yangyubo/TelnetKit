@@ -73,7 +73,7 @@ description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libteln
 按顺序执行并保留观测输出：
 
 1. `git -C libtelnet rev-parse HEAD` 等于 `UPSTREAM.md` 中的 commit，且 `git -C libtelnet status --porcelain` 无任何输出。
-2. `swift build` 成功，且 C target 没有任何警告；同一 target 在五个平台下限（macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2）下都能构建。
+2. `swift build --target CLibTelnet` 成功且无警告；用 `--triple` 对 iOS 18、watchOS 11、tvOS 18、visionOS 2 下限重复该构建，macOS 15 即宿主构建；随后由 `swift test` 覆盖协议路径。
 3. `swift test` 通过，包括协商事件与字节转义用例。
 4. 一个接缝测试喂入 `FF FB 01`（IAC WILL ECHO）再喂 `68 69 0D 0A`，断言先收到一条 `.negotiation` 事件，随后是 `.data("hi\r\n")`。
 5. 一个接缝测试在已协商 ECHO 的前提下，经公开路径调用 `telnet_send_text` 发送 `hi\n`，断言出站字节包含 `IAC DO ECHO` 并完成 CR LF 转换，且以 `IOData` 写出。

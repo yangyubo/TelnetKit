@@ -21,12 +21,13 @@ Toolchain floor: Xcode 26 or newer with Swift 6.2 or newer. The deployment floor
 
 | Suite | Layer under test | Fixture | macOS 15 | iOS simulator | watchOS, tvOS, visionOS |
 |---|---|---|---|---|---|
+| `Tests/CLibTelnetTests/` | The vendored libtelnet C library through the `CLibTelnet` module | Bytes in, recorded events out; no socket, no connection | Yes, and this suite passes today | Yes | Yes, build plus run |
 | `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Bytes in, `[TelnetEvent]` out; no socket | Yes | Yes | Yes, build plus run |
 | `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address | Yes | Yes | Build only |
 | `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | `NIOTSListenerBootstrap` fixture, injected `NIOTSNetworkEvents` | Yes | Yes | No |
 | `Tests/TelnetKitTests/RealServer/` | A real server: connect, first bytes, no negotiation loop, bounded session, close | Apple's `telnetd` from Homebrew, addressed by `TELNETKIT_TEST_SERVER_HOST` and `TELNETKIT_TEST_SERVER_PORT`; skipped when unset | Yes | Yes | No |
 
-The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration suite binds a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
+This milestone ships the libtelnet suite, the row that is present; the other four arrive with the Swift target and are listed here so their platform placement is fixed now. The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration suite binds a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
 
 ## Running each suite
 
@@ -53,12 +54,13 @@ Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM 
 
 ```sh
 xcrun simctl list devices available                # read the installed names first
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
-                 -only-testing:TelnetKitTests/ProtocolTests
+xcodebuild -list                                   # SwiftPM names the sole scheme TelnetKit-Package
+xcodebuild build -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test  -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' \
+                 -only-testing:CLibTelnetTests
 ```
 
-`xcodebuild` resolves a scheme only after the package has been opened once in Xcode, so CI assigns a stable `TelnetKit-Package` scheme in the workspace and fails with the package name when the scheme is absent.
+`xcodebuild` exposes exactly one scheme for this package, named `TelnetKit-Package` rather than after a target, so every command reads it from `xcodebuild -list` instead of assuming a name.
 
 ## Tests against a real Telnet server
 

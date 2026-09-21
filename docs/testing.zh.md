@@ -21,12 +21,13 @@
 
 | 套件 | 被测层 | 夹具 | macOS 15 | iOS 模拟器 | watchOS、tvOS、visionOS |
 |---|---|---|---|---|---|
+| `Tests/CLibTelnetTests/` | 经 `CLibTelnet` 模块测试 vendored libtelnet C 库 | 输入字节，输出记录的事件；不使用 socket、不建立连接 | 是，且该套件今日已通过 | 是 | 是，构建并运行 |
 | `Tests/TelnetKitTests/Protocol/` | 经 `@testable import` 测试 `TelnetProtocolCore` | 输入字节，输出 `[TelnetEvent]`；不使用 socket | 是 | 是 | 是，构建并运行 |
 | `Tests/TelnetKitTests/PublicAPI/` | 仅经 `import TelnetKit` 测试 `TelnetConnection` | 回环地址上的 `TelnetEchoServer` | 是 | 是 | 仅构建 |
 | `Tests/TelnetKitTests/Integration/` | 连接行为：超时、取消、关闭、并发、路径事件 | `NIOTSListenerBootstrap` 起的夹具，以及注入的 `NIOTSNetworkEvents` | 是 | 是 | 否 |
 | `Tests/TelnetKitTests/RealServer/` | 真实服务端：连接、首批字节、协商不回环、有限时长会话、关闭 | 经 Homebrew 安装的 Apple `telnetd`，地址由 `TELNETKIT_TEST_SERVER_HOST` 与 `TELNETKIT_TEST_SERVER_PORT` 给出；未设置时跳过 | 是 | 是 | 否 |
 
-协议套件是正确性关卡且不碰网络，因此它是唯一在所有平台都跑的套件。集成套件要绑定回环监听，而 watchOS、tvOS、visionOS 不提供该语义，所以这些平台止步于构建加协议套件。
+本里程碑只交付 libtelnet 套件（即存在的那一行）；其余四个随 Swift target 一起到来，列在此处是为了现在就固定它们的平台归属。协议套件是正确性关卡且不碰网络，因此它是唯一在所有平台都跑的套件。集成套件要绑定回环监听，而 watchOS、tvOS、visionOS 不提供该语义，所以这些平台止步于构建加协议套件。
 
 ## 运行每个套件
 
@@ -53,12 +54,13 @@ swift run TelnetDemo --host 127.0.0.1 --port 2323  # 手工：用 CLI Demo 驱�
 
 ```sh
 xcrun simctl list devices available                # 先读已安装的设备名
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
-                 -only-testing:TelnetKitTests/ProtocolTests
+xcodebuild -list                                   # SwiftPM 把唯一的 scheme 命名为 TelnetKit-Package
+xcodebuild build -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test  -scheme TelnetKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' \
+                 -only-testing:CLibTelnetTests
 ```
 
-`xcodebuild` 只有在包被 Xcode 打开过一次之后才能解析 scheme，因此 CI 在工作区里固定 `TelnetKit-Package` scheme，并在缺少 scheme 时以包名报错退出。
+本包在 `xcodebuild` 下只暴露一个 scheme，名字是 `TelnetKit-Package` 而不是某个 target 的名字，因此每条命令都用 `xcodebuild -list` 读出它，而不是假定一个名字。
 
 ## 连接真实 Telnet 服务端的测试
 

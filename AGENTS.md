@@ -10,7 +10,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 The package does not exist yet; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
 
-- **Verified.** Reproduced on this machine: libtelnet compiles clean as a SwiftPM C target, Swift calls it through a module map, `FF FB 01` and `FF FA 18 01 FF F0` parse to application data only, and `telnet_send_text("hi\n")` emits `FF FD 01 68 69 0D 0A`.
+- **Verified.** Reproduced on this machine: `swift build --target CLibTelnet` and `swift test` succeed, the eight tests in `Tests/CLibTelnetTests` pass, `swift build --target CLibTelnet --triple` succeeds for the iOS, watchOS, tvOS, and visionOS floors, and `telnet_send_text("hi\n")` emits `FF FD 01 68 69 0D 0A` after the peer's WILL ECHO.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
 - **Designed.** Planned behavior of code that is not written. Mark designed statements as requirements, never as descriptions of existing behavior, and delete the marker when the behavior ships.
 
@@ -28,7 +28,7 @@ Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
 Sources/TelnetDemo/            CLI demo executable
 Sources/TelnetEchoServer/      macOS-only local echo server, also the integration fixture
-Tests/TelnetKitTests/Protocol/ the libtelnet suite that ships with M0
+Tests/CLibTelnetTests/        the libtelnet suite that ships now (Tests/TelnetKitTests/ follows)
 Examples/TelnetKitDemoApp/     SwiftUI demo application
 docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
@@ -41,7 +41,7 @@ Package products: library `TelnetKit`, executables `TelnetDemo` and `TelnetEchoS
 ```sh
 git submodule update --init --recursive   # required once after cloning
 swift build                       # debug build of every target
-swift test                        # Swift Testing suites; must run offline and finish under 60s
+swift test                        # 8 tests in Tests/CLibTelnetTests; offline, under 60s
 swift test --filter TelnetKitTests.Protocol   # one suite while iterating
 swift build -Xswiftc -strict-concurrency=complete   # concurrency error check
 swift build --configuration release               # release build and binary-size check
@@ -49,8 +49,8 @@ swift package describe            # target and product inventory
 swift package diagnose-api-breaking-changes baseline.json   # public interface snapshot comparison
 swift run TelnetEchoServer        # local fixture on port 2323
 swift run TelnetDemo --host 127.0.0.1 --port 2323
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 16'   # iOS floor check
-xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)'
+xcodebuild -list                  # the only scheme is TelnetKit-Package (SwiftPM names it)
+swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" --triple arm64-apple-ios18.0-simulator   # floor check
 ```
 
 `swift test` is the local evidence. Report only commands actually run, with their observed result; do not claim a check that did not execute. Coverage is complete for public symbols, not for source lines alone: a public symbol without a test is failing work, not partial work.
