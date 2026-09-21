@@ -89,7 +89,7 @@ await connection.close()
 ## Known limitations
 
 - Terminal emulation is out of scope. TelnetKit delivers bytes and protocol events; screen models, cursor handling, and color rendering are the caller's job.
-- MCCP2 compression is not built in. A COMPRESS2 request is refused with `wont`, and forcing compression reports an unsupported feature.
+- MCCP2 compression is not built in: a COMPRESS2 request is refused with `wont`. The Apple SDKs ship zlib, so this is a scope decision rather than a dependency gap; enabling it needs an inflation bound and compressed-state contracts first.
 - TLS is not implemented in the first version. The configuration reserves the field.
 - macOS and iOS only. No Linux, Windows, tvOS, or watchOS platform entry exists.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.

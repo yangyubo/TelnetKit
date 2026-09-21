@@ -89,7 +89,7 @@ await connection.close()
 ## 已知限制
 
 - 不做终端模拟。TelnetKit 只交付字节与协议事件；屏幕模型、光标处理与颜色渲染由调用方负责。
-- 未内置 MCCP2 压缩。收到 COMPRESS2 请求时以 `wont` 拒绝；被强制启用时报告不支持的功能。
+- 未内置 MCCP2 压缩：收到 COMPRESS2 请求时以 `wont` 拒绝。Apple SDK 自带 zlib，所以这是范围取舍而非依赖缺失；启用前必须先设计解压上限与压缩态契约。
 - 首版未实现 TLS，配置中仅预留字段。
 - 仅支持 macOS 与 iOS，没有 Linux、Windows、tvOS 或 watchOS 平台声明。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。

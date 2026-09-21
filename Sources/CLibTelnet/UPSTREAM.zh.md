@@ -31,7 +31,7 @@ module CLibTelnet {
 
 ## 构建设置
 
-C target 不定义任何自定义宏。`HAVE_ZLIB` 保持未定义，因此没有 MCCP2 支持，COMPRESS2 请求会被拒绝，而不是得到半吊子支持。相应行为见 [COMPRESS2 契约](../../docs/public-api.md#事件)。
+C target 不定义任何自定义宏。`HAVE_ZLIB` 保持未定义，因此 libtelnet 编译时直接去掉 MCCP2 代码，链接期也无需 `-lz`。COMPRESS2 请求会被拒绝，而不是得到半吊子支持；相应行为见 [COMPRESS2 契约](../../docs/public-api.md#事件)。Apple SDK 本可链接 zlib，所以这是设计取舍而非依赖限制。
 
 ## 升级清单
 

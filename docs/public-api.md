@@ -183,7 +183,7 @@ extension TelnetEvent {
 | `.localEchoChanged(enabled:)` | The peer's `will echo` or `wont echo` changed whether the local end should echo typed input |
 | `.mssp(_:)` | The peer sent an MSSP status list, decoded to a dictionary |
 | `.zmp(_:)` | The peer sent a ZMP command; the first element is the command name |
-| `.compressionEnabled(_:)` | A COMPRESS or COMPRESS2 negotiation changed compression state. With COMPRESS2 support not built in, the only values a caller sees are a request that was refused; a payload that then arrives compressed makes the core emit `.protocolError` |
+| `.compressionEnabled(_:)` | A COMPRESS or COMPRESS2 negotiation changed compression state. The first release builds without zlib and never accepts a compressed stream, so this case never arrives: every COMPRESS2 negotiation is answered `wont` and the stream stays uncompressed |
 | `.warning(_:)` | A recoverable protocol problem: a truncated sequence, an unexpected byte, a truncated subnegotiation, or dropped events |
 | `.protocolError(_:)` | A fatal state-machine failure; the connection closes after this event |
 
@@ -362,7 +362,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | `EnvironmentScope`, `EnvironmentVariable` | all cases and properties |
 | `TelnetConfiguration` | `init` with every default, and all eight properties |
 | `TelnetEventBufferPolicy`, `TelnetNewlinePolicy` | all cases |
-| `TelnetError` | all 12 cases, each reached by a test |
+| `TelnetError` | all 12 cases, each reached by a test; the v0.2 zlib path reaches `unsupportedFeature` and is out of scope while zlib is off |
 | `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | all properties and cases |
-| `TelnetWarning` | all five cases |
+| `TelnetWarning` | all five cases; `compressionUnavailable` is reserved for v0.2 zlib support and has no trigger while the build ships without zlib |
 | `TelnetProtocolError`, `TelnetErrorCode` | all cases |

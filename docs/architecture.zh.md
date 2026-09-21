@@ -100,6 +100,7 @@ C 用 `event.type` 做的 union 判别在 core 中收敛为一个 `switch`。由
 |---|---|---|---|
 | 未产生数据事件的入站字节 | 64 KiB | `inboundBufferLimit` | `.bufferOverflow`，连接关闭 |
 | 子协商载荷 | 8 KiB | `subnegotiationLimit` | `.subnegotiationTooLarge` |
+| 单次 `inflate` 的输出字节（v0.2；首版不链接 zlib） | 16 MiB | `maxInflatedBytes` | `.bufferOverflow`，连接关闭 |
 | 等待消费的排队事件 | 1024 | `eventBufferPolicy` | 取决于策略：`.warning` 带丢弃计数，或结束事件流 |
 | 连接握手 | 10 s | `connectTimeout` | `.connectTimeout` |
 | 空闲连接 | 无 | `idleTimeout` | 连接关闭 |

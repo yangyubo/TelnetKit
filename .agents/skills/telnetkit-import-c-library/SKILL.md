@@ -67,7 +67,7 @@ One file, `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift`, imports `CLibTe
 - No other file may import `CLibTelnet`. When a second file needs protocol data, widen the core's Swift interface instead.
 - Do not call `telnet_send*` from inside the callback. Append to the outbound queue and flush after `telnet_recv` returns.
 - Do not read a union member that the event type does not select. Read the member named for the event.
-- Do not define `HAVE_ZLIB`. A COMPRESS2 request is answered with `wont`, and a caller that forces compression receives `.unsupportedFeature` or `.protocolError`, never silently corrupted data.
+- Do not define `HAVE_ZLIB`. The Apple SDKs ship zlib, so this is a design choice, not a dependency limit. With the switch off, libtelnet compiles its MCCP2 code out: a COMPRESS2 request is answered `wont`, and a compressed payload that arrives without negotiation is treated as application data rather than detected as a violation.
 
 ## Validation
 

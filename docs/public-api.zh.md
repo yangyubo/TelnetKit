@@ -183,7 +183,7 @@ extension TelnetEvent {
 | `.localEchoChanged(enabled:)` | 对端的 `will echo` 或 `wont echo` 改变了本端是否应回显用户输入 |
 | `.mssp(_:)` | 对端发送 MSSP 状态列表，已解码为字典 |
 | `.zmp(_:)` | 对端发送 ZMP 命令；首元素是命令名 |
-| `.compressionEnabled(_:)` | COMPRESS 或 COMPRESS2 协商改变了压缩状态。未内置 COMPRESS2 支持时，调用方只会看到请求被拒绝；若随后真的有压缩载荷到达，core 会发出 `.protocolError` |
+| `.compressionEnabled(_:)` | COMPRESS 或 COMPRESS2 协商改变了压缩状态。首版不链接 zlib，也绝不接受压缩流，因此该 case 不会出现：所有 COMPRESS2 协商都以 `wont` 应答，字节流保持未压缩 |
 | `.warning(_:)` | 可恢复的协议问题：截断的序列、意外的字节、截断的子协商，或事件被丢弃 |
 | `.protocolError(_:)` | 致命的状态机失败；该事件之后连接关闭 |
 
@@ -362,7 +362,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | `EnvironmentScope`、`EnvironmentVariable` | 全部 case 与属性 |
 | `TelnetConfiguration` | `init` 的每个默认值，以及全部八个属性 |
 | `TelnetEventBufferPolicy`、`TelnetNewlinePolicy` | 全部 case |
-| `TelnetError` | 全部 12 个 case，每个都有测试触达 |
+| `TelnetError` | 全部 12 个 case，每个都有测试触达；`unsupportedFeature` 的触达点在 v0.2 的 zlib 路径上，zlib 关闭期间不在范围内 |
 | `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | 全部属性与 case |
-| `TelnetWarning` | 全部五个 case |
+| `TelnetWarning` | 全部五个 case；`compressionUnavailable` 为 v0.2 的 zlib 支持预留，在未链接 zlib 的构建中没有触发点 |
 | `TelnetProtocolError`、`TelnetErrorCode` | 全部 case |

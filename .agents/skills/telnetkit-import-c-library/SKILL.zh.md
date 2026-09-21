@@ -67,7 +67,7 @@ description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet
 - 不允许其他文件导入 `CLibTelnet`。当第二个文件需要协议数据时，扩展 core 的 Swift 接口。
 - 不要在回调内调用 `telnet_send*`。追加到出站队列，在 `telnet_recv` 返回后 flush。
 - 不要读取当前事件类型未选择的 union 成员。读取以该事件命名的成员。
-- 不要定义 `HAVE_ZLIB`。COMPRESS2 请求以 `wont` 应答，强行启用压缩的调用方会收到 `.unsupportedFeature` 或 `.protocolError`，绝不会收到被静默破坏的数据。
+- 不要定义 `HAVE_ZLIB`。Apple SDK 自带 zlib，所以这是设计取舍而非依赖限制。开关关闭时 libtelnet 会把 MCCP2 代码整段编译掉：COMPRESS2 请求以 `wont` 应答，而未协商就到达的压缩载荷会被当作应用数据，不会被识别为违规。
 
 ## 校验
 

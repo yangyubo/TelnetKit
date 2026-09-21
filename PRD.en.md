@@ -40,8 +40,8 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 
 - ❌ Terminal emulation (VT100/xterm screen model, cursor, line editing, color rendering). The demo is a **minimal interactive** demonstration, not a full TERM.
 - ❌ SSH, RLogin, and Mosh protocols.
-- ❌ BBS business logic (ANSI art, door games, ZMODEM and other file-transfer protocols).
-- ❌ MCCP2 compression (libtelnet can enable it through `HAVE_ZLIB`; the first release leaves it **off** as a v0.2 option).
+- ❌ BBS business logic (ANSI art, ZMODEM and other file-transfer protocols).
+- ❌ MCCP2 compression (`HAVE_ZLIB`). All three Apple SDKs ship zlib (I verified `-lz` links for macOS, iOS, and iPadOS), so leaving it off is a tradeoff rather than a dependency gap: the target users (developers, operators, and technical enthusiasts) do not rely on it, and accepting a compressed stream would add three undesigned contracts: an inflation-ratio bound, event-flow behavior under compression, and a compressed-state failure mode. The first release answers `wont`, and v0.2 evaluates the enablement conditions in §6.3.
 - ❌ A Telnet server framework productized on `ServerBootstrap`; the echo server in the test fixture is not part of the product interface.
 - ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
 - ❌ Linux and Windows support (the first release promises macOS 15+ and iOS 18+; the code layout does not deliberately block a later port).
@@ -52,9 +52,9 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 
 ### 2.1 User profiles
 
-1. **Application developer**: needs an embedded Telnet session in a macOS or iOS app (device console, serial-over-Telnet gateway client, legacy system integration, mobile operations tool).
-2. **Tool developer**: writes a CLI tool that connects to many devices, runs commands, collects output, and automates the protocol.
-3. **Protocol researcher or tester**: needs to observe or inject Telnet negotiation and check whether a peer follows RFC 1143.
+1. **Application developer**: needs an embedded Telnet session in a macOS or iOS app (device console, serial-over-Telnet gateway client, legacy system integration).
+2. **Operator**: writes CLI tools that connect to many network devices and servers to run commands, collect output, and automate inspection.
+3. **Technical enthusiast and protocol researcher**: needs to observe or inject Telnet negotiation, check whether a peer follows RFC 1143, or wire an old device into a personal toolchain.
 
 ### 2.2 Core user stories
 
@@ -375,6 +375,7 @@ public struct TelnetConfiguration: Sendable {
     public var idleTimeout: Duration?              // default nil
     public var inboundBufferLimit: Int             // default 64 KiB; exceeding it throws .bufferOverflow
     public var subnegotiationLimit: Int            // default 8 KiB, against SB flooding
+    public var maxInflatedBytes: Int               // default 16 MiB; bounds one inflate output once zlib ships in v0.2, against bombs
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
     public var logger: Logger?                     // swift-log; nil by default (silent)
@@ -395,7 +396,7 @@ public enum TelnetError: Error, Sendable, Equatable {
     case protocolViolation(TelnetProtocolError)
     case bufferOverflow(limit: Int)
     case subnegotiationTooLarge(option: TelnetOption, limit: Int)
-    case unsupportedFeature(String)                // e.g. MCCP2 not compiled in
+    case unsupportedFeature(String)                // a capability this build lacks (no trigger in the first release)
     case invalidConfiguration(String)
     case cancelled
 }
@@ -465,7 +466,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-NEG-07 | Support `NEW-ENVIRON`: receive a variable list structurally and send one on demand | P1 | The variable, value, and `ESC` byte sequences are correct |
 | FR-NEG-08 | Parse `MSSP` into `[String: String]` | P2 | A standard MSSP message parses correctly |
 | FR-NEG-09 | Parse `ZMP` commands and arguments | P2 | Multi-argument and empty-argument boundaries are correct |
-| FR-NEG-10 | When COMPRESS2 is not compiled in: answer a request with `WONT`, and throw `.unsupportedFeature` if compression is forced | P1 | A clear error instead of silently garbled data |
+| FR-NEG-10 | `compress2` is not registered in `TelnetOptions`: this end answers negotiations with `WONT` and never accepts a compressed stream | P1 | A `DO COMPRESS2` receives `WONT COMPRESS2`, and `optionStatus(.compress2)` reports all-false |
+| FR-NEG-11 | The precondition for enabling compression (v0.2) is explicit: the inflation bound, event-flow behavior under compression, and the compressed-stream failure mode must all be designed | P2 | Each of the three has a test; `HAVE_ZLIB` stays undefined while any is missing |
 | FR-NEG-11 | `optionStatus(_:)` reflects negotiation state live | P1 | State is asserted before and after negotiation |
 | FR-NEG-12 | Capabilities such as `sendWindowSize` and `replyTerminalType` can be triggered from the demo | P1 | The demo exposes an entry point for each |
 
@@ -570,7 +572,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | `ttype_send_triggers_reply_or_event` | TTYPE SEND produces `.terminalTypeRequested`, and the server receives IS after `replyTerminalType` |
 | `naws_reported_on_window_resize` | A window change makes the server receive four big-endian bytes |
 | `naws_escapes_255` | A 255-column width makes the payload contain `FF FF` |
-| `compress2_unsupported` | Negotiation produces `WONT` with no silent `.unsupportedFeature` failure |
+| `compress2_unsupported` | Negotiation produces `WONT`, `optionStatus(.compress2)` reports all-false, and no error is thrown |
 
 **D. Text and encoding (FR-TEXT)**
 
@@ -689,7 +691,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | R4 | `telnet_finish_sb`, `telnet_finish_newenviron`, and `telnet_finish_zmp` are macros, invisible to Swift | Medium | Supply equivalent implementations inside `TelnetProtocolCore` (`telnet_iac(t, TELNET_SE)`) and cover them in unit tests |
 | R5 | A self-written negotiation strategy easily produces a loop or state confusion | Medium | Reuse libtelnet's RFC 1143 Q-method implementation entirely and write no state machine; add an assertion that the reported `optionStatus` agrees with libtelnet's internal state |
 | R6 | Telnet is plaintext, including passwords | Medium | State the risk prominently in the documentation; do not implement the AUTHENTICATION option in the first release; reserve `configuration.tls` for a TLS-over-Telnet (`NIOSSL`) channel to evaluate in v0.2 |
-| R7 | MCCP2 needs zlib (`HAVE_ZLIB`), which differs across build environments | Low | Leave it off in the first release; if enabled, declare it explicitly through SwiftPM `.systemLibrary` or `define` and add an enabled variant to CI |
+| R7 | Enabling MCCP2 exposes the inflate path to a decompression bomb (a few KB into gigabytes of memory) | Medium | Leave it off in the first release; enabling it in v0.2 requires the `maxInflatedBytes` bound, the event-flow contract under compression, and a compressed-stream failure test, plus an enabled CI variant. zlib itself needs no work: the macOS, iOS, and iPadOS SDKs all ship it (verified linkable with `-lz`) |
 | R8 | A poor `AsyncStream` buffer policy causes memory growth or event loss | Medium | Default to `.bounded` with a configurable drop or finish policy, emit a `.warning` **when an event is dropped**, and add a high-traffic stress test |
 | R9 | The public API couples to swift-nio types such as `ByteBuffer`, which limits a future upgrade | Low | Use `ByteBuffer` as the binary carrier for `TelnetEvent.data` because it matches the NIO ecosystem, and provide `text` and `bytes([UInt8])` accessors so a caller never has to understand NIO |
 | R10 | iOS network and background limits: suspending the app drops the connection, and App Store review scrutinizes plaintext protocols | Medium | Document the foreground-session semantics and the disconnect-on-background behavior, add no background daemon, provide `idleTimeout` and a caller-side reconnect example, and flag the plaintext risk in the README security section |
@@ -741,7 +743,7 @@ let package = Package(
     ],
     targets: [
         // vendored libtelnet: internal only, never exposed as a product.
-        // HAVE_ZLIB stays undefined (MCCP2 off; see §6.3 FR-NEG-10 and risk R7).
+        // HAVE_ZLIB stays undefined: the Apple SDKs ship zlib and -lz links, but the first release does not link it (rationale in §1.3, enablement conditions in §6.3 FR-NEG-11).
         .target(name: "CLibTelnet"),
         .target(
             name: "TelnetKit",

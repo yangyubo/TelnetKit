@@ -40,8 +40,8 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 
 - ❌ 终端模拟器（VT100/xterm 屏幕模型、光标、行编辑、颜色渲染）——Demo 只做**最小可交互**演示，不做完整 TERM。
 - ❌ SSH / RLogin / Mosh 协议。
-- ❌ BBS 业务逻辑（ANSI 图、门游戏、文件传输协议 ZMODEM 等）。
-- ❌ MCCP2 压缩（libtelnet 通过 `HAVE_ZLIB` 可开启；首版**关闭**，作为 v0.2 可选项）。
+- ❌ BBS 业务逻辑（ANSI 图、文件传输协议 ZMODEM 等）。
+- ❌ MCCP2 压缩（`HAVE_ZLIB`）。Apple 三个 SDK 都自带 zlib（我已验证 macOS/iOS/iPadOS 均可 `-lz` 链接），所以关闭不是依赖问题，而是取舍：目标用户（开发者、运维人员、极客）不依赖它；而一旦接受压缩流，inflate 会引入解压炸弹、压缩态事件流与失败模式三项未设计的契约。首版对其一律 `wont`，v0.2 按 §6.3 的启用条件评估。
 - ❌ Telnet 服务端框架（`ServerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
 - ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
 - ❌ Linux/Windows 平台支持（首版承诺 macOS 15+ 与 iOS 18+；代码组织上不刻意阻断后续移植）。
@@ -52,9 +52,9 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 
 ### 2.1 用户画像
 
-1. **应用开发者**：需要在 macOS 或 iOS App 中内嵌一个 Telnet 会话（设备调试台、串口转 Telnet 网关客户端、老系统对接、移动端运维工具）。
-2. **工具开发者**：写 CLI 工具批量连设备跑命令、采集输出、做协议自动化。
-3. **协议研究者/测试者**：需要观察或注入 Telnet 协商，验证对端实现是否符合 RFC 1143。
+1. **应用开发者**：需要在 macOS 或 iOS App 中内嵌一个 Telnet 会话（设备调试台、串口转 Telnet 网关客户端、老系统对接）。
+2. **运维人员**：写 CLI 工具批量连接网络设备与服务器，跑命令、采集输出、做自动化巡检。
+3. **极客与协议研究者**：需要观察或注入 Telnet 协商，验证对端实现是否符合 RFC 1143，或把老设备接到自己的工具链上。
 
 ### 2.2 核心用户故事
 
@@ -375,6 +375,7 @@ public struct TelnetConfiguration: Sendable {
     public var idleTimeout: Duration?              // 默认 nil
     public var inboundBufferLimit: Int             // 默认 64 KiB，超限抛 .bufferOverflow
     public var subnegotiationLimit: Int            // 默认 8 KiB，防 SB 洪泛
+    public var maxInflatedBytes: Int               // 默认 16 MiB；v0.2 启用 zlib 后约束单次 inflate 输出，防解压炸弹
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
     public var logger: Logger?                     // swift-log；默认 nil（静默）
@@ -395,7 +396,7 @@ public enum TelnetError: Error, Sendable, Equatable {
     case protocolViolation(TelnetProtocolError)
     case bufferOverflow(limit: Int)
     case subnegotiationTooLarge(option: TelnetOption, limit: Int)
-    case unsupportedFeature(String)                // 如 MCCP2 未编译
+    case unsupportedFeature(String)                // 本构建未提供的能力（首版没有触发点）
     case invalidConfiguration(String)
     case cancelled
 }
@@ -465,7 +466,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-NEG-07 | 支持 `NEW-ENVIRON`：接收变量表并结构化；可主动发送 | P1 | 变量/值/转义（`ESC`）字节序列正确 |
 | FR-NEG-08 | 支持 `MSSP` 解析为 `[String: String]` | P2 | 标准 MSSP 报文解析正确 |
 | FR-NEG-09 | 支持 `ZMP` 命令与参数解析 | P2 | 多参数/空参数边界正确 |
-| FR-NEG-10 | `COMPRESS2` 未编译时：协商请求回 `WONT`，并在被强制启用时抛 `.unsupportedFeature` | P1 | 明确错误而非静默错乱 |
+| FR-NEG-10 | 不在 `TelnetOptions` 中登记 `compress2`：本端对协商回 `WONT`，绝不接受压缩流 | P1 | 收到 `DO COMPRESS2` 时出站 `WONT COMPRESS2`；`optionStatus(.compress2)` 全为 false |
+| FR-NEG-11 | 启用压缩（v0.2）的前置条件写清楚：解压上限、压缩态事件流契约、压缩流失败模式三者都有设计才可开启 | P2 | 三项设计各自有测试；缺任一项则 `HAVE_ZLIB` 保持未定义 |
 | FR-NEG-11 | `optionStatus(_:)` 实时反映协商状态 | P1 | 协商前后状态断言 |
 | FR-NEG-12 | `sendWindowSize`、`replyTerminalType` 等能力可从 Demo 手动触发 | P1 | Demo 中有对应入口 |
 
@@ -570,7 +572,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | `ttype_send_triggers_reply_or_event` | 收到 TTYPE SEND → `.terminalTypeRequested`，`replyTerminalType` 后服务端收到 IS |
 | `naws_reported_on_window_resize` | 变更窗口 → 服务端收到 4 字节大端尺寸 |
 | `naws_escapes_255` | 列宽 255 → payload 含 `FF FF` |
-| `compress2_unsupported` | 协商 → `WONT`，无 `.unsupportedFeature` 静默失败 |
+| `compress2_unsupported` | 协商 → `WONT`，`optionStatus(.compress2)` 全 false，且不抛错 |
 
 **D. 文本与编码（对应 FR-TEXT）**
 
@@ -689,7 +691,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | R4 | `telnet_finish_sb` / `telnet_finish_newenviron` / `telnet_finish_zmp` 是宏，Swift 不可见 | 中 | 在 `TelnetProtocolCore` 内以其等价实现替代（`telnet_iac(t, TELNET_SE)`），并在单测中覆盖 |
 | R5 | 选项协商策略自研容易产生协商回环或状态错乱 | 中 | 完全复用 libtelnet 的 RFC 1143 Q-method 实现，不自研状态机；补充"报告给用户的 `optionStatus`"与 libtelnet 内部状态一致性的断言 |
 | R6 | Telnet 明文传输（含口令） | 中 | 文档显著标注风险；首版不实现 AUTHENTICATION 选项；`configuration.tls` 预留 TLS over Telnet（`NIOSSL`）通道，v0.2 评估 |
-| R7 | MCCP2 需 zlib（`HAVE_ZLIB`），跨平台构建差异 | 低 | 首版不启用；若启用则通过 SwiftPM `.systemLibrary`/`define` 显式声明并在 CI 增加开启变体 |
+| R7 | 启用 MCCP2 的解压路径可能被解压炸弹放大（几 KB → GB 级内存） | 中 | 首版不启用；v0.2 启用时必须同时落地 `maxInflatedBytes` 上限、压缩态事件流契约与压缩流失败模式测试，并在 CI 增加开启变体。zlib 本身无需处理：macOS/iOS/iPadOS SDK 均内置（已实测 `-lz` 可链接） |
 | R8 | `AsyncStream` 事件缓冲策略不当导致内存暴涨或事件丢失 | 中 | 默认 `.bounded`，丢弃/终止策略可配且**丢弃时发出 `.warning`**；补大流量压测 |
 | R9 | 公开 API 与 swift-nio 类型（如 `ByteBuffer`）耦合，未来升级受限 | 低 | `TelnetEvent.data` 采用 `ByteBuffer` 作为二进制载体（与 NIO 生态一致）；同时提供 `text`/`bytes([UInt8])` 便捷访问，避免调用方必须理解 NIO |
 | R10 | iOS 端的网络与后台限制：应用后台挂起会断开连接，App Store 审核关注明文协议 | 中 | 文档写明「前台会话」语义与后台断开行为，不引入后台常驻能力；提供 `idleTimeout` 与应用层重连示例；README 安全章节标注明文风险 |
@@ -741,7 +743,7 @@ let package = Package(
     ],
     targets: [
         // vendored libtelnet：仅内部可见，product 不对外暴露。
-        // 不定义 HAVE_ZLIB（首版关闭 MCCP2，见 §6.3 FR-NEG-10 与风险 R7），无其他自定义编译宏。
+        // 不定义 HAVE_ZLIB：Apple SDK 自带 zlib 可直接 -lz，首版仍不链接（理由与启用条件见 §1.3 与 §6.3 FR-NEG-11），无其他自定义编译宏。
         .target(name: "CLibTelnet"),
         .target(
             name: "TelnetKit",

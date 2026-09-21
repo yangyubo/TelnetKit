@@ -31,7 +31,7 @@ module CLibTelnet {
 
 ## Build settings
 
-The C target compiles with no custom macro. `HAVE_ZLIB` stays undefined, so MCCP2 support is absent and a COMPRESS2 request is refused rather than half-supported. See the [COMPRESS2 contract](../../docs/public-api.md#events) for the resulting behavior.
+The C target compiles with no custom macro. `HAVE_ZLIB` stays undefined, so libtelnet compiles with its MCCP2 code removed and the linker never needs `-lz`. A COMPRESS2 request is refused rather than half-supported; see the [COMPRESS2 contract](../../docs/public-api.md#events). The Apple SDKs would link zlib, so this is a design choice, not a dependency limit.
 
 ## Upgrade checklist
 
