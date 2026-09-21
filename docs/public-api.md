@@ -160,6 +160,10 @@ public enum TelnetEvent: Sendable {
     case mssp([String: String])
     case zmp([String])
     case compressionEnabled(Bool)
+    case pathChanged(viable: Bool, expensive: Bool, constrained: Bool)
+    case betterPathAvailable
+    case betterPathUnavailable
+    case waitingForConnectivity(error: String?, description: String)
     case warning(TelnetWarning)
     case protocolError(TelnetProtocolError)
 }
@@ -184,6 +188,11 @@ extension TelnetEvent {
 | `.mssp(_:)` | The peer sent an MSSP status list, decoded to a dictionary |
 | `.zmp(_:)` | The peer sent a ZMP command; the first element is the command name |
 | `.compressionEnabled(_:)` | A COMPRESS or COMPRESS2 negotiation changed compression state. The first release builds without zlib and never accepts a compressed stream, so this case never arrives: every COMPRESS2 negotiation is answered `wont` and the stream stays uncompressed |
+| `.pathChanged(viable:expensive:constrained:)` | Network.framework reported a new path for the connection; the three flags come from `NWPath` and are copied into Swift values |
+| `.betterPathAvailable` | The system found a preferred path, usually Wi-Fi while cellular carries the connection |
+| `.betterPathUnavailable` | That preferred path went away |
+| `.waitingForConnectivity(error:description:)` | The connect attempt is parked until a route exists, because `waitForConnectivity` is on. The connection is not closed and `connect` has not returned yet |
+| `.viabilityChanged(isViable:)` | The path became usable or unusable. A non-viable path does not close the connection; it reports that no traffic can flow until it recovers |
 | `.warning(_:)` | A recoverable protocol problem: a truncated sequence, an unexpected byte, a truncated subnegotiation, or dropped events |
 | `.protocolError(_:)` | A fatal state-machine failure; the connection closes after this event |
 
@@ -258,8 +267,9 @@ public struct TelnetConfiguration: Sendable {
     public var subnegotiationLimit: Int
     public var eventBufferPolicy: TelnetEventBufferPolicy
     public var newlinePolicy: TelnetNewlinePolicy
+    public var waitForConnectivity: Bool
+    public var transportOptions: [NWProtocolOptions]
     public var logger: Logger?
-    public var tls: TLSConfiguration?
 
     public init(
         connectTimeout: Duration = .seconds(10),
@@ -268,8 +278,9 @@ public struct TelnetConfiguration: Sendable {
         subnegotiationLimit: Int = 8_192,
         eventBufferPolicy: TelnetEventBufferPolicy = .bounded(1024),
         newlinePolicy: TelnetNewlinePolicy = .nvt,
-        logger: Logger? = nil,
-        tls: TLSConfiguration? = nil
+        waitForConnectivity: Bool = true,
+        transportOptions: [NWProtocolOptions] = [],
+        logger: Logger? = nil
     )
 }
 
@@ -291,9 +302,10 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `eventBufferPolicy` | `.bounded` finishes the stream with a `.warning` when full, `.unbounded` never drops, `.dropOldest` discards the oldest queued event and emits `.warning(.eventBufferOverflowDropped(count:))`. |
 | `newlinePolicy` | `.nvt` translates CR and LF for text sends and for received data; `.raw` passes bytes through. `binary` negotiation overrides both to raw while it is enabled. |
 | `logger` | Optional `swift-log` logger. Nil logs nothing. Payload content is never logged, at any level. |
-| `tls` | Nil means plaintext. A non-nil value upgrades the connection before Telnet negotiation; the caller supplies trust roots, because Telnet itself has no TLS negotiation. On iOS those roots come from the caller's bundle or the system trust store, never from a hardcoded macOS path. |
+| `waitForConnectivity` | True parks a connect attempt that has no route instead of failing, and the attempt resumes when a route appears (FR-PATH-01). The connect call has not returned while it is parked, and `.waitingForConnectivity` reports the state. |
+| `transportOptions` | Network.framework protocol options passed through to `NIOTSConnectionBootstrap`. Empty means Telnet over TCP with no extra protocol. Passing `NWProtocolTLS.default` enables TLS, and the system evaluates trust; no custom trust callback exists, so a certificate the system rejects fails the connect and surfaces as `.transportFailed`. |
 
-The defaults are the ones a caller gets by passing nothing, and each is asserted by a configuration test. `inboundBufferLimit` and `subnegotiationLimit` are byte counts; `eventBufferPolicy` counts events.
+The defaults are the ones a caller gets by passing nothing, and each is asserted by a configuration test. `inboundBufferLimit` and `subnegotiationLimit` are byte counts; `eventBufferPolicy` counts events; `waitForConnectivity` is a flag; `transportOptions` is an ordered list applied from first to last.
 
 ## Errors
 
@@ -314,7 +326,7 @@ public enum TelnetError: Error, Sendable, Equatable {
 }
 
 public struct TelnetTransportFailure: Error, Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), channelClosed, writeTimeout, other }
+    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), tls, channelClosed, writeTimeout, other }
     public var kind: Kind
     public var message: String
     public var isRetryable: Bool
@@ -339,7 +351,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 
 Each libtelnet `telnet_error_t` value maps one-to-one: `TELNET_EBADVAL` to `.badValue`, `TELNET_ENOMEM` to `.outOfMemory`, `TELNET_EOVERFLOW` to `.overflow`, `TELNET_EPROTOCOL` to `.protocol`, and `TELNET_ECOMPRESS` to `.compression`. `TELNET_EOK` is success and produces no error.
 
-`.notConnected` means a call was made after close; `.alreadyClosed` means `close()` raced a close that had already begun and the caller asked to distinguish it. `isRetryable` is true for `.dns` and a connection-refused `.posix` code, and false for every other transport kind.
+`.notConnected` means a call was made after close; `.alreadyClosed` means `close()` raced a close that had already begun and the caller asked to distinguish it. `isRetryable` is true for `.dns`, for a connection-refused or timed-out `.posix` code, and for `.other` when the underlying `NWError` is transient such as `.waitingForConnectivity`; it is false for `.tls`, `.channelClosed`, and `.writeTimeout`, because retrying those without a change repeats the same failure.
 
 ## Logging
 
@@ -352,7 +364,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | Type | Symbols |
 |---|---|
 | `TelnetConnection` | `connect`, `events`, `isConnected`, `remoteAddress`, `localAddress`, `optionStatus`, `send(_:)`, `send(text:)`, `send(text:lineEnding:)`, `sendRaw(_:)`, `send(command:)`, `negotiate(_:option:)`, `requestOption(_:)`, `subnegotiate(option:payload:)`, `replyTerminalType(_:)`, `sendEnvironment(_:scope:)`, `sendWindowSize(columns:rows:)`, `close()` |
-| `TelnetEvent` | all 14 cases plus `bytes` and `text` |
+| `TelnetEvent` | all 19 cases plus `bytes` and `text` |
 | `TelnetOptions` | `LocalOption`, `RemoteOption`, `local`, `remote`, `isValid`, `standardClient`, `serverRequesting(_:)` |
 | `TelnetOption` | `init(rawValue:)`, `rawValue`, `displayName`, `allCases`, and all 18 constants |
 | `TelnetOptionStatus` | all four properties |
@@ -360,7 +372,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | `TelnetCommand` | all 19 cases |
 | `TelnetLineEnding` | all four cases |
 | `EnvironmentScope`, `EnvironmentVariable` | all cases and properties |
-| `TelnetConfiguration` | `init` with every default, and all eight properties |
+| `TelnetConfiguration` | `init` with every default, and all nine properties |
 | `TelnetEventBufferPolicy`, `TelnetNewlinePolicy` | all cases |
 | `TelnetError` | all 12 cases, each reached by a test; the v0.2 zlib path reaches `unsupportedFeature` and is out of scope while zlib is off |
 | `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | all properties and cases |

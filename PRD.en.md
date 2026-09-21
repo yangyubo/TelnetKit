@@ -21,7 +21,7 @@
 The Telnet protocol (RFC 854/855 and its many option extensions) is still a common interactive channel for BBS systems, network devices, embedded devices, and industrial terminals. The Swift ecosystem lacks a Telnet client library that is modern, safe under concurrency, and usable out of the box:
 
 - `libtelnet` is a mature C implementation covering RFC 854/855/1091/1143/1408/1572, with Q-method (RFC 1143) option negotiation, ZMP, MCCP2, MSSP, and NEW-ENVIRON. It implements only the **protocol state machine**, it does not manage TCP, and its **callback API with many macros, constants, and raw pointers** is deeply un-Swift.
-- Hand-writing Telnet parsing on raw `Network.framework` or POSIX sockets means rewriting the RFC 1143 state machine: a large amount of work with a high error rate.
+- Hand-writing the connection layer, whether directly on Network.framework or on raw sockets, still means rewriting the RFC 1143 state machine: a large amount of work with a high error rate.
 
 TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and SwiftNIO into a type-safe, testable, C-free async Telnet terminal capability library that serves both macOS 15+ and iOS 18+.**
 
@@ -30,11 +30,11 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 | ID | Goal | Measurement |
 | --- | --- | --- |
 | G1 | Provide a native Swift async Telnet interface | Callers use only `async/await` and `AsyncSequence`; no callback closure anywhere |
-| G2 | Let the library own the TCP connection lifecycle | Connect, timeout, graceful close, backpressure, and cancellation propagation are all `TelnetConnection`'s responsibility |
+| G2 | Let the library own the connection lifecycle | Connect, timeout, graceful close, backpressure, cancellation propagation, and network path changes are all `TelnetConnection`'s responsibility |
 | G3 | Isolate every C implementation detail | The public API exposes no `OpaquePointer`, no `UInt8` command macro, and no `telnet_*` symbol |
 | G4 | Protocol correctness that can be verified | Negotiation, subnegotiation, TTYPE, NEW-ENVIRON, and NAWS behavior each has test coverage |
 | G5 | A deliverable example project | The demo covers every public interface and can talk to a real Telnet service |
-| G6 | Modern dependencies | Swift 6 language mode + `swift-tools-version` 6.x + macOS 15+ and iOS 18+ deployment targets + swift-nio 2.10x |
+| G6 | One Apple-first technical route | Network.framework through NIOTS is the transport, with no POSIX/BSD socket path and no branch kept for another platform |
 
 ### 1.3 Non-goals (out of scope)
 
@@ -42,9 +42,11 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 - ❌ SSH, RLogin, and Mosh protocols.
 - ❌ BBS business logic (ANSI art, ZMODEM and other file-transfer protocols).
 - ❌ MCCP2 compression (`HAVE_ZLIB`). All three Apple SDKs ship zlib (I verified `-lz` links for macOS, iOS, and iPadOS), so leaving it off is a tradeoff rather than a dependency gap: the target users (developers, operators, and technical enthusiasts) do not rely on it, and accepting a compressed stream would add three undesigned contracts: an inflation-ratio bound, event-flow behavior under compression, and a compressed-state failure mode. The first release answers `wont`, and v0.2 evaluates the enablement conditions in §6.3.
-- ❌ A Telnet server framework productized on `ServerBootstrap`; the echo server in the test fixture is not part of the product interface.
+- ❌ A Telnet server framework productized on `NIOTSListenerBootstrap`; the echo server in the test fixture is not part of the product interface.
 - ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
-- ❌ Linux and Windows support (the first release promises macOS 15+ and iOS 18+; the code layout does not deliberately block a later port).
+- ❌ Non-Apple platforms (Linux, Windows, and Android are out of scope, with no abstraction or conditional compilation kept for them).
+- ❌ A POSIX/BSD socket transport (`NIOPosix`, raw `socket()`, `select`/`kqueue`); Network.framework is the only transport.
+- ❌ A productized server or listener side (`NIOTSListenerBootstrap`); the echo server in the test fixture is not part of the product interface.
 
 ---
 
@@ -87,6 +89,7 @@ These facts were verified before writing this document (2026-09-21, this machine
 | libtelnet has no option-status query | The header exports **no** function that reports the result of `WILL`/`WONT`/`DO`/`DONT` negotiation. `optionStatus(_:)` must therefore be derived by this library in Swift from observed negotiation events; reading C struct internals is forbidden |
 | libtelnet event model | `telnet_event_handler_t(telnet_t*, telnet_event_t*, void *user_data)`; `telnet_event_t` is a union with 15 event types |
 | libtelnet compression | Controlled by the `HAVE_ZLIB` build switch, off by default |
+| Transport | NIOTS (`swift-nio-transport-services` 1.x) brings Network.framework's EventLoop, Channels, and Bootstraps into SwiftNIO; it needs swift-nio >= 2.83.0 and supports macOS 10.14+, iOS 12+, tvOS 12+, and watchOS 6+, all far below our floors |
 | libtelnet license | Public domain dedication (see `COPYING`) |
 
 **Prototype results (actually run, not inferred)**:
@@ -95,7 +98,7 @@ These facts were verified before writing this document (2026-09-21, this machine
 2. With `libtelnet.c/.h` in `Sources/CLibTelnet/` (containing `module.modulemap`), `swift build` succeeded and `swift test` (Swift Testing) passed.
 3. On the Swift side, registering a closure callback through `telnet_init` with an `Unmanaged` user_data, then feeding `FF FB 01` (IAC WILL ECHO) and `FF FA 18 01 FF F0` (IAC SB TTYPE SEND IAC SE) yielded only the plain data `hello\r\n`: the negotiation bytes were swallowed correctly, so **the parse path works**.
 4. `telnet_send_text("hi\n")` produced the outbound bytes `FF FD 01 68 69 0D 0A`: it first adds `IAC DO ECHO` (because the peer had sent WILL ECHO), then the NVT-translated text with a correct `0x0D 0x0A`, so **the outbound coding and negotiation reply path works**.
-5. `NIOAsyncChannel`, `ClientBootstrap`, and the related async APIs are official in swift-nio 2.x; see the [swiftonserver client tutorial](https://swiftonserver.com/building-swiftnio-clients/) and the [NIO TCP echo client example](https://github.com/FranzBusch/swift-nio/blob/0f9d376fb5b414e40d5c3c3326733d829c92b939/Sources/NIOTCPEchoClient/Client.swift).
+5. The transport choice is verified against official documentation: NIOTS (`swift-nio-transport-services` 1.x) brings Network.framework's EventLoop, Channels, and Bootstraps into SwiftNIO, states that a regular NIO application only changes its event loop group and bootstrap, needs swift-nio >= 2.83.0, and supports macOS 10.14+, iOS 12+, tvOS 12+, and watchOS 6+. `NIOAsyncChannel` and the related async APIs are official in swift-nio 2.x; see the [swiftonserver client tutorial](https://swiftonserver.com/building-swiftnio-clients/).
 
 > Environment note: under this machine's sandbox, compiling a SwiftPM manifest needs `sandbox-exec` permission, so verification used a wider sandbox mode; ordinary development is unaffected.
 
@@ -103,11 +106,11 @@ These facts were verified before writing this document (2026-09-21, this machine
 
 ## 4. Overall architecture
 
-### 4.1 Package structure (single package with a vendored C target)
+### 4.1 Package structure (single package, vendored C target, Apple-only transport)
 
 ```
 TelnetKit/
-├── Package.swift                       # swift-tools-version: 6.2, platforms macOS 15 + iOS 18
+├── Package.swift                       # macOS 15 / iOS 18 / watchOS 11 / tvOS 18 / visionOS 2
 ├── PRD.md
 ├── README.md
 ├── LICENSE                             # this library's license (libtelnet is public domain; note it in NOTICE)
@@ -130,21 +133,21 @@ TelnetKit/
 │   │   ├── Protocol/                   # Swift wrapper over libtelnet (internal)
 │   │   │   ├── TelnetProtocolCore.swift
 │   │   │   └── TelnetWireCoding.swift
-│   │   ├── Transport/                  # NIO integration (internal)
-│   │   │   ├── TelnetChannelHandler.swift
-│   │   │   └── TelnetChannelOptions.swift
-│   │   └── Demos/                      # optional: SwiftUI components used by DemoApp
-│   ├── TelnetDemo/                     # [executable] CLI demo
+│   ├── Transport/                  # NIOTS/Network.framework integration (internal)
+│   │   ├── TelnetChannelHandler.swift
+│   │   ├── TelnetConnectionBootstrap.swift
+│   │   └── TelnetNetworkEventMapping.swift
+│   ├── TelnetDemo/                     # [executable, macOS only] CLI demo
 │   │   └── main.swift
-│   └── TelnetEchoServer/               # [executable] local loopback server (demo + integration fixture)
+│   └── TelnetEchoServer/               # [executable, macOS only] local loopback server (demo + integration fixture)
 │       └── main.swift
 ├── Tests/
 │   └── TelnetKitTests/
 │       ├── PublicAPI/                  # black box: only import TelnetKit
 │       ├── Protocol/                   # white box: @testable import, per-event assertions
-│       └── Integration/                # loopback: real TCP + real NIO
+│       └── Integration/                # loopback: a real connection through NIOTS
 └── Examples/
-    └── TelnetKitDemoApp/               # SwiftUI macOS demo (Xcode project or SwiftPM executable target)
+    └── TelnetKitDemoApp/               # SwiftUI demo (Xcode project; macOS and iOS targets)
 ```
 
 ### 4.2 Layers and responsibilities
@@ -156,12 +159,14 @@ TelnetKit/
 │ Protocol    TelnetProtocolCore: telnet_t lifetime,            │
 │             event callback → Swift enum, option table, NVT     │
 ├──────────────────────────────────────────────────────────────┤
-│ Transport   TelnetChannelHandler: ChannelInbound/Outbound      │
-│             Handler, joining ByteBuffer ↔ ProtocolCore        │
+│ Transport   TelnetChannelHandler: ChannelDuplexHandler,        │
+│             joining ByteBuffer (in) / IOData (out) ↔ Core      │
 ├──────────────────────────────────────────────────────────────┤
-│ NIO         ClientBootstrap + NIOAsyncChannel + EventLoopGroup │
+│ NIOTS       NIOTSConnectionBootstrap + NIOTSEventLoopGroup     │
 ├──────────────────────────────────────────────────────────────┤
-│ C           CLibTelnet (libtelnet.c)                           │
+│ System      Network.framework (path, proxy, VPN, TLS, power)   │
+├──────────────────────────────────────────────────────────────┤
+│ C           CLibTelnet (libtelnet.c, protocol parsing only)    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -179,7 +184,7 @@ TelnetKit/
 
 ### 4.3 Threading and concurrency model (mandatory constraints)
 
-1. **Single-thread ownership**: `telnet_t*` is accessed only on the EventLoop thread that created it; every `telnet_recv`, `telnet_send*`, `telnet_iac`, and `telnet_negotiate` call happens on that thread.
+1. **Single-thread ownership**: `telnet_t*` is accessed only on the EventLoop that created it; every `telnet_recv`, `telnet_send*`, `telnet_iac`, and `telnet_negotiate` call happens on the same `NIOTSEventLoop` (a serial `DispatchQueue` underneath).
 2. **`user_data` lifetime**: the `Unmanaged` pointer passed to `telnet_init` refers to handler state and must never reach a callback after `telnet_free`; the handler deinit calls `telnet_free` before releasing that state.
 3. **No escape from the callback**: the `buffer`, `name`, and `argv` pointers in a `telnet_event_t` are valid **only during the callback** and must be copied into Swift value types immediately.
 4. **No reentry inside the callback**: an event callback must not recursively call `telnet_send*`; a send becomes an outbound queue entry that the handler flushes in order after the callback returns.
@@ -372,6 +377,7 @@ public enum TelnetLineEnding: Sendable { case crlf, crNul, lf, none }
 
 public struct TelnetConfiguration: Sendable {
     public var connectTimeout: Duration            // default .seconds(10)
+    public var waitForConnectivity: Bool           // default true: wait for a route instead of failing at once
     public var idleTimeout: Duration?              // default nil
     public var inboundBufferLimit: Int             // default 64 KiB; exceeding it throws .bufferOverflow
     public var subnegotiationLimit: Int            // default 8 KiB, against SB flooding
@@ -379,7 +385,7 @@ public struct TelnetConfiguration: Sendable {
     public var eventBufferPolicy: TelnetEventBufferPolicy  // .bounded(1024) / .unbounded / .dropOldest
     public var newlinePolicy: TelnetNewlinePolicy // .nvt / .raw
     public var logger: Logger?                     // swift-log; nil by default (silent)
-    public var tls: TLSConfiguration?              // reserved: TLS over Telnet (see risk R6)
+    public var transportOptions: [NWProtocolOptions]  // passed through to Network.framework; TLS uses NWProtocolTLS (see §6.6)
 }
 ```
 
@@ -404,7 +410,7 @@ public enum TelnetError: Error, Sendable, Equatable {
 /// A structured transport failure: diagnostic detail is kept, but the public surface
 /// never names NIOCore's concrete error generics, so NIO changes cannot break SemVer.
 public struct TelnetTransportFailure: Error, Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), channelClosed, writeTimeout, other }
+    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), tls, channelClosed, writeTimeout, other }
     public var kind: Kind
     public var message: String        // a developer-readable description with no payload data
     public var isRetryable: Bool
@@ -481,6 +487,30 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | FR-TEXT-04 | Encode all text as UTF-8; replace illegal input lossily and log a warning | P1 | Non-UTF-8 input does not crash |
 | FR-TEXT-05 | `send(_ bytes:)` escapes `0xFF` automatically; `sendRaw` does not (for advanced use) | P0 | The byte assertions pass |
 
+### 6.5 Network path and connection availability (FR-PATH)
+
+NIOTS exposes Network.framework path events to SwiftNIO (`NIOTSNetworkEvents`). That capability is why a single transport is worth it, so it is a requirement rather than an option.
+
+| ID | Requirement | Priority | Acceptance criterion |
+| --- | --- | --- | --- |
+| FR-PATH-01 | With `waitForConnectivity: true`, a connect request with no available route waits instead of failing immediately | P0 | In a simulated no-route state the call neither throws nor finishes, and the connection completes once a route returns |
+| FR-PATH-02 | A path change maps to `.pathChanged(viable:expensive:constrained:)` | P0 | Switching between cellular and Wi-Fi produces the event, and `viable` matches `NWPath` |
+| FR-PATH-03 | A better path produces `.betterPathAvailable`, and its loss produces `.betterPathUnavailable` | P1 | The pair follows `NIOTSNetworkEvents` semantics |
+| FR-PATH-04 | A connection the system suspends (waiting for connectivity) emits `.waitingForConnectivity(error:description:)` without closing | P0 | The event is observable and recovery emits no duplicate connection event |
+| FR-PATH-05 | A path event leaves protocol state untouched: `optionStatus(_:)` and negotiation state match before and after a path switch | P0 | `optionStatus` is asserted unchanged across the switch |
+| FR-PATH-06 | Path events reach the public API as Swift values with no `NWPath` leak | P1 | The snapshot contains no `NWPath`, `NWError`, or `nw_*` |
+| FR-PATH-07 | `.pathChanged` is emitted with the current viability only after the channel is active | P1 | A test asserts no path event precedes the connection event |
+
+### 6.6 Transport security (FR-TLS)
+
+| ID | Requirement | Priority | Acceptance criterion |
+| --- | --- | --- | --- |
+| FR-TLS-01 | TLS comes from Network.framework: passing `NWProtocolTLS.options` in `transportOptions` enables it | P0 | A self-signed TLS server completes a handshake and Telnet negotiation follows |
+| FR-TLS-02 | The system evaluates trust; no custom trust callback is offered | P1 | A self-signed certificate is refused by default and `.transportFailed` carries the reason |
+| FR-TLS-03 | A TLS handshake failure maps to a typed error and never to an unclear hang | P0 | The error arrives within `connectTimeout` |
+| FR-TLS-04 | No `swift-nio-ssl` or OpenSSL dependency: no BoringSSL static library | P0 | The dependency tree has no `NIOSSL` and no `CNIOBoringSSL` |
+| FR-TLS-05 | A certificate pinned by the caller is expressible through Network.framework options | P2 | A pinned connection completes and an unpinned mismatch is refused |
+
 ### 6.5 Errors and diagnostics (FR-ERR)
 
 | ID | Requirement | Priority | Acceptance criterion |
@@ -498,7 +528,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | Category | Requirement |
 | --- | --- |
 | Language and toolchain | Swift 6 language mode (`swiftLanguageModes: [.v6]`), `swift-tools-version: 6.2`, minimum Xcode 26 / Swift 6.2 |
-| Deployment target | `platforms: [.macOS(.v15), .iOS(.v18)]`; both platforms are promised for build products, while Linux, Windows, tvOS, and watchOS are not |
+| Deployment target | `platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)]`; build products are promised for these five Apple platforms only, and non-Apple platforms get neither support nor a branch |
 | Strict concurrency | Complete `StrictConcurrency` checking for the whole package, 0 warnings |
 | Dependencies | `swift-nio` (2.103.0 or later) and `swift-log` (1.x, for optional logging); no other third-party runtime dependency |
 | Binary size | Under a single-architecture release build, the TelnetKit delta is under 500 KiB including the C source |
@@ -520,11 +550,11 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | --- | --- | --- |
 | L1 protocol unit tests (white box) | Per-event, per-byte correctness | `@testable import TelnetKit` and a direct byte feed into `TelnetProtocolCore` |
 | L2 public interface tests (black box) | Contract stability, no C leak, error semantics | `import TelnetKit` only, against a loopback `TelnetEchoServer` |
-| L3 integration tests | Real TCP, timeout, cancellation, concurrent connections | `ClientBootstrap` against a local `ServerBootstrap` fixture |
+| L3 integration tests | A real connection, timeout, cancellation, concurrent connections, path events | `NIOTSConnectionBootstrap` against a local `NIOTSListenerBootstrap` fixture |
 | L4 robustness | Fuzz input and resource bounds | Random and malicious byte streams, oversized SB, flooding |
-| L5 static assurance | Interface, concurrency, and both platform builds | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job, and an iOS 18 simulator build |
+| L5 static assurance | Interface, concurrency, and five platform builds | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job, and iOS, watchOS, tvOS, and visionOS simulator builds |
 
-Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`/`#require`) with `async` test functions; a test that needs timeout protection uses a `withTimeout` helper defined in the test target.
+Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`/`#require`) with `async` test functions; a test that needs timeout protection uses a `withTimeout` helper defined in the test target. The protocol and public interface suites run on all five platforms; the integration suite, which binds a socket and starts an echo server, runs on macOS and the iOS simulator.
 
 ### 8.2 Case inventory (required for the public interface)
 
@@ -668,13 +698,13 @@ This PRD's engineering constraints are split into development documents kept bes
 
 | Milestone | Content | Exit criterion |
 | --- | --- | --- |
-| M0 scaffolding | `Package.swift`, the vendored `CLibTelnet` target with its modulemap and `UPSTREAM.md` (recording the upstream commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target (**this step is already verified as feasible in the prototype**) |
+| M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the vendored `CLibTelnet` target with its modulemap and `UPSTREAM.md` (recording the upstream commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**the C target and the build flow are already verified as feasible in the prototype**) |
 | M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes |
 | M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green with no leak |
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green |
 | M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass |
-| M6 iOS support | `Package.swift` declares `.iOS(.v18)`; CI gains an iOS 18 simulator build and test job; the platform-sensitive paths (DNS resolution, EventLoop, logging, background suspension) are re-reviewed on iOS | `xcodebuild -destination 'platform=iOS Simulator,name=iPhone 16'` builds, and the protocol and public interface tests are green |
+| M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build |
 | M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived |
 
 > Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
@@ -694,8 +724,10 @@ This PRD's engineering constraints are split into development documents kept bes
 | R7 | Enabling MCCP2 exposes the inflate path to a decompression bomb (a few KB into gigabytes of memory) | Medium | Leave it off in the first release; enabling it in v0.2 requires the `maxInflatedBytes` bound, the event-flow contract under compression, and a compressed-stream failure test, plus an enabled CI variant. zlib itself needs no work: the macOS, iOS, and iPadOS SDKs all ship it (verified linkable with `-lz`) |
 | R8 | A poor `AsyncStream` buffer policy causes memory growth or event loss | Medium | Default to `.bounded` with a configurable drop or finish policy, emit a `.warning` **when an event is dropped**, and add a high-traffic stress test |
 | R9 | The public API couples to swift-nio types such as `ByteBuffer`, which limits a future upgrade | Low | Use `ByteBuffer` as the binary carrier for `TelnetEvent.data` because it matches the NIO ecosystem, and provide `text` and `bytes([UInt8])` accessors so a caller never has to understand NIO |
-| R10 | iOS network and background limits: suspending the app drops the connection, and App Store review scrutinizes plaintext protocols | Medium | Document the foreground-session semantics and the disconnect-on-background behavior, add no background daemon, provide `idleTimeout` and a caller-side reconnect example, and flag the plaintext risk in the README security section |
-| R11 | Two-platform CI cost and simulator resource use | Low | The iOS job runs only the simulator build and the non-network tests (protocol and public interface); integration tests stay in the macOS job |
+| R10 | Suspending the app drops the connection (most visible on watchOS and iOS), and App Store review scrutinizes plaintext protocols | Medium | Document the foreground-session semantics and the disconnect-on-background behavior, add no background daemon, provide `idleTimeout` and a caller-side reconnect example, and let `waitForConnectivity` remove the hand-written retry loop on recovery; flag the plaintext risk in the README security section |
+| R11 | Five-platform CI cost and simulator resource use | Medium | iOS runs the full suite; watchOS, tvOS, and visionOS run the build plus the protocol and public interface suites; integration tests stay in the macOS job |
+| R12 | NIOTS can only be verified on a runtime that has Network.framework, so a local `swift test` cannot exercise real path events | Medium | The integration suite starts a local fixture with `NIOTSListenerBootstrap`; path events are tested at the protocol layer with injected `NIOTSNetworkEvents`; a real cellular-to-Wi-Fi switch on a device or simulator is a manual M6 acceptance step |
+| R13 | One transport leaves no fallback: if Network.framework misbehaves on a platform (watchOS connection availability, for example), there is no alternative path | Medium | Promise only the five Apple platforms and only officially supported combinations; document a platform-level defect as a platform limitation instead of introducing a POSIX branch, which would overturn G6 |
 
 ---
 
@@ -731,7 +763,7 @@ import PackageDescription
 
 let package = Package(
     name: "TelnetKit",
-    platforms: [.macOS(.v15), .iOS(.v18)],
+    platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
         .executable(name: "TelnetDemo", targets: ["TelnetDemo"]),
@@ -739,6 +771,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.103.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.20.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.0"),
     ],
     targets: [
@@ -750,15 +783,16 @@ let package = Package(
             dependencies: [
                 "CLibTelnet",
                 .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
                 .product(name: "Logging", package: "swift-log"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(name: "TelnetDemo", dependencies: ["TelnetKit"]),
+        // Executables declare macOS only: watchOS, tvOS, and visionOS have no process or loopback-server semantics.
         .executableTarget(name: "TelnetEchoServer", dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),
-            .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
         ]),
         .testTarget(name: "TelnetKitTests", dependencies: ["TelnetKit", "TelnetEchoServer"]),
     ]

@@ -41,10 +41,10 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 
 | 层 | 文件 | 拥有 | 不得包含 |
 |---|---|---|---|
-| 协议 | `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift` | `telnet_t` 生命周期、选项表、回调、事件映射、选项账本 | NIO 类型、公开声明、async |
+| 协议 | `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift` | `telnet_t` 生命周期、选项表、回调、事件映射、选项账本 | Network 类型、公开声明、async |
 | 线缆编码 | `Sources/TelnetKit/Protocol/TelnetWireCoding.swift` | `0xFF` 转义、NVT 行尾、NAWS 与 NEW-ENVIRON 编码 | 协议状态、公开声明 |
-| 传输 | `Sources/TelnetKit/Transport/TelnetChannelHandler.swift` | ByteBuffer 进出、出站队列 flush、缓冲上限、关闭传播 | 选项语义、公开声明 |
-| 公开 | `Sources/TelnetKit/Public/*.swift` | Actor、事件、选项、错误、配置、文档注释 | `import CLibTelnet`、直接调用 NIO handler |
+| 传输 | `Sources/TelnetKit/Transport/TelnetChannelHandler.swift` | `ByteBuffer` 入、`IOData` 出、出站队列 flush、缓冲上限、关闭传播、`NIOTSNetworkEvents` 映射 | 选项语义、公开声明 |
+| 公开 | `Sources/TelnetKit/Public/*.swift` | Actor、事件、选项、错误、配置、文档注释 | `import CLibTelnet`、直接调用 channel、`NWPath` 或 `NWError` 类型 |
 
 需要新 Swift 类型的切片先确定它属于哪一层：调用方能命名的类型是公开的；只有传输层使用的类型是内部的，并与它的使用者放在一起。
 
@@ -56,7 +56,7 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 - 当切片修改既有签名时，在同一次变更中更新 [docs/public-api.md](../../../docs/public-api.md)、Demo 与受影响的测试；把 interface 快照当作检查清单。
 - 依赖时间的行为使用配置上限加宽松的断言上限。绝不用固定 sleep 断言。
 - 协议套件不使用 socket 运行。若某个协议测试需要一个服务端，该行为应归属传输层。
-- 库同时面向 macOS 15 与 iOS 18。触及平台敏感路径（DNS 解析、socket 选项、日志去向、后台挂起）的切片要写明两个平台上的行为，并由 iOS 模拟器构建验证。
+- 库面向 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2，传输层只用 Network.framework（经 NIOTS）。触及连接敏感路径（连接建立、等待路由、路径变化、TLS 选项、后台挂起）的切片要写明五个平台上的行为，并由各平台构建验证。
 
 ## 校验
 
@@ -66,9 +66,10 @@ description: 端到端实现 TelnetKit 公开接口的一个切片，从 docs/pu
 2. 公开接口切片跑 `swift test --filter TelnetKitTests.PublicAPI`。
 3. 报告切片完成之前跑 `swift test`。
 4. 任何引入了闭包、continuation 或非 `Sendable` 捕获的切片，跑 `swift build -Xswiftc -strict-concurrency=complete`。
-5. 切片修改既有公开签名时，跑 `swift package diagnose-api-breaking-changes baseline.json`。
-6. 在 `Sources/TelnetKit/Public/` 中 grep `telnet_`、`TELNET_` 与 `OpaquePointer`，结果为空。
-7. 重读 diff，检查公开文件里是否有属于内部层的行，以及内部文件里是否有泄漏 C 指针的行。
+5. 任何触及连接建立或路径事件的切片，跑五平台构建。
+6. 切片修改既有公开签名时，跑 `swift package diagnose-api-breaking-changes baseline.json`。
+7. 在 `Sources/TelnetKit/Public/` 中 grep `telnet_`、`TELNET_`、`OpaquePointer`、`NWPath` 与 `NWError`，结果为空。
+8. 重读 diff，检查公开文件里是否有属于内部层的行、内部文件里是否有泄漏 C 指针的行，以及是否出现任何 `NIOPosix` 导入。
 
 ## Dev Note
 

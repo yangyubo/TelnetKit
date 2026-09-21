@@ -51,7 +51,7 @@
 |---|---|
 | `AGENTS.md` | 1,400 |
 | `docs/AGENTS.md` | 1,500：本文件还负责双语配对机制 |
-| `docs/architecture.md` | 1,800 |
+| `docs/architecture.md` | 2,100：平台与传输层决策表以及路径事件流无法在不丢失设计契约的前提下下沉 |
 | `docs/public-api.md` | 3,200：调用方契约对每个公开符号穷尽，成员表格的一行所占词数无法在不丢契约的前提下下沉 |
 | `README.md` | 900 |
 | `.agents/skills/*/SKILL.md` 下的 skill | 1,400 |

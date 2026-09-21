@@ -14,9 +14,9 @@ The package is designed but not implemented. The requirement source is [PRD.md](
 
 | Item | Requirement |
 |---|---|
-| Platform | macOS 15 or later, iOS 18 or later |
+| Platform | macOS 15+, iOS 18+, watchOS 11+, tvOS 18+, visionOS 2+ (Apple platforms only) |
 | Toolchain | Swift 6.2 or later; the package builds in Swift 6 language mode |
-| Dependencies | [swift-nio](https://github.com/apple/swift-nio) 2.103.0+, [swift-log](https://github.com/apple/swift-log) 1.6.0+ |
+| Dependencies | [swift-nio](https://github.com/apple/swift-nio) 2.103.0+, [swift-nio-transport-services](https://github.com/apple/swift-nio-transport-services) 1.20.0+, [swift-log](https://github.com/apple/swift-log) 1.6.0+ |
 
 ## Install
 
@@ -80,7 +80,7 @@ await connection.close()
 
 | Capability | Detail |
 |---|---|
-| Connection | TCP connect with address resolution, a configurable timeout, cancellation, and idempotent close |
+| Connection | Network.framework connect through NIOTS, with a configurable timeout, connectivity waiting, path reporting, cancellation, and idempotent close |
 | Parsing | Strips negotiation and restores escaped `0xFF`; `.data` carries application bytes only |
 | Options | `WILL`/`WONT`/`DO`/`DONT` with RFC 1143 Q-method answers, driven by a declared option set |
 | Terminal | Terminal type, window size, NEW-ENVIRON, MSSP, and ZMP |
@@ -90,8 +90,9 @@ await connection.close()
 
 - Terminal emulation is out of scope. TelnetKit delivers bytes and protocol events; screen models, cursor handling, and color rendering are the caller's job.
 - MCCP2 compression is not built in: a COMPRESS2 request is refused with `wont`. The Apple SDKs ship zlib, so this is a scope decision rather than a dependency gap; enabling it needs an inflation bound and compressed-state contracts first.
-- TLS is not implemented in the first version. The configuration reserves the field.
-- macOS and iOS only. No Linux, Windows, tvOS, or watchOS platform entry exists.
+- TLS is not implemented in the first version. `transportOptions` is where it will arrive, as a Network.framework `NWProtocolTLS` option, with no OpenSSL dependency.
+- Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
+- The CLI demo and the echo server are macOS-only executables; watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
 - SSH, RLogin, and BBS file-transfer protocols are out of scope.
 

@@ -14,9 +14,9 @@ TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已�
 
 | 项 | 要求 |
 |---|---|
-| 平台 | macOS 15 或更高版本、iOS 18 或更高版本 |
+| 平台 | macOS 15+、iOS 18+、watchOS 11+、tvOS 18+、visionOS 2+（仅 Apple 平台） |
 | 工具链 | Swift 6.2 或更高版本；本包以 Swift 6 语言模式构建 |
-| 依赖 | [swift-nio](https://github.com/apple/swift-nio) 2.103.0+、[swift-log](https://github.com/apple/swift-log) 1.6.0+ |
+| 依赖 | [swift-nio](https://github.com/apple/swift-nio) 2.103.0+、[swift-nio-transport-services](https://github.com/apple/swift-nio-transport-services) 1.20.0+、[swift-log](https://github.com/apple/swift-log) 1.6.0+ |
 
 ## 安装
 
@@ -80,7 +80,7 @@ await connection.close()
 
 | 能力 | 说明 |
 |---|---|
-| 连接 | TCP 连接与地址解析、可配置超时、取消传播、幂等关闭 |
+| 连接 | 经 NIOTS 使用 Network.framework 建立连接，可配置超时、等待可用路由、上报路径变化、取消传播、幂等关闭 |
 | 解析 | 剥离协商字节并还原转义的 `0xFF`；`.data` 只承载应用数据 |
 | 选项 | `WILL`/`WONT`/`DO`/`DONT` 与 RFC 1143 Q-method 应答，由声明的选项集驱动 |
 | 终端 | 终端类型、窗口尺寸、NEW-ENVIRON、MSSP、ZMP |
@@ -90,8 +90,9 @@ await connection.close()
 
 - 不做终端模拟。TelnetKit 只交付字节与协议事件；屏幕模型、光标处理与颜色渲染由调用方负责。
 - 未内置 MCCP2 压缩：收到 COMPRESS2 请求时以 `wont` 拒绝。Apple SDK 自带 zlib，所以这是范围取舍而非依赖缺失；启用前必须先设计解压上限与压缩态契约。
-- 首版未实现 TLS，配置中仅预留字段。
-- 仅支持 macOS 与 iOS，没有 Linux、Windows、tvOS 或 watchOS 平台声明。
+- 首版未实现 TLS。它将通过 `transportOptions` 以 Network.framework 的 `NWProtocolTLS` 选项接入，不引入 OpenSSL 依赖。
+- 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
+- CLI Demo 与回显服务端是仅 macOS 可执行文件；watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。
 - SSH、RLogin 与 BBS 文件传输协议不在范围内。
 

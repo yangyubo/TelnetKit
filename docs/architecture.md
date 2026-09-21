@@ -10,26 +10,38 @@ TelnetKit separates protocol parsing from connection management, so a test can d
 
 ```text
 TelnetConnection (actor, Public)            caller-facing session
-  AsyncStream<TelnetEvent>                  outbound event delivery
+  AsyncStream<TelnetEvent>                  event delivery, including path events
         |
 TelnetProtocolCore (internal)               owns telnet_t, maps events
   option table, option status ledger        Swift-side state libtelnet does not export
         |
-TelnetChannelHandler (internal)             NIO inbound/outbound handler
-  ByteBuffer <-> ProtocolCore               copies callback buffers, queues outbound bytes
+TelnetChannelHandler (internal)             ChannelDuplexHandler
+  ByteBuffer in / IOData out                copies callback buffers, queues outbound bytes
         |
-NIOAsyncChannel + ClientBootstrap           TCP, timeouts, cancellation, backpressure
+NIOTSConnectionBootstrap + NIOTSEventLoopGroup
+  waits for a route, reports path changes   Network.framework owns the connection
         |
-CLibTelnet (C target)                       vendored libtelnet 0.23
+Network.framework                            path, proxy, VPN, TLS, power
+        |
+CLibTelnet (C target)                       vendored libtelnet 0.23, parsing only
 ```
 
-One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, and one EventLoop. No state is shared between connections, so two sessions cannot observe each other's bytes.
+One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, and one `NIOTSEventLoop`. No state is shared between connections, so two sessions cannot observe each other's bytes.
 
-## Platform support
+## Platform and transport decision
 
-**Designed.** The library builds for macOS 15 and iOS 18 from one source tree. SwiftNIO's POSIX transport provides the socket on both, so no transport fork exists and no `#if os(...)` branch is planned; a branch added later must carry a build or test that exercises it.
+**Designed.** The library ships for macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 from one source tree, and Network.framework through NIOTS is the only transport. Non-Apple platforms are not promised, and no abstraction or conditional compilation is kept for them.
 
-The tooling targets differ by platform, and the difference is deliberate: `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app are macOS-only executables, because the server accepts a loopback connection under a plain `swift run`. iOS verification uses the simulator for the library build plus the protocol and public interface suites, while integration tests stay on macOS.
+The decision record:
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Transport | `NIOTSConnectionBootstrap` on `NIOTSEventLoopGroup` | Network.framework is Apple's supported transport and supplies connection management, proxy and VPN integration, path monitoring, energy behavior, and system TLS without per-feature code |
+| No POSIX path | `NIOPosix` is not a dependency | A second transport would double the invariants (backpressure, cancellation, path reporting) to prove on five platforms while adding no capability a caller asked for |
+| TLS | Network.framework protocol options, not `swift-nio-ssl` | No BoringSSL static library, trust evaluation stays with the system, and TLS configuration travels as a `NWProtocolOptions` value the caller already understands |
+| Executables | macOS only | `TelnetEchoServer` and the CLI demo need a process and a loopback listener, which watchOS, tvOS, and visionOS do not provide |
+
+Test placement follows the same split: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs on macOS and the iOS simulator.
 
 ## Concurrency model
 
@@ -46,11 +58,15 @@ The tooling targets differ by platform, and the difference is deliberate: `Telne
 
 Event ordering per connection is: parse inbound bytes, emit events in wire order, flush queued outbound bytes, then complete the write promise. A caller observing `events` sees the same order for every connection, and a `.data` event never overtakes the negotiation that enabled it.
 
+`NIOTSEventLoop` is a serial `DispatchQueue` underneath, so the rule that every `telnet_*` call happens on one thread holds exactly as it does for NIO's POSIX event loop; the difference is Dispatch QoS scheduling instead of `pthreads` plus `kqueue`.
+
 ## Event flow
 
 Inbound: NIO delivers a `ByteBuffer` to `TelnetChannelHandler.channelRead`; the handler passes the bytes to `TelnetProtocolCore.feed`, which calls `telnet_recv`; libtelnet invokes the C event callback once per protocol event; the callback copies payload bytes and appends a Swift `TelnetEvent` to the queue; after `telnet_recv` returns, the handler yields the queued events to the `AsyncStream` continuation.
 
-Outbound: a public call such as `send(text:)` enters the actor and hops to the EventLoop; the handler encodes through `telnet_send` or `telnet_send_text`; libtelnet reports the encoded bytes as `TELNET_EV_SEND`, which the callback appends to the outbound queue; the handler writes that queue to the channel and completes the promise; the public call returns when the write completes or throws `TelnetError.transportFailed`.
+Outbound: a public call such as `send(text:)` enters the actor and hops to the EventLoop; the handler encodes through `telnet_send` or `telnet_send_text`; libtelnet reports the encoded bytes as `TELNET_EV_SEND`, which the callback appends to the outbound queue; the handler writes that queue as `IOData` and completes the promise; the public call returns when the write completes or throws `TelnetError.transportFailed`.
+
+Path events travel on a separate channel: SwiftNIO's `NIOTSNetworkEvents` (`PathChanged`, `BetterPathAvailable`, `BetterPathUnavailable`, `ViabilityUpdate`, `WaitingForConnectivity`) are read by `TelnetNetworkEventMapping` and mapped to the path cases of `TelnetEvent`. These events never touch the protocol state machine: they call neither `telnet_recv` nor the option ledger.
 
 Negotiation is a three-step exchange, and all three steps are observable:
 
@@ -92,6 +108,8 @@ The union discrimination that C performs with `event.type` happens in one `switc
 
 Recoverable and fatal stay separate. A `.warning` event leaves the connection usable; a `.protocolError` closes it, finishes the event stream, and makes later calls throw `.notConnected`. Mapping a fatal condition to a warning would strand a caller in a parser that cannot make progress, and mapping a warning to fatal would drop a session over a malformed sequence.
 
+Network.framework's error set (`NWError`) is mapped to `TelnetTransportFailure.Kind` inside `TelnetNetworkEventMapping`, so no `NWError` or `nw_*` type reaches the public API.
+
 ## Resource bounds
 
 **Designed.** Every peer-controlled value has a ceiling with an owner in `TelnetConfiguration`.
@@ -103,6 +121,7 @@ Recoverable and fatal stay separate. A `.warning` event leaves the connection us
 | Inflated bytes per `inflate` call (v0.2, zlib off in the first release) | 16 MiB | `maxInflatedBytes` | `.bufferOverflow`, connection closes |
 | Queued events awaiting consumption | 1024 | `eventBufferPolicy` | policy-dependent: `.warning` with a drop count, or stream finish |
 | Connect handshake | 10 s | `connectTimeout` | `.connectTimeout` |
+| Waiting with no route | on | `waitForConnectivity` | No failure: the connect suspends and emits `.waitingForConnectivity` |
 | Idle connection | none | `idleTimeout` | connection closes |
 
 ## Extension points
@@ -127,6 +146,8 @@ Tests mirror the layers, and each layer is reachable without the one above it.
 |---|---|---|
 | `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Byte arrays in, `[TelnetEvent]` out; no socket |
 | `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address |
-| `Tests/TelnetKitTests/Integration/` | Transport behavior: timeout, cancellation, close, concurrency | `TelnetEchoServer` plus a raw NIO server for malformed input |
+| `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | A local fixture started with `NIOTSListenerBootstrap`, plus injected `NIOTSNetworkEvents` |
 
-The protocol suite is the correctness gate for RFC behavior; the public API suite is the contract gate, and it touches every public symbol listed in [public-api.md](public-api.md#symbol-checklist). The integration suite owns timing: a test that depends on a timeout uses a short configured bound and a generous assertion bound, never a fixed sleep. The demo executables are the manual path and the fixture, not a substitute for any suite.
+The protocol suite is the correctness gate for RFC behavior; the public API suite is the contract gate, and it touches every public symbol listed in [public-api.md](public-api.md#symbol-checklist). The integration suite owns timing: a test that depends on a timeout uses a short configured bound and a generous assertion bound, never a fixed sleep.
+
+Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo executables are the manual path and the fixture, not a substitute for any suite.

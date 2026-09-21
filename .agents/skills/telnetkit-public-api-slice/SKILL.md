@@ -56,7 +56,7 @@ A slice that needs a new Swift type decides its layer first: a type the caller c
 - When the slice changes an existing signature, update [docs/public-api.md](../../../docs/public-api.md), the demo, and the affected tests in the same change; treat the interface snapshot as the checklist.
 - Time-dependent behavior uses a configured bound plus a generous assertion bound. Never assert on a fixed sleep.
 - The protocol suite runs without a socket. If a protocol test needs a server, the behavior belongs in the transport layer instead.
-- The library ships for macOS 15 and iOS 18. A slice that touches a platform-sensitive path (DNS resolution, socket options, logging destination, background suspension) states the behavior for both platforms and is verified by the iOS simulator build.
+- The library ships for macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2, on Network.framework through NIOTS and nothing else. A slice that touches a connection-sensitive path (connect, connectivity waiting, path change, TLS options, background suspension) states the behavior for all five platforms and is verified by the platform builds.
 
 ## Validation
 
@@ -66,9 +66,10 @@ Match evidence to the slice and report the commands actually run with their obse
 2. `swift test --filter TelnetKitTests.PublicAPI` for a public surface slice.
 3. `swift test` before reporting the slice done.
 4. `swift build -Xswiftc -strict-concurrency=complete` for any slice that adds a closure, a continuation, or a non-`Sendable` capture.
-5. `swift package diagnose-api-breaking-changes baseline.json` when the slice changes an existing public signature.
-6. A grep of `Sources/TelnetKit/Public/` for `telnet_`, `TELNET_`, and `OpaquePointer` returning nothing.
-7. Re-read the diff for a public-file line that belongs in an internal layer, and for an internal-file line that leaks a C pointer.
+5. The five-platform build for any slice that touches the connect path or a path event.
+6. `swift package diagnose-api-breaking-changes baseline.json` when the slice changes an existing public signature.
+7. A grep of `Sources/TelnetKit/Public/` for `telnet_`, `TELNET_`, `OpaquePointer`, `NWPath`, and `NWError` returning nothing.
+8. Re-read the diff for a public-file line that belongs in an internal layer, for an internal-file line that leaks a C pointer, and for any `NIOPosix` import.
 
 ## Dev Note
 

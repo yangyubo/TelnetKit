@@ -160,6 +160,10 @@ public enum TelnetEvent: Sendable {
     case mssp([String: String])
     case zmp([String])
     case compressionEnabled(Bool)
+    case pathChanged(viable: Bool, expensive: Bool, constrained: Bool)
+    case betterPathAvailable
+    case betterPathUnavailable
+    case waitingForConnectivity(error: String?, description: String)
     case warning(TelnetWarning)
     case protocolError(TelnetProtocolError)
 }
@@ -184,6 +188,11 @@ extension TelnetEvent {
 | `.mssp(_:)` | 对端发送 MSSP 状态列表，已解码为字典 |
 | `.zmp(_:)` | 对端发送 ZMP 命令；首元素是命令名 |
 | `.compressionEnabled(_:)` | COMPRESS 或 COMPRESS2 协商改变了压缩状态。首版不链接 zlib，也绝不接受压缩流，因此该 case 不会出现：所有 COMPRESS2 协商都以 `wont` 应答，字节流保持未压缩 |
+| `.pathChanged(viable:expensive:constrained:)` | Network.framework 报告了该连接的新路径；三个标志取自 `NWPath`，并以 Swift 值拷贝出来 |
+| `.betterPathAvailable` | 系统发现了更优路径，通常是蜂窝承载时出现了 Wi‑Fi |
+| `.betterPathUnavailable` | 该更优路径消失 |
+| `.waitingForConnectivity(error:description:)` | 因 `waitForConnectivity` 开启，连接尝试被挂起等待可用路由。连接未关闭，`connect` 也尚未返回 |
+| `.viabilityChanged(isViable:)` | 路径变为可用或不可用。不可用不会关闭连接，只表示在恢复前无法收发 |
 | `.warning(_:)` | 可恢复的协议问题：截断的序列、意外的字节、截断的子协商，或事件被丢弃 |
 | `.protocolError(_:)` | 致命的状态机失败；该事件之后连接关闭 |
 
@@ -258,8 +267,9 @@ public struct TelnetConfiguration: Sendable {
     public var subnegotiationLimit: Int
     public var eventBufferPolicy: TelnetEventBufferPolicy
     public var newlinePolicy: TelnetNewlinePolicy
+    public var waitForConnectivity: Bool
+    public var transportOptions: [NWProtocolOptions]
     public var logger: Logger?
-    public var tls: TLSConfiguration?
 
     public init(
         connectTimeout: Duration = .seconds(10),
@@ -268,8 +278,9 @@ public struct TelnetConfiguration: Sendable {
         subnegotiationLimit: Int = 8_192,
         eventBufferPolicy: TelnetEventBufferPolicy = .bounded(1024),
         newlinePolicy: TelnetNewlinePolicy = .nvt,
-        logger: Logger? = nil,
-        tls: TLSConfiguration? = nil
+        waitForConnectivity: Bool = true,
+        transportOptions: [NWProtocolOptions] = [],
+        logger: Logger? = nil
     )
 }
 
@@ -291,9 +302,10 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `eventBufferPolicy` | `.bounded` 在写满时发出 `.warning` 并结束事件流，`.unbounded` 永不丢弃，`.dropOldest` 丢弃最旧的排队事件并发出 `.warning(.eventBufferOverflowDropped(count:))`。 |
 | `newlinePolicy` | `.nvt` 对文本发送与收到的数据做 CR、LF 转换；`.raw` 原样透传。`binary` 协商启用期间会覆盖两者为 raw。 |
 | `logger` | 可选的 `swift-log` logger。为 nil 时不记录任何日志。任何级别都不记录载荷内容。 |
-| `tls` | 为 nil 表示明文。非 nil 时在 Telnet 协商之前升级连接；信任根由调用方提供，因为 Telnet 本身没有 TLS 协商。iOS 上的信任根来自调用方打包的证书或系统信任库，绝不写死 macOS 路径。 |
+| `waitForConnectivity` | 为 true 时，无可用路由的连接尝试被挂起而不是立即失败，路由出现后继续建立（FR-PATH-01）。挂起期间 `connect` 尚未返回，`.waitingForConnectivity` 报告该状态。 |
+| `transportOptions` | 透传给 `NIOTSConnectionBootstrap` 的 Network.framework 协议选项。为空表示纯 TCP 承载 Telnet。传入 `NWProtocolTLS.default` 即启用 TLS，信任由系统评估；不提供自定义信任回调，系统拒绝的证书会让连接失败并以 `.transportFailed` 呈现。 |
 
-这些默认值就是调用方什么都不传时得到的结果，且每个默认值都有配置测试断言。`inboundBufferLimit` 与 `subnegotiationLimit` 是字节数，`eventBufferPolicy` 计数的是事件。
+这些默认值就是调用方什么都不传时得到的结果，且每个默认值都有配置测试断言。`inboundBufferLimit` 与 `subnegotiationLimit` 是字节数，`eventBufferPolicy` 计数的是事件，`waitForConnectivity` 是布尔开关，`transportOptions` 是有序列表并按顺序应用。
 
 ## 错误
 
@@ -314,7 +326,7 @@ public enum TelnetError: Error, Sendable, Equatable {
 }
 
 public struct TelnetTransportFailure: Error, Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), channelClosed, writeTimeout, other }
+    public enum Kind: Sendable, Equatable { case dns, posix(code: Int32), tls, channelClosed, writeTimeout, other }
     public var kind: Kind
     public var message: String
     public var isRetryable: Bool
@@ -339,7 +351,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 
 每个 libtelnet `telnet_error_t` 值一对一映射：`TELNET_EBADVAL` 对应 `.badValue`，`TELNET_ENOMEM` 对应 `.outOfMemory`，`TELNET_EOVERFLOW` 对应 `.overflow`，`TELNET_EPROTOCOL` 对应 `.protocol`，`TELNET_ECOMPRESS` 对应 `.compression`。`TELNET_EOK` 表示成功，不产生错误。
 
-`.notConnected` 表示在关闭之后发起了调用；`.alreadyClosed` 表示 `close()` 与一个已经开始的关闭过程发生竞争，而调用方要求区分该情形。`.dns` 与表示连接被拒的 `.posix` 码 `isRetryable` 为 true，其他传输类型均为 false。
+`.notConnected` 表示在关闭之后发起了调用；`.alreadyClosed` 表示 `close()` 与一个已经开始的关闭过程发生竞争，而调用方要求区分该情形。`.dns`、表示连接被拒或超时的 `.posix` 码，以及底层 `NWError` 属于暂时性（如 `.waitingForConnectivity`）时的 `.other`，`isRetryable` 为 true；`.tls`、`.channelClosed`、`.writeTimeout` 为 false，因为在条件不变时重试只会重复同一失败。
 
 ## 日志
 
@@ -352,7 +364,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | 类型 | 符号 |
 |---|---|
 | `TelnetConnection` | `connect`、`events`、`isConnected`、`remoteAddress`、`localAddress`、`optionStatus`、`send(_:)`、`send(text:)`、`send(text:lineEnding:)`、`sendRaw(_:)`、`send(command:)`、`negotiate(_:option:)`、`requestOption(_:)`、`subnegotiate(option:payload:)`、`replyTerminalType(_:)`、`sendEnvironment(_:scope:)`、`sendWindowSize(columns:rows:)`、`close()` |
-| `TelnetEvent` | 全部 14 个 case，加上 `bytes` 与 `text` |
+| `TelnetEvent` | 全部 19 个 case，加上 `bytes` 与 `text` |
 | `TelnetOptions` | `LocalOption`、`RemoteOption`、`local`、`remote`、`isValid`、`standardClient`、`serverRequesting(_:)` |
 | `TelnetOption` | `init(rawValue:)`、`rawValue`、`displayName`、`allCases`，以及全部 18 个常量 |
 | `TelnetOptionStatus` | 全部四个属性 |
@@ -360,7 +372,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | `TelnetCommand` | 全部 19 个 case |
 | `TelnetLineEnding` | 全部四个 case |
 | `EnvironmentScope`、`EnvironmentVariable` | 全部 case 与属性 |
-| `TelnetConfiguration` | `init` 的每个默认值，以及全部八个属性 |
+| `TelnetConfiguration` | `init` 的每个默认值，以及全部九个属性 |
 | `TelnetEventBufferPolicy`、`TelnetNewlinePolicy` | 全部 case |
 | `TelnetError` | 全部 12 个 case，每个都有测试触达；`unsupportedFeature` 的触达点在 v0.2 的 zlib 路径上，zlib 关闭期间不在范围内 |
 | `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | 全部属性与 case |

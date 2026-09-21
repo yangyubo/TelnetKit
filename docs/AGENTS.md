@@ -51,7 +51,7 @@ The ceilings below are guardrails, not reduction targets. Measure with `wc -w` o
 |---|---|
 | `AGENTS.md` | 1,400 |
 | `docs/AGENTS.md` | 1,500: this file also owns the bilingual pairing mechanics |
-| `docs/architecture.md` | 1,800 |
+| `docs/architecture.md` | 2,100: the platform and transport decision table plus the path-event flow cannot be relocated without losing the design contract |
 | `docs/public-api.md` | 3,200: the caller contract is exhaustive about every public symbol, and a member table row costs words that cannot be relocated without losing the contract |
 | `README.md` | 900 |
 | A skill under `.agents/skills/*/SKILL.md` | 1,400 |
