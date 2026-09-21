@@ -25,7 +25,7 @@ description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libteln
 
 对照上游 `develop` 分支、commit `5f5ecee776b9bdaa4e981e5f807079a9c79d633e`（2020-08-14）、头文件版本 0.23 已验证：
 
-- 上游没有 `Package.swift`，因此本包把 C target 指向子模块，而不是依赖一个 Swift 包。`libtelnet.c` 与 `libtelnet.h` 就是整个库，检出中的其他内容一概不动。
+- 上游没有 `Package.swift`，因此本包把 C target 的源码路径指向自己的目录、再用符号链接访问子模块，而不是依赖一个 Swift 包。`libtelnet.c` 与 `libtelnet.h` 就是整个库，子模块工作区从不被写入。
 - C 源码用 `clang -c libtelnet.c -I include -Wall` 编译无警告，并导出 23 个 `telnet_*` 符号。
 - `libtelnet.c` 有一个位于 `HAVE_ZLIB` 之后的可选依赖，用于 MCCP2。不要定义它：压缩支持不在范围内，且 Swift 代码必须以 `wont` 回应 COMPRESS2 请求。
 - `libtelnet.h` 声明为 `public domain`。在声明文件中记录这一点；不要把我们的许可证附到子模块上。
@@ -35,16 +35,16 @@ description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libteln
 ## 工作流：添加子模块
 
 1. `git submodule add https://github.com/seanmiddleditch/libtelnet.git libtelnet`，然后在 `libtelnet/` 中检出 `UPSTREAM.md` 记录的 commit。pin 由 gitlink 承载，不需要别的东西。
-2. 执行 `./.doc-tools/prepare-libtelnet.sh`，它写出 SwiftPM 在子模块内唯一需要的文件：`libtelnet/include/module.modulemap`，处于未跟踪状态以保持 pin 干净。
-3. 在 `Package.swift` 中声明 target：`.target(name: "CLibTelnet", path: "libtelnet", publicHeadersPath: "include")`，不加任何自定义 C 设置，并且不放进 `products`。
-4. 确认 module map 能找到同级头文件。SwiftPM 按 module map 自身解析 `header` 路径，因此必须写成 `header "../libtelnet.h"`；写成裸的 `libtelnet.h` 会报 `header 'libtelnet.h' not found`。
+2. 在 `Sources/CLibTelnet/` 下创建两个指向子模块源码与头文件的相对符号链接，并把 `Sources/CLibTelnet/include/module.modulemap` 作为纳入版本控制的文件。
+3. 在 `Package.swift` 中声明 target：`.target(name: "CLibTelnet", path: "Sources/CLibTelnet", publicHeadersPath: "include")`，不加任何自定义 C 设置，并且不放进 `products`。
+4. 确认映射能找到同级头文件，并确认符号链接的目标是相对路径，使克隆后能原样复现。
 5. 用子模块路径、URL、commit 与头文件版本更新 `Sources/CLibTelnet/UPSTREAM.md`。
 6. 执行[校验](#校验)步骤。
 
 ## 工作流：升级 pin
 
 1. 在 `libtelnet/` 中拉取上游 remote 并检出目标 commit。
-2. 重新执行 `./.doc-tools/prepare-libtelnet.sh`，因为新 commit 可能重命名或移动头文件。
+2. 确认两个符号链接仍能解析，因为新 commit 可能重命名或移动链接所指的文件。
 3. 把检出与上一个 pin 做 diff，检查是否有公开签名变更、新增宏、`telnet_event_t` 成员变更，或新增的 `HAVE_ZLIB` 路径。每一项都是 Swift 侧的跟进工作，而不是一次合并冲突。
 4. 更新 `UPSTREAM.md` 并执行完整校验；暂存包根目录，使 gitlink 与记录一起落地。
 5. 重跑协议套件。`libtelnet.c` 的行为变更会表现为协议测试失败；选项表变更会表现为协商测试期望值变化。只有当新行为符合测试所引用的 RFC 时才修改期望值。
@@ -62,7 +62,7 @@ description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libteln
 
 ## 规则
 
-- 子模块只读。绝不向它提交，也绝不在其中打补丁；需要改变行为时改 Swift 代码，怀疑上游有缺陷时报告并记录到 `UPSTREAM.md`。唯一例外是由脚本生成的 `include/module.modulemap`，它始终处于未跟踪状态。
+- 子模块只读。绝不向它提交、绝不向它写入文件、也绝不打补丁；我们的 module map 与符号链接都位于 `Sources/CLibTelnet/` 之下。需要改变行为时改 Swift 代码，怀疑上游有缺陷时报告并记录到 `UPSTREAM.md`。
 - 不允许其他文件导入 `CLibTelnet`。当第二个文件需要协议数据时，扩展 core 的 Swift 接口。
 - 不要在回调内调用 `telnet_send*`。追加到出站队列，在 `telnet_recv` 返回后 flush。
 - 不要读取当前事件类型未选择的 union 成员。读取以该事件命名的成员。
@@ -72,7 +72,7 @@ description: 添加、pin、验证或升级 TelnetKit Swift 包背后的 libteln
 
 按顺序执行并保留观测输出：
 
-1. `git -C libtelnet rev-parse HEAD` 等于 `UPSTREAM.md` 中的 commit，且 `git -C libtelnet status --porcelain` 只列出 `include/`。
+1. `git -C libtelnet rev-parse HEAD` 等于 `UPSTREAM.md` 中的 commit，且 `git -C libtelnet status --porcelain` 无任何输出。
 2. `swift build` 成功，且 C target 没有任何警告；同一 target 在五个平台下限（macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2）下都能构建。
 3. `swift test` 通过，包括协商事件与字节转义用例。
 4. 一个接缝测试喂入 `FF FB 01`（IAC WILL ECHO）再喂 `68 69 0D 0A`，断言先收到一条 `.negotiation` 事件，随后是 `.data("hi\r\n")`。

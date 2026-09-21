@@ -39,7 +39,6 @@ After cloning, initialise the submodule once; the first build fails without it:
 
 ```sh
 git submodule update --init --recursive
-./.doc-tools/prepare-libtelnet.sh
 ```
 
 Run the local echo server, then the demo client:

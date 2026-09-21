@@ -39,7 +39,6 @@ targets: [
 
 ```sh
 git submodule update --init --recursive
-./.doc-tools/prepare-libtelnet.sh
 ```
 
 先启动本地回显服务端，再启动演示客户端：

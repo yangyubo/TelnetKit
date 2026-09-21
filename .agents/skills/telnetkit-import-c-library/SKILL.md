@@ -35,16 +35,16 @@ Verified against upstream `develop` at commit `5f5ecee776b9bdaa4e981e5f807079a9c
 ## Workflow: adding the submodule
 
 1. `git submodule add https://github.com/seanmiddleditch/libtelnet.git libtelnet`, then in `libtelnet/` check out the commit `UPSTREAM.md` records. The gitlink carries the pin, so nothing else has to.
-2. Run `./.doc-tools/prepare-libtelnet.sh`, which writes the one file SwiftPM needs inside the submodule: `libtelnet/include/module.modulemap`, untracked so the pin stays clean.
-3. Declare the target in `Package.swift` as `.target(name: "CLibTelnet", path: "libtelnet", publicHeadersPath: "include")` with no custom C settings, and keep it out of `products`.
-4. Confirm the module map reaches the sibling header. SwiftPM resolves a `header` path relative to the map, so it must read `header "../libtelnet.h"`; a bare `libtelnet.h` fails with `header 'libtelnet.h' not found`.
+2. Create the two relative symlinks under `Sources/CLibTelnet/` that reach the submodule's source and header, and keep `Sources/CLibTelnet/include/module.modulemap` as a tracked file.
+3. Declare the target in `Package.swift` as `.target(name: "CLibTelnet", path: "Sources/CLibTelnet", publicHeadersPath: "include")` with no custom C settings, and keep it out of `products`.
+4. Confirm the map resolves its sibling header, and that the symlink targets are relative so a clone reproduces them.
 5. Update `Sources/CLibTelnet/UPSTREAM.md` with the submodule path, URL, commit, and header version.
 6. Run the [validation](#validation) steps.
 
 ## Workflow: upgrading the pin
 
 1. In `libtelnet/`, fetch the upstream remote and check out the target commit.
-2. Re-run `./.doc-tools/prepare-libtelnet.sh`, because a new commit can rename or move the header.
+2. Confirm both symlinks still resolve, because a new commit can rename or move a file a link names.
 3. Diff the checkout against the previous pin and read the diff for a changed public signature, a new macro, a changed `telnet_event_t` member, or a new `HAVE_ZLIB` path. Each one is a Swift-side follow-up, not a merge conflict.
 4. Update `UPSTREAM.md` and run the full validation; stage the package root so the gitlink and the record land together.
 5. Re-run the protocol suite. A behavior change in `libtelnet.c` surfaces as a failing protocol test; a changed option table appears as a changed negotiation test expectation. Fix the expectation only when the new behavior is correct per the RFC the test cites.
@@ -62,7 +62,7 @@ One file, `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift`, imports `CLibTe
 
 ## Rules
 
-- The submodule is read-only. Never commit into it and never patch a file there; a required behavior change lives in Swift, and a suspected upstream bug is reported and recorded in `UPSTREAM.md`. The generated `include/module.modulemap` is the single exception, and it stays untracked.
+- The submodule is read-only. Never commit into it, never write a file there, and never patch it; our module map and the symlinks live under `Sources/CLibTelnet/`. A required behavior change lives in Swift, and a suspected upstream bug is reported and recorded in `UPSTREAM.md`.
 - No other file may import `CLibTelnet`. When a second file needs protocol data, widen the core's Swift interface instead.
 - Do not call `telnet_send*` from inside the callback. Append to the outbound queue and flush after `telnet_recv` returns.
 - Do not read a union member that the event type does not select. Read the member named for the event.
@@ -72,7 +72,7 @@ One file, `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift`, imports `CLibTe
 
 Run these in order and keep the observed output:
 
-1. `git -C libtelnet rev-parse HEAD` equals the commit in `UPSTREAM.md`, and `git -C libtelnet status --porcelain` lists only `include/`.
+1. `git -C libtelnet rev-parse HEAD` equals the commit in `UPSTREAM.md`, and `git -C libtelnet status --porcelain` prints nothing.
 2. `swift build` succeeds with no warning from the C target, and the same target builds for the five platform floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2).
 3. `swift test` passes, including the negotiation-event and byte-escape cases.
 4. A seam test feeds `FF FB 01` (IAC WILL ECHO) then `68 69 0D 0A` and asserts one `.negotiation` event followed by `.data("hi\r\n")`.

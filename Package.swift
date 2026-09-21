@@ -22,13 +22,14 @@ let package = Package(
         // Sources/CLibTelnet/UPSTREAM.md records, so the upstream sources and COPYING stay
         // untouched and a version bump is a submodule checkout.
         //
-        // The target path is the submodule root because SwiftPM compiles the .c from there
-        // and requires the public headers to live under the target path. The include
-        // directory therefore exists only to expose the sibling header to the module map;
-        // it holds no upstream file.
+        // SwiftPM looks for a custom module map only in the target's public headers
+        // directory, and that directory must live under the target path, so the target is
+        // our own Sources/CLibTelnet and the submodule files are reached through two
+        // committed relative symlinks: libtelnet.c here and include/libtelnet.h. Nothing is
+        // ever written into the submodule.
         .target(
             name: "CLibTelnet",
-            path: "libtelnet",
+            path: "Sources/CLibTelnet",
             publicHeadersPath: "include"
         ),
         // The libtelnet suite drives the C library directly so that a parse bug is caught

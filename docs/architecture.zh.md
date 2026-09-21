@@ -78,7 +78,7 @@ CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing on
 
 ## C 接缝
 
-**已验证。** 当 C target 指向子模块根、且 `include/module.modulemap` 声明 `module CLibTelnet { header "../libtelnet.h" export * }` 时，子模块的 `libtelnet.c` 编译无警告。Swift 直接导入这些函数，且 header 路径相对 module map 自身解析。
+**已验证。** C target 是 `Sources/CLibTelnet`，它通过两个已提交的相对符号链接访问子模块，并持有纳入版本控制的 module map（`umbrella header "libtelnet.h"`）。子模块源码编译无警告、Swift 直接导入这些函数，且子模块工作区始终保持干净。
 
 接缝刻意收窄。`TelnetProtocolCore` 是本包中唯一导入 `CLibTelnet` 的文件；其他文件都在 Swift 类型中工作。libtelnet 有三项能力是宏，因此对 Swift 不可见，由 core 补齐：`telnet_finish_sb` 用 `telnet_iac(handle, TELNET_SE)`，`telnet_finish_newenviron` 与 `telnet_finish_zmp` 用同一个调用。
 

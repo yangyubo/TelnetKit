@@ -78,7 +78,7 @@ Step 3 is libtelnet's; steps 1 and 2 are ours. The option ledger exists because 
 
 ## The C seam
 
-**Verified.** The submodule's `libtelnet.c` compiles with no warnings when the C target points at the submodule root and `include/module.modulemap` declares `module CLibTelnet { header "../libtelnet.h" export * }`. Swift imports the functions directly, and the header path is relative to the map itself.
+**Verified.** The C target is `Sources/CLibTelnet`, which reaches the submodule through two committed relative symlinks and holds a tracked module map declaring `umbrella header "libtelnet.h"`. The submodule's source compiles with no warnings and Swift imports the functions directly, while the submodule's working tree stays clean.
 
 The seam is narrow on purpose. `TelnetProtocolCore` is the only file in the package that imports `CLibTelnet`; every other file works in Swift types. Three libtelnet facilities are macros and therefore invisible to Swift, so the core supplies them: `telnet_finish_sb` as `telnet_iac(handle, TELNET_SE)`, `telnet_finish_newenviron` and `telnet_finish_zmp` as that same call.
 

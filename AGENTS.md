@@ -2,7 +2,7 @@
 
 English | [中文](AGENTS.zh.md)
 
-TelnetKit is an Apple-only Swift Package that gives Swift callers an async Telnet terminal session: Network.framework through NIOTS owns the connection, a vendored libtelnet C target owns the protocol state machine, and the public API exposes neither.
+TelnetKit is an Apple-only Swift Package that gives Swift callers an async Telnet terminal session: Network.framework through NIOTS owns the connection, a pinned libtelnet submodule behind the C target owns the protocol state machine, and the public API exposes neither.
 
 Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. The public surface contract is [docs/public-api.md](docs/public-api.md); do not change a public symbol without updating it in the same change. Write, review, or trim prose by [.agents/skills/telnetkit-prose-standard/SKILL.md](.agents/skills/telnetkit-prose-standard/SKILL.md); place and validate documents by [.agents/skills/telnetkit-doc/SKILL.md](.agents/skills/telnetkit-doc/SKILL.md).
 
@@ -21,8 +21,8 @@ Never present a designed behavior as verified. When design and PRD disagree, fix
 ```
 Package.swift                  swift-tools-version 6.2, five Apple platforms
 PRD.md                         requirement source: goals, requirements, acceptance criteria
-libtelnet/                     git submodule: upstream libtelnet, pinned; include/ is generated
-Sources/CLibTelnet/            provenance record and the Swift seam
+libtelnet/                     git submodule: upstream libtelnet, pinned, never written to
+Sources/CLibTelnet/            our module map, two symlinks into the submodule, and the provenance record
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
 Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
@@ -39,7 +39,7 @@ Package products: library `TelnetKit`, executables `TelnetDemo` and `TelnetEchoS
 ## Commands
 
 ```sh
-git submodule update --init --recursive   # then: ./.doc-tools/prepare-libtelnet.sh
+git submodule update --init --recursive   # required once after cloning
 swift build                       # debug build of every target
 swift test                        # Swift Testing suites; must run offline and finish under 60s
 swift test --filter TelnetKitTests.Protocol   # one suite while iterating
@@ -60,7 +60,7 @@ xcodebuild build -scheme TelnetKit -destination 'platform=watchOS Simulator,name
 - **Apple platforms only.** Deployment floors are macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2. Linux, Windows, and Android are out of scope: do not add a platform entry, an abstraction, or a conditional branch for them. Do not add an API newer than the floors.
 - **Network.framework is the only transport.** The connection runs on `NIOTSConnectionBootstrap` and `NIOTSEventLoopGroup`. `NIOPosix`, raw `socket()`, and `select`/`kqueue` do not appear in this package, including in tests. A new transport need is met by a Network.framework option, not by a second stack.
 - **Swift 6 language mode.** All targets compile in Swift 6 mode with `StrictConcurrency` complete and zero warnings. A `@unchecked Sendable` conformance needs a comment naming the invariant that makes it safe and a concurrency test that exercises it.
-- **The libtelnet submodule is read-only.** `libtelnet/` is upstream at the commit `Sources/CLibTelnet/UPSTREAM.md` records, so its code, license, and history stay intact. Never commit into it and never patch a file there; the generated `libtelnet/include/module.modulemap` is the one exception and stays untracked. A version bump is a submodule checkout plus `./.doc-tools/prepare-libtelnet.sh`, and a required behavior change belongs in our Swift code.
+- **The libtelnet submodule is read-only.** `libtelnet/` is upstream at the commit `Sources/CLibTelnet/UPSTREAM.md` records, so its code, license, and history stay intact. Never commit into it and never write a file there. Our module map and the two symlinks that reach the upstream sources live under `Sources/CLibTelnet/`, so a version bump is only a submodule checkout, and a required behavior change belongs in our Swift code.
 - **One thread owns `telnet_t`.** Every `telnet_*` call for a connection happens on the `EventLoop` that created it. No lock may be added to compensate for a cross-thread call; fix the call site instead.
 - **Callback data does not escape.** Buffers, strings, and argument arrays reachable from a `telnet_event_t` are valid only during its callback. Copy inside the callback; never store the pointer.
 - **No reentry inside a callback.** A `telnet_send*` call from inside an event callback reenters a state machine that is mid-parse. Queue the outbound bytes and flush after the callback returns.

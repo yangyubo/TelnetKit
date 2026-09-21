@@ -2,7 +2,7 @@
 
 [English](UPSTREAM.md) | 中文
 
-libtelnet 以 git 子模块 `libtelnet/` 的形式进入本包，因此上游源码、上游 `COPYING` 与上游历史都保持发布时的原样，升级也只是切换子模块的 commit 而不是复制文件。本文件记录 pin，并说明我们往子模块里添加了什么。流程见 [.agents/skills/telnetkit-import-c-library/SKILL.md](../../.agents/skills/telnetkit-import-c-library/SKILL.md)。
+libtelnet 以 git 子模块 `libtelnet/` 的形式进入本包，因此上游源码、上游 `COPYING` 与上游历史都保持发布时的原样，升级也只是切换子模块的 commit 而不是复制文件。本文件记录 pin，并说明我们自己的目录如何访问这些文件。流程见 [.agents/skills/telnetkit-import-c-library/SKILL.md](../../.agents/skills/telnetkit-import-c-library/SKILL.md)。
 
 ## 子模块 pin
 
@@ -16,29 +16,29 @@ libtelnet 以 git 子模块 `libtelnet/` 的形式进入本包，因此上游源
 | 头文件版本 | `0.23`，取自 `libtelnet.h` 中的 `\version` 标记 |
 | 许可证 | 公有领域声明，随子模块以 `COPYING` 提供 |
 
-## 我们往子模块里添加了什么
+子模块从不被写入。它内部不生成任何文件，因此 `git -C libtelnet status` 始终干净，升级也不会与本地文件冲突。
 
-只有一个文件，由 [.doc-tools/prepare-libtelnet.sh](../../.doc-tools/prepare-libtelnet.sh) 写出，且不提交到任何仓库：
+## 我们的目录如何访问子模块
+
+SwiftPM 只在 target 的公开头文件目录里寻找自定义 module map，而 SwiftPM 的 `PackageBuilder` 要求该目录位于 target path 之下，同时 `.c` 也从同一个路径编译。因此 target 就是我们自己的 `Sources/CLibTelnet`，子模块文件通过两个已提交的相对符号链接访问：
 
 ```text
-libtelnet/include/module.modulemap     在子模块中处于未跟踪状态，因此不会弄脏 pin
+Sources/CLibTelnet/libtelnet.c                    -> ../../libtelnet/libtelnet.c
+Sources/CLibTelnet/include/libtelnet.h            -> ../../../libtelnet/libtelnet.h
+Sources/CLibTelnet/include/module.modulemap       我们的文件，纳入版本控制
 ```
 
 ```c
 module CLibTelnet {
-    header "../libtelnet.h"
+    umbrella header "libtelnet.h"
     export *
 }
 ```
 
-SwiftPM 从 target path 编译 `.c`，并要求公开头文件位于该路径之下，所以映射文件写在这里而不是我们自己的目录里。
-
-有两个细节决定它能否构建：
-
-- `header` 路径相对于 module map 本身，而不是相对于 include 搜索路径，因此这里必须写 `../libtelnet.h`。写成裸的 `libtelnet.h` 会报 `header 'libtelnet.h' not found`。
-- `libtelnet/include` 是 clang 的第一个 `-I` 路径，映射文件正是靠它找到同级的头文件。
-
-任何克隆都必须在 `git submodule update --init --recursive` 之后执行一次 `./.doc-tools/prepare-libtelnet.sh`。脚本是幂等的，并在子模块缺失时明确报错。
+- 符号链接是相对路径，克隆后无需任何绝对路径即可解析。
+- 用 `umbrella header` 而不是 `header`，是为了不偏离 SwiftPM 生成映射时所用的规则；两者在这里都可用，因为映射与头文件同目录。
+- `Sources/CLibTelnet/include` 是 clang 的第一个 `-I` 路径，源码中的 `#include "libtelnet.h"` 正是靠它解析。
+- 克隆后只需一条命令 `git submodule update --init --recursive`，别无其他：符号链接已纳入版本控制，不存在生成步骤。
 
 ## 构建设置
 
@@ -47,7 +47,7 @@ C target 不定义任何自定义宏。`HAVE_ZLIB` 保持未定义，因此 libt
 ## 升级清单
 
 1. 在 `libtelnet/` 中拉取上游 remote 并检出目标 commit；然后把新的 commit 与头文件版本记录到本文件。
-2. 重新执行 `./.doc-tools/prepare-libtelnet.sh`，因为新 commit 可能重命名或移动头文件。
+2. 确认两个符号链接仍能解析，因为新 commit 可能重命名或移动链接所指的文件。
 3. 阅读 diff，检查是否有公开签名变更、新增宏、`telnet_event_t` 成员变更，或新增的 `HAVE_ZLIB` 路径；每一项都是 Swift 侧的跟进工作，而不是一次合并冲突。
 4. 重跑[引入 skill 的校验](../../.agents/skills/telnetkit-import-c-library/SKILL.zh.md#校验)，然后跑协议套件。
 5. 暂存包根目录，使新的 gitlink 与本文件的记录落在同一次提交里。
