@@ -43,6 +43,7 @@ TelnetKit 文档遵循一个事实一个家，并标明每个事实是设计中�
 |---|---|---|
 | 「不要对来自对端的数据强制解包」 | 根 `AGENTS.md` | 把理由和示例写进常驻规则，而不是链接架构文档 |
 | 「handler 在回调内拷贝」 | `docs/architecture.md` | 在 `AGENTS.md` 与 `public-api.md` 中重复它 |
+| 「库支持 macOS 15 与 iOS 18」 | `docs/architecture.md`（平台支持一节） | 在 README 与平台下限规则里重复平台矩阵 |
 | 「`send(text:)` 在关闭后抛 `.notConnected`」 | `docs/public-api.md` | 只留在 PRD 里，而调用方不会去那里看 |
 | 「FR-CONN-03 要求连接超时可配置」 | `PRD.md` | 在架构文档里复述需求编号 |
 | 「五条命令连上本地回显服务端」 | `README.md` | 把贡献者流程写进 README |

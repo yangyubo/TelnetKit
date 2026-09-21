@@ -25,6 +25,12 @@ CLibTelnet (C target)                       vendored libtelnet 0.23
 
 一条连接恰好拥有一个 `TelnetProtocolCore`、一个 handler、一个 channel 与一个 EventLoop。连接之间不共享状态，因此两个会话无法看到彼此的字节。
 
+## 平台支持
+
+**设计中。** 库从同一份源码为 macOS 15 与 iOS 18 构建。两个平台的 socket 都由 SwiftNIO 的 POSIX 传输层提供，因此不存在传输层分支，也不计划任何 `#if os(...)` 分支；后续若新增分支，必须配一个覆盖它的构建或测试。
+
+工具链目标按平台区分，且这一区分是刻意的：`TelnetEchoServer`、CLI Demo 与 SwiftUI DemoApp 都是仅 macOS 可执行文件，因为服务端需要在普通 `swift run` 下接受回环连接。iOS 侧用模拟器验证库构建与协议层、公开接口两个套件，集成测试留在 macOS。
+
 ## 并发模型
 
 **设计中。** 协议状态机是单线程的，设计以所有权而非加锁来保证这一点。

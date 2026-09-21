@@ -43,6 +43,7 @@ Exclude `Sources/CLibTelnet/libtelnet.c`, `Sources/CLibTelnet/include/libtelnet.
 |---|---|---|
 | "Do not force-unwrap peer data" | Root `AGENTS.md` | Writing the reason and an example into the standing order instead of linking the architecture |
 | "The handler copies inside the callback" | `docs/architecture.md` | Repeating it in `AGENTS.md` and in `public-api.md` |
+| "The library supports macOS 15 and iOS 18" | `docs/architecture.md` (Platform support) | Restating the platform matrix in the README and in the platform-floor rule |
 | "`send(text:)` throws `.notConnected` after close" | `docs/public-api.md` | Leaving it only in the PRD, where a caller will not look |
 | "FR-CONN-03 requires a configurable connect timeout" | `PRD.md` | Restating requirement identifiers inside architecture |
 | "Connect to a local echo server in five commands" | `README.md` | Putting contributor procedure in the README |

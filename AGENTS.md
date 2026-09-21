@@ -2,7 +2,7 @@
 
 English | [中文](AGENTS.zh.md)
 
-TelnetKit is a macOS 15+ Swift Package that gives Swift callers an async Telnet terminal session over TCP: SwiftNIO owns the connection, a vendored libtelnet C target owns the protocol state machine, and the public API exposes neither.
+TelnetKit is a macOS 15+ and iOS 18+ Swift Package that gives Swift callers an async Telnet terminal session over TCP: SwiftNIO owns the connection, a vendored libtelnet C target owns the protocol state machine, and the public API exposes neither.
 
 Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. The public surface contract is [docs/public-api.md](docs/public-api.md); do not change a public symbol without updating it in the same change. Write, review, or trim prose by [.agents/skills/telnetkit-prose-standard/SKILL.md](.agents/skills/telnetkit-prose-standard/SKILL.md); place and validate documents by [.agents/skills/telnetkit-doc/SKILL.md](.agents/skills/telnetkit-doc/SKILL.md).
 
@@ -19,7 +19,7 @@ Never present a designed behavior as verified. When design and PRD disagree, fix
 ## Repository layout
 
 ```
-Package.swift                  swift-tools-version 6.2, platform macOS 15
+Package.swift                  swift-tools-version 6.2, platforms macOS 15 + iOS 18
 PRD.md                         requirement source: goals, requirements, acceptance criteria
 Sources/CLibTelnet/            vendored libtelnet C source and include/module.modulemap
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
@@ -47,13 +47,14 @@ swift package describe            # target and product inventory
 swift package diagnose-api-breaking-changes baseline.json   # public interface snapshot comparison
 swift run TelnetEchoServer        # local fixture on port 2323
 swift run TelnetDemo --host 127.0.0.1 --port 2323
+xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 16'   # iOS 18 floor check
 ```
 
 `swift test` is the local evidence. Report only commands actually run, with their observed result; do not claim a check that did not execute. Coverage is complete for public symbols, not for source lines alone: a public symbol without a test is failing work, not partial work.
 
 ## Non-negotiable constraints
 
-- **Platform floor.** Deployment target is macOS 15. Do not add a macOS 16+ API. Do not add an iOS, Linux, or Windows platform entry without an explicit request.
+- **Platform floor.** Deployment targets are macOS 15 and iOS 18. Do not add an API newer than those floors, and do not add a Linux, Windows, tvOS, or watchOS platform entry without an explicit request. A platform-conditional branch needs a `#if os(...)` guard and a test or build that exercises the branch.
 - **Swift 6 language mode.** All targets compile in Swift 6 mode with `StrictConcurrency` complete and zero warnings. A `@unchecked Sendable` conformance needs a comment naming the invariant that makes it safe and a concurrency test that exercises it.
 - **Vendored C is read-only.** `Sources/CLibTelnet/libtelnet.c` and `include/libtelnet.h` are byte-identical upstream copies. Never edit them, never add a patch there. When upstream must change, record the new upstream commit in `Sources/CLibTelnet/UPSTREAM.md` and re-copy; a required behavior change belongs in our Swift code instead.
 - **One thread owns `telnet_t`.** Every `telnet_*` call for a connection happens on the `EventLoop` that created it. No lock may be added to compensate for a cross-thread call; fix the call site instead.

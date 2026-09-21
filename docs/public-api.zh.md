@@ -291,7 +291,7 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `eventBufferPolicy` | `.bounded` 在写满时发出 `.warning` 并结束事件流，`.unbounded` 永不丢弃，`.dropOldest` 丢弃最旧的排队事件并发出 `.warning(.eventBufferOverflowDropped(count:))`。 |
 | `newlinePolicy` | `.nvt` 对文本发送与收到的数据做 CR、LF 转换；`.raw` 原样透传。`binary` 协商启用期间会覆盖两者为 raw。 |
 | `logger` | 可选的 `swift-log` logger。为 nil 时不记录任何日志。任何级别都不记录载荷内容。 |
-| `tls` | 为 nil 表示明文。非 nil 时在 Telnet 协商之前升级连接；信任根由调用方提供，因为 Telnet 本身没有 TLS 协商。 |
+| `tls` | 为 nil 表示明文。非 nil 时在 Telnet 协商之前升级连接；信任根由调用方提供，因为 Telnet 本身没有 TLS 协商。iOS 上的信任根来自调用方打包的证书或系统信任库，绝不写死 macOS 路径。 |
 
 这些默认值就是调用方什么都不传时得到的结果，且每个默认值都有配置测试断言。`inboundBufferLimit` 与 `subnegotiationLimit` 是字节数，`eventBufferPolicy` 计数的是事件。
 

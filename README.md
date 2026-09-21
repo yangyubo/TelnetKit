@@ -14,7 +14,7 @@ The package is designed but not implemented. The requirement source is [PRD.md](
 
 | Item | Requirement |
 |---|---|
-| Platform | macOS 15 or later |
+| Platform | macOS 15 or later, iOS 18 or later |
 | Toolchain | Swift 6.2 or later; the package builds in Swift 6 language mode |
 | Dependencies | [swift-nio](https://github.com/apple/swift-nio) 2.103.0+, [swift-log](https://github.com/apple/swift-log) 1.6.0+ |
 
@@ -91,12 +91,13 @@ await connection.close()
 - Terminal emulation is out of scope. TelnetKit delivers bytes and protocol events; screen models, cursor handling, and color rendering are the caller's job.
 - MCCP2 compression is not built in. A COMPRESS2 request is refused with `wont`, and forcing compression reports an unsupported feature.
 - TLS is not implemented in the first version. The configuration reserves the field.
-- macOS only. No iOS, Linux, or Windows platform entry exists.
+- macOS and iOS only. No Linux, Windows, tvOS, or watchOS platform entry exists.
+- An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
 - SSH, RLogin, and BBS file-transfer protocols are out of scope.
 
 ## Security
 
-Telnet is plaintext: credentials and session content travel unencrypted, and anyone on the path can read or alter them. Use it on a trusted network, or wait for a TLS-capable release before sending a secret.
+Telnet is plaintext: credentials and session content travel unencrypted, and anyone on the path can read or alter them. Use it on a trusted network, or wait for a TLS-capable release before sending a secret. This applies on iOS too, where a mobile network is far less trustworthy than a wired LAN.
 
 The library treats peer input as hostile: every parse path has a length bound, a malformed sequence produces a warning or a typed error rather than a crash, and log output never contains payload bytes or peer-supplied values.
 

@@ -74,7 +74,7 @@ description: 在 TelnetKit Swift 包中 vendor、pin、验证或升级 libtelnet
 按顺序执行并保留观测输出：
 
 1. 对 vendored 文件执行 `shasum -a 256`，与记录 commit 处的上游检出结果一致。
-2. `swift build` 成功，且 C target 没有任何警告。
+2. `swift build` 成功，且 C target 没有任何警告；同一 target 在 iOS 18 模拟器下限下也能构建。
 3. `swift test --filter TelnetKitTests.Protocol` 通过，包括协商事件与字节转义用例。
 4. 一个接缝测试喂入 `FF FB 01`（IAC WILL ECHO）再喂 `68 69 0D 0A`，断言先收到一条 `.negotiation` 事件，随后是 `.data("hi\r\n")`。
 5. 一个接缝测试在已协商 ECHO 的前提下，经公开路径调用 `telnet_send_text` 发送 `hi\n`，断言出站字节包含 `IAC DO ECHO` 并完成 CR LF 转换。

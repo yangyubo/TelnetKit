@@ -74,7 +74,7 @@ One file, `Sources/TelnetKit/Protocol/TelnetProtocolCore.swift`, imports `CLibTe
 Run these in order and keep the observed output:
 
 1. `shasum -a 256` on the vendored files matches the upstream checkout at the recorded commit.
-2. `swift build` succeeds with no warning from the C target.
+2. `swift build` succeeds with no warning from the C target, and the same target builds for the iOS 18 simulator floor.
 3. `swift test --filter TelnetKitTests.Protocol` passes, including the negotiation-event and byte-escape cases.
 4. A seam test feeds `FF FB 01` (IAC WILL ECHO) then `68 69 0D 0A` and asserts one `.negotiation` event followed by `.data("hi\r\n")`.
 5. A seam test calls `telnet_send_text` through the public path with `hi\n`, negotiated ECHO, and asserts the outbound bytes carry `IAC DO ECHO` and a CR LF translation.

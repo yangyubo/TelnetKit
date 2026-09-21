@@ -25,6 +25,12 @@ CLibTelnet (C target)                       vendored libtelnet 0.23
 
 One connection owns exactly one `TelnetProtocolCore`, one handler, one channel, and one EventLoop. No state is shared between connections, so two sessions cannot observe each other's bytes.
 
+## Platform support
+
+**Designed.** The library builds for macOS 15 and iOS 18 from one source tree. SwiftNIO's POSIX transport provides the socket on both, so no transport fork exists and no `#if os(...)` branch is planned; a branch added later must carry a build or test that exercises it.
+
+The tooling targets differ by platform, and the difference is deliberate: `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app are macOS-only executables, because the server accepts a loopback connection under a plain `swift run`. iOS verification uses the simulator for the library build plus the protocol and public interface suites, while integration tests stay on macOS.
+
 ## Concurrency model
 
 **Designed.** The protocol state machine is single-threaded, and the design enforces that by ownership rather than by locking.

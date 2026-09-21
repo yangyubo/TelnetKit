@@ -2,7 +2,7 @@
 
 [English](AGENTS.md) | 中文
 
-TelnetKit 是一个面向 macOS 15+ 的 Swift Package，为 Swift 调用方提供基于 TCP 的异步 Telnet 终端会话：连接由 SwiftNIO 托管，协议状态机由 vendored 的 libtelnet C target 承担，两者都不暴露在公开接口中。
+TelnetKit 是一个面向 macOS 15+ 与 iOS 18+ 的 Swift Package，为 Swift 调用方提供基于 TCP 的异步 Telnet 终端会话：连接由 SwiftNIO 托管，协议状态机由 vendored 的 libtelnet C target 承担，两者都不暴露在公开接口中。
 
 修改 `Sources/` 之前先读 [docs/architecture.md](docs/architecture.md)。公开接口契约是 [docs/public-api.md](docs/public-api.md)；改动任何公开符号时必须在同一次变更里同步更新它。撰写、评审或精简文字时遵循 [.agents/skills/telnetkit-prose-standard/SKILL.md](.agents/skills/telnetkit-prose-standard/SKILL.md)；文档归属与校验遵循 [.agents/skills/telnetkit-doc/SKILL.md](.agents/skills/telnetkit-doc/SKILL.md)。
 
@@ -19,7 +19,7 @@ TelnetKit 是一个面向 macOS 15+ 的 Swift Package，为 Swift 调用方提�
 ## 仓库结构
 
 ```
-Package.swift                  swift-tools-version 6.2，平台 macOS 15
+Package.swift                  swift-tools-version 6.2，平台 macOS 15 + iOS 18
 PRD.md                         需求来源：目标、需求、验收标准
 Sources/CLibTelnet/            vendored libtelnet C 源码与 include/module.modulemap
 Sources/TelnetKit/Public/      公开类型；调用方唯一可见的符号
@@ -47,13 +47,14 @@ swift package describe            # target 与 product 清单
 swift package diagnose-api-breaking-changes baseline.json   # 公开接口快照比对
 swift run TelnetEchoServer        # 本地夹具，端口 2323
 swift run TelnetDemo --host 127.0.0.1 --port 2323
+xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 16'   # iOS 18 下限检查
 ```
 
 `swift test` 是本地证据。只报告实际运行过的命令及其观测结果；没有执行的检查不能声称已通过。覆盖以公开符号为准，而不是只看源码行：一个没有测试的公开符号属于失败的工作，不是部分完成的工作。
 
 ## 不可协商的约束
 
-- **平台下限。** 部署目标是 macOS 15。不得引入 macOS 16+ 的 API。没有明确要求不得添加 iOS、Linux 或 Windows 平台声明。
+- **平台下限。** 部署目标是 macOS 15 与 iOS 18。不得引入比这两个下限更新的 API；没有明确要求不得添加 Linux、Windows、tvOS 或 watchOS 平台声明。平台条件分支必须有 `#if os(...)` 守卫，并有测试或构建覆盖该分支。
 - **Swift 6 语言模式。** 所有 target 以 Swift 6 模式编译，`StrictConcurrency` 完整检查且零警告。`@unchecked Sendable` 需要注释说明使其安全的那个不变量，并配一个覆盖它的并发测试。
 - **vendored C 只读。** `Sources/CLibTelnet/libtelnet.c` 与 `include/libtelnet.h` 是与上游逐字节一致的副本。绝不修改它们，绝不在那里打补丁。上游必须更新时，在 `Sources/CLibTelnet/UPSTREAM.md` 记录新的上游 commit 后重新复制；需要改变行为时改我们的 Swift 代码。
 - **`telnet_t` 单线程所有。** 一条连接的所有 `telnet_*` 调用都发生在创建它的 `EventLoop` 上。不得用加锁来弥补跨线程调用；改调用点。

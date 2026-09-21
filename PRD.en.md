@@ -10,7 +10,7 @@
 | Date | 2026-09-21 |
 | Target repository | `TelnetKit` (Swift Package, directory `/Users/yang/workspace/CodinnCode/CoreSSH/TelnetKit`) |
 | Upstream dependencies | [apple/swift-nio](https://github.com/apple/swift-nio), [seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) |
-| Delivery form | Swift Package (library product `TelnetKit` plus tests and demo executables) |
+| Delivery form | Swift Package (library product `TelnetKit` plus tests and demo executables); macOS 15+ and iOS 18+ |
 
 ---
 
@@ -23,7 +23,7 @@ The Telnet protocol (RFC 854/855 and its many option extensions) is still a comm
 - `libtelnet` is a mature C implementation covering RFC 854/855/1091/1143/1408/1572, with Q-method (RFC 1143) option negotiation, ZMP, MCCP2, MSSP, and NEW-ENVIRON. It implements only the **protocol state machine**, it does not manage TCP, and its **callback API with many macros, constants, and raw pointers** is deeply un-Swift.
 - Hand-writing Telnet parsing on raw `Network.framework` or POSIX sockets means rewriting the RFC 1143 state machine: a large amount of work with a high error rate.
 
-TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and SwiftNIO into a type-safe, testable, C-free async Telnet terminal capability library.**
+TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and SwiftNIO into a type-safe, testable, C-free async Telnet terminal capability library that serves both macOS 15+ and iOS 18+.**
 
 ### 1.2 Product goals
 
@@ -34,7 +34,7 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 | G3 | Isolate every C implementation detail | The public API exposes no `OpaquePointer`, no `UInt8` command macro, and no `telnet_*` symbol |
 | G4 | Protocol correctness that can be verified | Negotiation, subnegotiation, TTYPE, NEW-ENVIRON, and NAWS behavior each has test coverage |
 | G5 | A deliverable example project | The demo covers every public interface and can talk to a real Telnet service |
-| G6 | Modern dependencies | Swift 6 language mode + `swift-tools-version` 6.x + a macOS 15+ deployment target + swift-nio 2.10x |
+| G6 | Modern dependencies | Swift 6 language mode + `swift-tools-version` 6.x + macOS 15+ and iOS 18+ deployment targets + swift-nio 2.10x |
 
 ### 1.3 Non-goals (out of scope)
 
@@ -44,7 +44,7 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 - ❌ MCCP2 compression (libtelnet can enable it through `HAVE_ZLIB`; the first release leaves it **off** as a v0.2 option).
 - ❌ A Telnet server framework productized on `ServerBootstrap`; the echo server in the test fixture is not part of the product interface.
 - ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
-- ❌ Linux and iOS support (the first release promises macOS 15+ only; the code layout does not deliberately block a later port).
+- ❌ Linux and Windows support (the first release promises macOS 15+ and iOS 18+; the code layout does not deliberately block a later port).
 
 ---
 
@@ -52,7 +52,7 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 
 ### 2.1 User profiles
 
-1. **Application developer**: needs an embedded Telnet session in a macOS app (device console, serial-over-Telnet gateway client, legacy system integration).
+1. **Application developer**: needs an embedded Telnet session in a macOS or iOS app (device console, serial-over-Telnet gateway client, legacy system integration, mobile operations tool).
 2. **Tool developer**: writes a CLI tool that connects to many devices, runs commands, collects output, and automates the protocol.
 3. **Protocol researcher or tester**: needs to observe or inject Telnet negotiation and check whether a peer follows RFC 1143.
 
@@ -107,7 +107,7 @@ These facts were verified before writing this document (2026-09-21, this machine
 
 ```
 TelnetKit/
-├── Package.swift                       # swift-tools-version: 6.2
+├── Package.swift                       # swift-tools-version: 6.2, platforms macOS 15 + iOS 18
 ├── PRD.md
 ├── README.md
 ├── LICENSE                             # this library's license (libtelnet is public domain; note it in NOTICE)
@@ -496,7 +496,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | Category | Requirement |
 | --- | --- |
 | Language and toolchain | Swift 6 language mode (`swiftLanguageModes: [.v6]`), `swift-tools-version: 6.2`, minimum Xcode 26 / Swift 6.2 |
-| Deployment target | `platforms: [.macOS(.v15)]`; only this platform is promised for build products |
+| Deployment target | `platforms: [.macOS(.v15), .iOS(.v18)]`; both platforms are promised for build products, while Linux, Windows, tvOS, and watchOS are not |
 | Strict concurrency | Complete `StrictConcurrency` checking for the whole package, 0 warnings |
 | Dependencies | `swift-nio` (2.103.0 or later) and `swift-log` (1.x, for optional logging); no other third-party runtime dependency |
 | Binary size | Under a single-architecture release build, the TelnetKit delta is under 500 KiB including the C source |
@@ -520,7 +520,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | L2 public interface tests (black box) | Contract stability, no C leak, error semantics | `import TelnetKit` only, against a loopback `TelnetEchoServer` |
 | L3 integration tests | Real TCP, timeout, cancellation, concurrent connections | `ClientBootstrap` against a local `ServerBootstrap` fixture |
 | L4 robustness | Fuzz input and resource bounds | Random and malicious byte streams, oversized SB, flooding |
-| L5 static assurance | Interface and concurrency | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job |
+| L5 static assurance | Interface, concurrency, and both platform builds | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job, and an iOS 18 simulator build |
 
 Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`/`#require`) with `async` test functions; a test that needs timeout protection uses a `withTimeout` helper defined in the test target.
 
@@ -623,7 +623,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | Name | Form | Purpose |
 | --- | --- | --- |
 | `TelnetDemo` | `.executableTarget` (CLI) | The minimal verifiable path: connect → print events → send a command → disconnect; covers every public interface |
-| `TelnetEchoServer` | `.executableTarget` (local server) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, and warning scenarios |
+| `TelnetEchoServer` | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, and warning scenarios |
 | `TelnetKitDemoApp` | SwiftUI macOS app (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
 
 ### 9.1.1 Documentation deliverables
@@ -656,8 +656,8 @@ This PRD's engineering constraints are split into development documents kept bes
 ### 9.3 Demo acceptance criteria
 
 1. `swift run TelnetEchoServer` plus `swift run TelnetDemo --host 127.0.0.1 --port 2323` runs with one command, needing no network and no external service.
-2. The demo can reach a real external Telnet service (a public BBS or a device) and complete one full interaction: the login prompt is visible and commands can be typed.
-3. `TelnetKitDemoApp` is usable the moment it opens on macOS 15+; resizing the window triggers a NAWS report that is visible in the echo server log.
+2. The demo can reach a real external Telnet service (a public BBS or a device) and complete one full interaction: the login prompt is visible and commands can be typed; on iOS a minimal simulator example runs the same path against the loopback server.
+3. `TelnetKitDemoApp` is usable the moment it opens on macOS 15+; resizing the window triggers a NAWS report that is visible in the echo server log. The library itself builds on an iOS 18+ simulator and passes every non-network test there.
 4. The demo code is documentation: every public interface appears at least once in it, and the README carries a matching code snippet.
 
 ---
@@ -672,9 +672,10 @@ This PRD's engineering constraints are split into development documents kept bes
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green |
 | M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass |
-| M6 release | v0.1.0 tag, release notes, example screenshots or recordings | The tag is pushed and `Package.resolved` is archived |
+| M6 iOS support | `Package.swift` declares `.iOS(.v18)`; CI gains an iOS 18 simulator build and test job; the platform-sensitive paths (DNS resolution, EventLoop, logging, background suspension) are re-reviewed on iOS | `xcodebuild -destination 'platform=iOS Simulator,name=iPhone 16'` builds, and the protocol and public interface tests are green |
+| M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived |
 
-> Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
+> Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 
 ---
 
@@ -691,7 +692,8 @@ This PRD's engineering constraints are split into development documents kept bes
 | R7 | MCCP2 needs zlib (`HAVE_ZLIB`), which differs across build environments | Low | Leave it off in the first release; if enabled, declare it explicitly through SwiftPM `.systemLibrary` or `define` and add an enabled variant to CI |
 | R8 | A poor `AsyncStream` buffer policy causes memory growth or event loss | Medium | Default to `.bounded` with a configurable drop or finish policy, emit a `.warning` **when an event is dropped**, and add a high-traffic stress test |
 | R9 | The public API couples to swift-nio types such as `ByteBuffer`, which limits a future upgrade | Low | Use `ByteBuffer` as the binary carrier for `TelnetEvent.data` because it matches the NIO ecosystem, and provide `text` and `bytes([UInt8])` accessors so a caller never has to understand NIO |
-| R10 | A macOS 15+ deployment target excludes some users | Low | The requirement is explicit; avoid macOS 15+-only APIs so a later move to iOS or Linux stays possible |
+| R10 | iOS network and background limits: suspending the app drops the connection, and App Store review scrutinizes plaintext protocols | Medium | Document the foreground-session semantics and the disconnect-on-background behavior, add no background daemon, provide `idleTimeout` and a caller-side reconnect example, and flag the plaintext risk in the README security section |
+| R11 | Two-platform CI cost and simulator resource use | Low | The iOS job runs only the simulator build and the non-network tests (protocol and public interface); integration tests stay in the macOS job |
 
 ---
 
@@ -727,7 +729,7 @@ import PackageDescription
 
 let package = Package(
     name: "TelnetKit",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
         .executable(name: "TelnetDemo", targets: ["TelnetDemo"]),

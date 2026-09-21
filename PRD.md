@@ -10,7 +10,7 @@
 | 撰写日期 | 2026-09-21 |
 | 目标仓库 | `TelnetKit`（Swift Package，目录 `/Users/yang/workspace/CodinnCode/CoreSSH/TelnetKit`） |
 | 上游依赖 | [apple/swift-nio](https://github.com/apple/swift-nio)、[seanmiddleditch/libtelnet](https://github.com/seanmiddleditch/libtelnet) |
-| 交付形态 | Swift Package（library product `TelnetKit` + 测试 + Demo 可执行产物） |
+| 交付形态 | Swift Package（library product `TelnetKit` + 测试 + Demo 可执行产物）；支持 macOS 15+ 与 iOS 18+ |
 
 ---
 
@@ -23,7 +23,7 @@ Telnet 协议（RFC 854/855 及其大量选项扩展）仍是 BBS、网络设备
 - `libtelnet` 是成熟的 C 实现，覆盖 RFC 854/855/1091/1143/1408/1572，支持 Q-method（RFC 1143）选项协商、ZMP、MCCP2、MSSP、NEW-ENVIRON，但它只做**协议状态机**，不管理 TCP，且是**回调式 API + 大量宏/常量/裸指针**，用起来非常"非 Swift"。
 - 直接使用裸 `Network.framework` 或 POSIX socket 手写 Telnet 解析，等于重写一遍 RFC 1143 状态机，工程量大且易错。
 
-TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封装成一个类型安全、可测试、零 C 泄漏的异步 Telnet 终端能力库。**
+TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封装成一个类型安全、可测试、零 C 泄漏的异步 Telnet 终端能力库，同时覆盖 macOS 15+ 与 iOS 18+ 两个平台。**
 
 ### 1.2 产品目标
 
@@ -34,7 +34,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 | G3 | 完全隔离 C 实现细节 | 公开接口零 `OpaquePointer`、零 `UInt8` 命令码宏、零 `telnet_*` 符号 |
 | G4 | 协议正确性与可验证性 | 协商、子协商、TTYPE/NEW-ENVIRON/NAWS 等公开行为均有测试用例覆盖 |
 | G5 | 可交付的示例工程 | Demo 覆盖全部公开接口，可直接连真实 Telnet 服务并交互 |
-| G6 | 依赖现代化 | Swift 6 语言模式 + `swift-tools-version` 6.x + macOS 15+ 部署目标 + swift-nio 2.10x |
+| G6 | 依赖现代化 | Swift 6 语言模式 + `swift-tools-version` 6.x + macOS 15+ / iOS 18+ 部署目标 + swift-nio 2.10x |
 
 ### 1.3 非目标（Out of Scope）
 
@@ -44,7 +44,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 - ❌ MCCP2 压缩（libtelnet 通过 `HAVE_ZLIB` 可开启；首版**关闭**，作为 v0.2 可选项）。
 - ❌ Telnet 服务端框架（`ServerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
 - ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
-- ❌ Linux/iOS 平台支持（首版只承诺 macOS 15+；代码组织上不刻意阻断后续移植）。
+- ❌ Linux/Windows 平台支持（首版承诺 macOS 15+ 与 iOS 18+；代码组织上不刻意阻断后续移植）。
 
 ---
 
@@ -52,7 +52,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 
 ### 2.1 用户画像
 
-1. **应用开发者**：需要在 macOS App 中内嵌一个 Telnet 会话（设备调试台、串口转 Telnet 网关客户端、老系统对接）。
+1. **应用开发者**：需要在 macOS 或 iOS App 中内嵌一个 Telnet 会话（设备调试台、串口转 Telnet 网关客户端、老系统对接、移动端运维工具）。
 2. **工具开发者**：写 CLI 工具批量连设备跑命令、采集输出、做协议自动化。
 3. **协议研究者/测试者**：需要观察或注入 Telnet 协商，验证对端实现是否符合 RFC 1143。
 
@@ -107,7 +107,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 
 ```
 TelnetKit/
-├── Package.swift                       # swift-tools-version: 6.2
+├── Package.swift                       # swift-tools-version: 6.2, platforms macOS 15 + iOS 18
 ├── PRD.md
 ├── README.md
 ├── LICENSE                             # 本库许可（libtelnet 为 public domain，需在 NOTICE 注明）
@@ -496,7 +496,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | 类别 | 需求 |
 | --- | --- |
 | 语言与工具链 | Swift 6 语言模式（`swiftLanguageModes: [.v6]`），`swift-tools-version: 6.2`，最低 Xcode 26 / Swift 6.2 |
-| 部署目标 | `platforms: [.macOS(.v15)]`，构建产物仅在此平台承诺 |
+| 部署目标 | `platforms: [.macOS(.v15), .iOS(.v18)]`；库产物在两个平台上承诺，Linux/Windows/tvOS/watchOS 不承诺 |
 | 严格并发 | 全包 `StrictConcurrency` 完整检查，0 warning |
 | 依赖 | `swift-nio`（2.103.0 起）、`swift-log`（1.x，用于可选日志）；不引入其他第三方运行时依赖 |
 | 二进制体积 | 单架构 release 下 TelnetKit 增量 < 500 KiB（含 C 源） |
@@ -520,7 +520,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | L2 公开接口测试（黑盒） | 契约稳定性、无 C 泄漏、错误语义 | 只 `import TelnetKit`，配合 `TelnetEchoServer` 回环 |
 | L3 集成测试 | 真实 TCP、超时、取消、并发多连接 | `ClientBootstrap` 连本地 `ServerBootstrap` 夹具 |
 | L4 健壮性 | 模糊输入、资源上限 | 随机/恶意字节流、超大 SB、洪泛 |
-| L5 静态保障 | 接口与并发 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job |
+| L5 静态保障 | 接口、并发与双平台构建 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job、iOS 18 模拟器构建 |
 
 框架统一使用 **Swift Testing**（`import Testing`，`@Test`/`@Suite`/`#expect`/`#require`），异步用 `async` 测试函数；需要超时保护的用 `withTimeout` 辅助（测试内自建）。
 
@@ -623,7 +623,7 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | 名称 | 形态 | 作用 |
 | --- | --- | --- |
 | `TelnetDemo` | `.executableTarget`（CLI） | 最小可验证：连接 → 打印事件 → 发送命令 → 断开；覆盖全部公开接口 |
-| `TelnetEchoServer` | `.executableTarget`（本地服务端） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning 场景 |
+| `TelnetEchoServer` | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning 场景 |
 | `TelnetKitDemoApp` | SwiftUI macOS App（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
 
 ### 9.1.1 文档交付物
@@ -656,8 +656,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 ### 9.3 Demo 验收标准
 
 1. `swift run TelnetEchoServer` + `swift run TelnetDemo --host 127.0.0.1 --port 2323` 一条命令即可跑通，无需网络与外部服务。
-2. Demo 能连真实外部 Telnet 服务（如公开 BBS / 设备）并完成一次完整交互（登录提示可见、可输入命令）。
-3. `TelnetKitDemoApp` 在 macOS 15+ 打开即可用；窗口缩放触发 NAWS 上报（EchoServer 日志可见）。
+2. Demo 能连真实外部 Telnet 服务（如公开 BBS / 设备）并完成一次完整交互（登录提示可见、可输入命令）；iOS 侧以模拟器内的最小示例打同一台回环服务端，验证同一路径。
+3. `TelnetKitDemoApp` 在 macOS 15+ 打开即可用；窗口缩放触发 NAWS 上报（EchoServer 日志可见）。库本身在 iOS 18+ 模拟器上构建通过并跑完全部非网络测试。
 4. Demo 代码即文档：每个公开接口在 Demo 中至少出现一次，且在 README 中有对应代码片段。
 
 ---
@@ -672,9 +672,10 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 |
 | M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 |
-| M6 发布 | v0.1.0 tag、Release Notes、示例截图/录屏 | 打 tag 并归档 `Package.resolved` |
+| M6 iOS 支持 | `Package.swift` 声明 `.iOS(.v18)`；CI 增加 iOS 18 模拟器构建与测试 job；平台相关路径（DNS 解析、EventLoop、日志、后台挂起）在 iOS 下复核 | `xcodebuild -destination 'platform=iOS Simulator,name=iPhone 16'` 构建成功，协议层与公开接口测试全绿 |
+| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` |
 
-> 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；每里程碑均有可运行产物，不积累"最后集成"风险。
+> 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 
 ---
 
@@ -691,7 +692,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 | R7 | MCCP2 需 zlib（`HAVE_ZLIB`），跨平台构建差异 | 低 | 首版不启用；若启用则通过 SwiftPM `.systemLibrary`/`define` 显式声明并在 CI 增加开启变体 |
 | R8 | `AsyncStream` 事件缓冲策略不当导致内存暴涨或事件丢失 | 中 | 默认 `.bounded`，丢弃/终止策略可配且**丢弃时发出 `.warning`**；补大流量压测 |
 | R9 | 公开 API 与 swift-nio 类型（如 `ByteBuffer`）耦合，未来升级受限 | 低 | `TelnetEvent.data` 采用 `ByteBuffer` 作为二进制载体（与 NIO 生态一致）；同时提供 `text`/`bytes([UInt8])` 便捷访问，避免调用方必须理解 NIO |
-| R10 | macOS 15+ 部署目标限制了部分用户 | 低 | 需求已明确；代码避免使用 macOS 15+ 专有 API 以保留向 iOS/Linux 迁移的可能 |
+| R10 | iOS 端的网络与后台限制：应用后台挂起会断开连接，App Store 审核关注明文协议 | 中 | 文档写明「前台会话」语义与后台断开行为，不引入后台常驻能力；提供 `idleTimeout` 与应用层重连示例；README 安全章节标注明文风险 |
+| R11 | 双平台 CI 成本与模拟器资源占用 | 低 | iOS job 只跑模拟器构建与非网络测试（协议层 + 公开接口），集成测试留在 macOS job |
 
 ---
 
@@ -727,7 +729,7 @@ import PackageDescription
 
 let package = Package(
     name: "TelnetKit",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
         .executable(name: "TelnetDemo", targets: ["TelnetDemo"]),

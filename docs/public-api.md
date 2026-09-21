@@ -291,7 +291,7 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 | `eventBufferPolicy` | `.bounded` finishes the stream with a `.warning` when full, `.unbounded` never drops, `.dropOldest` discards the oldest queued event and emits `.warning(.eventBufferOverflowDropped(count:))`. |
 | `newlinePolicy` | `.nvt` translates CR and LF for text sends and for received data; `.raw` passes bytes through. `binary` negotiation overrides both to raw while it is enabled. |
 | `logger` | Optional `swift-log` logger. Nil logs nothing. Payload content is never logged, at any level. |
-| `tls` | Nil means plaintext. A non-nil value upgrades the connection before Telnet negotiation; the caller supplies trust roots, because Telnet itself has no TLS negotiation. |
+| `tls` | Nil means plaintext. A non-nil value upgrades the connection before Telnet negotiation; the caller supplies trust roots, because Telnet itself has no TLS negotiation. On iOS those roots come from the caller's bundle or the system trust store, never from a hardcoded macOS path. |
 
 The defaults are the ones a caller gets by passing nothing, and each is asserted by a configuration test. `inboundBufferLimit` and `subnegotiationLimit` are byte counts; `eventBufferPolicy` counts events.
 
