@@ -540,6 +540,8 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 ### 8.1 分层
 
+本节的用例清单是需求清单；环境、命令、质量门槛与 CI 矩阵由 [docs/testing.md](docs/testing.md) 负责。
+
 | 层 | 目标 | 手段 |
 | --- | --- | --- |
 | L1 协议单测（白盒） | 逐事件、逐字节正确性 | `@testable import TelnetKit` + `TelnetProtocolCore` 直接喂字节 |
@@ -733,7 +735,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | Q2 | 断线重连由库提供还是仅给示例？ | 仅给示例：库负责 `waitForConnectivity` 与清晰错误，重连策略由调用方决定 |
 | Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
 | Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
-| Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.md#双语配对)；本 PRD 以中文为正本，对照版为 [PRD.en.md](PRD.en.md) |
+| Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.zh.md#双语配对)；本 PRD 以中文为正本，对照版为 [PRD.en.md](PRD.en.md) |
 
 ---
 

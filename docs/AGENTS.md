@@ -24,6 +24,7 @@ Each fact has one home: the tier whose job it is. Elsewhere, link there. A state
 | [docs/architecture.md](architecture.md) | Ordered map of the design: layers, ownership, concurrency model, event flow, extension points; read before changing `Sources/` | Type-by-type API contracts (→ public-api.md), requirement identifiers and acceptance criteria (→ PRD.md), decision history |
 | [docs/public-api.md](public-api.md) | The caller contract: every public type, method, property, and enum case with its preconditions, failures, ordering, and cancellation behavior | Requirements and priorities (→ PRD.md), internal design (→ architecture.md), test inventories (→ test files) |
 | [PRD.md](../PRD.md) | Requirements: goals, user stories, functional and non-functional requirements with identifiers, acceptance criteria, test-case inventory, demo scope, milestones, risks | API signatures as the contract of record (→ public-api.md), architecture rationale (→ architecture.md) |
+| [docs/testing.md](testing.md) | The test plan: environment, framework, how to run each suite on macOS and the simulators, quality gates, and the CI matrix | Requirement identifiers and acceptance criteria (→ PRD.md), per-test design notes (→ the test source) |
 | [README.md](../README.md) | The consumer contract: what the library does, install, a runnable quick start, supported platforms, known limitations, security stance | Contributor procedure, internal design, requirement traceability |
 | [.agents/skills/](../.agents/skills/) | Reusable workflows and decision standards for repeatable tasks | Product contracts, requirement identifiers, runtime behavior |
 | [Sources/CLibTelnet/UPSTREAM.md](../Sources/CLibTelnet/UPSTREAM.md) | Vendored source provenance: upstream URL, branch, commit, version, copy date, local-modification statement | Build instructions, design rationale |
@@ -50,9 +51,10 @@ The ceilings below are guardrails, not reduction targets. Measure with `wc -w` o
 | Document | Ceiling (words) |
 |---|---|
 | `AGENTS.md` | 1,400 |
-| `docs/AGENTS.md` | 1,500: this file also owns the bilingual pairing mechanics |
+| `docs/AGENTS.md` | 1,700: this file owns the bilingual pairing mechanics and the tier table for nine tiers |
 | `docs/architecture.md` | 2,100: the platform and transport decision table plus the path-event flow cannot be relocated without losing the design contract |
 | `docs/public-api.md` | 3,200: the caller contract is exhaustive about every public symbol, and a member table row costs words that cannot be relocated without losing the contract |
+| `docs/testing.md` | 1,400: one command block per layer plus the CI matrix |
 | `README.md` | 900 |
 | A skill under `.agents/skills/*/SKILL.md` | 1,400 |
 | `PRD.md` | unbudgeted: it owns requirement detail |

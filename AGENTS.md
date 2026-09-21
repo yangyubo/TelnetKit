@@ -29,7 +29,7 @@ Sources/TelnetDemo/            CLI demo executable
 Sources/TelnetEchoServer/      macOS-only local echo server, also the integration fixture
 Tests/TelnetKitTests/          Swift Testing suites: Protocol/, PublicAPI/, Integration/
 Examples/TelnetKitDemoApp/     SwiftUI demo application
-docs/                          architecture, public API contract, documentation standard
+docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
 ```
 

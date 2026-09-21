@@ -24,6 +24,7 @@
 | [docs/architecture.md](architecture.md) | 设计的有序地图：分层、所有权、并发模型、事件流、扩展点；修改 `Sources/` 前必读 | 逐类型的 API 契约（→ public-api.md）、需求编号与验收标准（→ PRD.md）、决策历史 |
 | [docs/public-api.md](public-api.md) | 调用方契约：每个公开类型、方法、属性与 enum case 及其前置条件、失败、顺序与取消行为 | 需求与优先级（→ PRD.md）、内部设计（→ architecture.md）、测试清单（→ 测试文件） |
 | [PRD.md](../PRD.md) | 需求：目标、用户故事、带编号的功能与非功能需求、验收标准、测试用例清单、Demo 范围、里程碑、风险 | 作为契约存档的 API 签名（→ public-api.md）、架构理由（→ architecture.md） |
+| [docs/testing.md](testing.md) | 测试方案：环境、框架、在 macOS 与各模拟器上如何运行每个套件、质量门槛、CI 矩阵 | 需求编号与验收标准（→ PRD.md）、单个测试的设计说明（→ 测试源码） |
 | [README.md](../README.md) | 使用方契约：库做什么、安装、可运行的快速开始、支持平台、已知限制、安全立场 | 贡献者流程、内部设计、需求可追溯性 |
 | [.agents/skills/](../.agents/skills/) | 可复用工作流与面向重复任务的标准 | 产品契约、需求编号、运行时行为 |
 | [Sources/CLibTelnet/UPSTREAM.md](../Sources/CLibTelnet/UPSTREAM.md) | vendored 源码来源：上游 URL、branch、commit、版本、复制日期、本地修改声明 | 构建说明、设计理由 |
@@ -50,9 +51,10 @@
 | 文档 | 上限（词） |
 |---|---|
 | `AGENTS.md` | 1,400 |
-| `docs/AGENTS.md` | 1,500：本文件还负责双语配对机制 |
+| `docs/AGENTS.md` | 1,700：本文件负责双语配对机制与九个层级的归属表 |
 | `docs/architecture.md` | 2,100：平台与传输层决策表以及路径事件流无法在不丢失设计契约的前提下下沉 |
 | `docs/public-api.md` | 3,200：调用方契约对每个公开符号穷尽，成员表格的一行所占词数无法在不丢契约的前提下下沉 |
+| `docs/testing.md` | 1,400：每层一个命令块加 CI 矩阵 |
 | `README.md` | 900 |
 | `.agents/skills/*/SKILL.md` 下的 skill | 1,400 |
 | `PRD.md` | 不设上限：它拥有需求细节 |

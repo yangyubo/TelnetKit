@@ -540,6 +540,8 @@ NIOTS exposes Network.framework path events to SwiftNIO (`NIOTSNetworkEvents`). 
 
 ### 8.1 Layers
 
+The case inventory below is the requirement list; [docs/testing.md](docs/testing.md) owns the environment, commands, quality gates, and CI matrix.
+
 | Layer | Goal | Method |
 | --- | --- | --- |
 | L1 protocol unit tests (white box) | Per-event, per-byte correctness | `@testable import TelnetKit` and a direct byte feed into `TelnetProtocolCore` |

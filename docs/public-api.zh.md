@@ -15,7 +15,7 @@
 | 每个可能失败的公开方法是 `async throws(TelnetError)` | 阅读生成的 interface |
 | 每个公开类型都是 `Sendable` | 以完整并发检查构建 |
 | 公开类型位于 `Sources/TelnetKit/Public/` | 比对文件路径与声明位置 |
-| 每个公开符号都有自动化测试 | 用[符号清单](#symbol-checklist)比对公开 API 套件 |
+| 每个公开符号都有自动化测试 | 用[符号清单](#符号清单)比对公开 API 套件 |
 
 ## 术语表
 

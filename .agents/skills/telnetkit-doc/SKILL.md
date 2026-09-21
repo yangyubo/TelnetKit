@@ -77,8 +77,9 @@ Run what applies and report the observed result for each:
 3. Heading uniqueness: no two headings in one file produce the same anchor.
 4. Statement kind: every present-tense behavior claim in a changed file is verified, upstream, or explicitly designed; report any that is none of the three.
 5. Duplication: grep a distinctive phrase from each new rule across the repository and confirm it appears once as a rule, with links elsewhere.
-6. Bilingual pair: both sides exist, the structural line kinds match line for line, and `wc -l` reports the same count for each side.
-7. No hand edit inside `Sources/CLibTelnet/`.
+6. Test plan: every command in it was run once, and each suite names the platforms it runs on; a command that fails on this machine is recorded with its error rather than softened.
+7. Bilingual pair: both sides exist, the structural line kinds match line for line, and `wc -l` reports the same count for each side.
+8. No hand edit inside `Sources/CLibTelnet/`.
 
 ## Dev Note
 

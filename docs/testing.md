@@ -1,0 +1,118 @@
+# TelnetKit Test Plan
+
+English | [中文](testing.zh.md)
+
+This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The package is not implemented yet, so every section below is **Designed** under the [design-status rule](../AGENTS.md#design-status).
+
+## Environment
+
+Facts verified on the development machine (Xcode 27.0, `swift-driver` 1.168.6, Apple Swift 6.4, macOS 27.0):
+
+| Item | Value | Why it matters |
+|---|---|---|
+| Framework | `Testing.framework` ships in the Xcode SDK beside `XCTest.framework` | Swift Testing needs no package dependency and no `swift-testing` checkout |
+| SwiftPM | `swift test` supports `--enable-code-coverage`, `--sanitize`, `--filter`, `--skip`, `--parallel/--no-parallel`, `--list-tests`, `--xunit-output` | Coverage, sanitizers, and per-suite selection run without `xcodebuild` |
+| Simulator runtimes | This machine has **only the iOS 26.5 runtime** installed; watchOS, tvOS, and visionOS need a one-time runtime download from Xcode | A device name in a command only works where its runtime is installed, so CI installs the runtimes it names |
+| Device names | `xcrun simctl list devices available` | Device names change per runtime; the plan names the family, and each command reads the installed list |
+
+Toolchain floor: Xcode 26 or newer with Swift 6.2 or newer. The deployment floors under test are macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 (PRD §7).
+
+## What runs where
+
+| Suite | Layer under test | Fixture | macOS 15 | iOS simulator | watchOS, tvOS, visionOS |
+|---|---|---|---|---|---|
+| `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Bytes in, `[TelnetEvent]` out; no socket | Yes | Yes | Yes, build plus run |
+| `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address | Yes | Yes | Build only |
+| `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | `NIOTSListenerBootstrap` fixture, injected `NIOTSNetworkEvents` | Yes | Yes | No |
+
+The protocol suite is the correctness gate and touches no network, so it is the one suite that runs everywhere. The integration suite binds a loopback listener, which watchOS, tvOS, and visionOS do not provide, so those platforms stop at build plus the protocol suite.
+
+## Running each suite
+
+All commands run from the package root. `swift test` is the local evidence for the protocol and public API suites, and both complete offline.
+
+```sh
+swift test --filter TelnetKitTests.Protocol        # L1, no network, fastest signal
+swift test --filter TelnetKitTests.PublicAPI       # L2, needs the loopback fixture
+swift test --filter TelnetKitTests.Integration     # L3, needs a free local port
+swift test                                         # all suites; must finish under 60 s
+swift test --no-parallel                           # isolate a flaky ordering bug
+swift test --list-tests                            # what exists, for the symbol audit
+swift test --list-tests | wc -l                    # count for the coverage checklist
+```
+
+The echo server is a fixture, not a service: the integration suite starts one per run and stops it on teardown.
+
+```sh
+swift run TelnetEchoServer --port 2323             # manual: start the fixture by hand
+swift run TelnetDemo --host 127.0.0.1 --port 2323  # manual: drive it from the CLI demo
+```
+
+Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM test bundle needs a host application on those platforms.
+
+```sh
+xcrun simctl list devices available                # read the installed names first
+xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
+                 -only-testing:TelnetKitTests/ProtocolTests
+```
+
+`xcodebuild` resolves a scheme only after the package has been opened once in Xcode, so CI assigns a stable `TelnetKit-Package` scheme in the workspace and fails with the package name when the scheme is absent.
+
+## Coverage, sanitizers, and concurrency
+
+| Check | Command | Applies to | Owner |
+|---|---|---|---|
+| Code coverage | `swift test --enable-code-coverage` then `xcrun llvm-cov report --instr-profile .build/debug/codecov/default.profdata` | macOS | PRD §8.3: protocol statements >= 90%, branches >= 80% |
+| Memory safety | `swift test --sanitize=address` | macOS | FR-PROTO-08, the callback copy path |
+| Data races | `swift test --sanitize=thread` | macOS | The `telnet_t` single-EventLoop rule and the outbound queue |
+| Undefined behavior | `swift test --sanitize=undefined` | macOS | The C seam and byte arithmetic |
+| Strict concurrency | `swift build -Xswiftc -strict-concurrency=complete` | All five platforms | Zero warnings, no `@unchecked Sendable` without a comment |
+| Public interface | `swift package diagnose-api-breaking-changes baseline.json` | macOS | The [symbol checklist](public-api.md#symbol-checklist) |
+
+Sanitizers run on macOS only: the iOS simulator does not support Thread Sanitizer, and mixing sanitizers with simulator hosts produces noise rather than signal. ASan and TSan jobs are separate CI jobs so one failure does not mask the other.
+
+## Path events and other timing-sensitive behavior
+
+Path events and connectivity waiting are the hardest part of the plan, because a hosted CI runner has one network path and cannot be told to lose it.
+
+| Behavior | How it is tested | Where |
+|---|---|---|
+| `.pathChanged`, `.betterPathAvailable`, `.betterPathUnavailable`, `.viabilityChanged`, `.waitingForConnectivity` | Inject `NIOTSNetworkEvents` into the pipeline and assert the mapped `TelnetEvent` and the untouched option ledger | Protocol and integration suites |
+| `waitForConnectivity` parks a connect attempt with no route (FR-PATH-01) | `NIOTSChannelOptions.waitForActivity` against an unroutable address, asserting the call has not thrown or returned within a bound, then released | macOS integration suite |
+| A real cellular-to-Wi-Fi switch and a real suspend/resume | Manual run on a device or simulator, recorded in the M6 checklist | M6 manual verification |
+| Timeout and cancellation | A short configured bound plus a generous assertion bound; never a fixed sleep | All suites |
+
+## Quality gates
+
+A change passes when all of the following hold, and the run reports the observed result for each:
+
+1. `swift test` is green on macOS and finishes under 60 s.
+2. The protocol and public API suites are green on the iOS simulator.
+3. All five platforms build.
+4. Every public symbol in the [symbol checklist](public-api.md#symbol-checklist) is reached by a test; a symbol without one fails the gate rather than reporting partial coverage.
+5. Coverage thresholds from PRD §8.3 hold, compared against the checklist rather than against line counts alone.
+6. The ASan job is green, and the TSan job is green.
+7. The `-strict-concurrency=complete` build reports zero warnings.
+8. No test reaches the external network, and no test depends on wall-clock sleep for correctness.
+9. The dependency tree contains no `NIOSSL`, no `CNIOBoringSSL`, and no `NIOPosix`.
+
+## CI plan
+
+| Job | Runner | Command | Gates |
+|---|---|---|---|
+| `macos-suite` | macOS 15 or newer | `swift test` plus `--enable-code-coverage` | Gates 1, 4, 5 |
+| `sanitizers` | macOS | `swift test --sanitize=address`, `swift test --sanitize=thread` | Gate 6 |
+| `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | Gate 7 |
+| `platform-matrix` | macOS with all four runtimes | `xcodebuild build` and `xcodebuild test` per platform | Gates 2, 3 |
+| `api-surface` | macOS | `swift package diagnose-api-breaking-changes baseline.json` | Gate 4, for the interface snapshot |
+
+The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
+
+## Manual verification
+
+Three things cannot be automated on a hosted runner and are recorded as evidence in the milestone checklist:
+
+1. A real Telnet service over the public internet: the login prompt is visible and a command round-trips.
+2. A cellular-to-Wi-Fi switch on a device, showing `.pathChanged` and a session that survives it.
+3. Background suspension on iOS or watchOS: the connection drops, and the app reconnects when it returns to the foreground.

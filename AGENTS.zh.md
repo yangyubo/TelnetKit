@@ -29,7 +29,7 @@ Sources/TelnetDemo/            CLI 演示可执行文件
 Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端，同时是集成测试夹具
 Tests/TelnetKitTests/          Swift Testing 套件：Protocol/、PublicAPI/、Integration/
 Examples/TelnetKitDemoApp/     SwiftUI 演示应用
-docs/                          架构、公开接口契约、文档标准
+docs/                          架构、公开接口契约、测试方案、文档标准
 .agents/skills/                可复用工作流
 ```
 

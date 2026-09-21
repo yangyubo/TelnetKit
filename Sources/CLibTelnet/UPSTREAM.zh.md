@@ -31,11 +31,11 @@ module CLibTelnet {
 
 ## 构建设置
 
-C target 不定义任何自定义宏。`HAVE_ZLIB` 保持未定义，因此 libtelnet 编译时直接去掉 MCCP2 代码，链接期也无需 `-lz`。COMPRESS2 请求会被拒绝，而不是得到半吊子支持；相应行为见 [COMPRESS2 契约](../../docs/public-api.md#事件)。Apple SDK 本可链接 zlib，所以这是设计取舍而非依赖限制。
+C target 不定义任何自定义宏。`HAVE_ZLIB` 保持未定义，因此 libtelnet 编译时直接去掉 MCCP2 代码，链接期也无需 `-lz`。COMPRESS2 请求会被拒绝，而不是得到半吊子支持；相应行为见 [COMPRESS2 契约](../../docs/public-api.zh.md#事件)。Apple SDK 本可链接 zlib，所以这是设计取舍而非依赖限制。
 
 ## 升级清单
 
 1. 拉取上游，把新的 commit 与头文件版本记入 pin 表。
 2. 对两个文件做 diff，检查是否有公开签名变更、新增宏、`telnet_event_t` 成员变更，或新增的 `HAVE_ZLIB` 路径。
 3. 复制两个文件，确认没有重新引入本地修改。
-4. 重跑[引入 skill 的校验](../../.agents/skills/telnetkit-import-c-library/SKILL.md#校验)，然后跑协议套件。
+4. 重跑[引入 skill 的校验](../../.agents/skills/telnetkit-import-c-library/SKILL.zh.md#校验)，然后跑协议套件。
