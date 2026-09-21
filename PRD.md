@@ -567,13 +567,13 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | `connect_loopback_succeeds` | Returns non-nil, `isConnected == true`, `remoteAddress == "127.0.0.1:<port>"` |
 | `connect_refused_throws_connectionRefused` | Connecting to a closed port throws `.connectionRefused` |
 | `connect_unresolvable_host_throws_invalidHost` | Throws `.invalidHost` |
-| `connect_timeout_throws_connectTimeout` | Black-hole address with `connectTimeout: .seconds(1)` produces `.connectTimeout` |
+| `connect_timeout_throws_connectTimeout` | A connect that outlives its configured bound produces `.connectTimeout` |
 | `connect_cancellation_throws_cancelled` | `Task` cancellation produces `.cancelled` and no connection left on the server |
 | `close_is_idempotent` | Two `close()` calls produce no error |
 | `events_finish_on_remote_close` | `for await` ends normally after the server closes, under a 2 s timeout guard |
 | `send_after_close_throws_notConnected` | Throws `.notConnected` |
 | `optionStatus_reflects_negotiation` | echo and SGA state is correct after the handshake |
-| `inbound_buffer_limit_enforced` | Exceeding the bound throws `.bufferOverflow` and closes the connection |
+| `inbound_buffer_limit_enforced` | Exceeding the bound emits a fatal `.protocolError` and closes the connection |
 
 **B. Protocol parsing (FR-PROTO, white box, per event)**
 
@@ -711,14 +711,14 @@ This PRD's engineering constraints are split into development documents kept bes
 | --- | --- | --- |
 | M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the libtelnet submodule with our tracked module map, two symlinks, and `UPSTREAM.md` (recording the pinned commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**verified: `swift build --target TelnetKit --triple` succeeds for the macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 floors**) | Shipped |
 | M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes | Shipped |
-| M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green with no leak | Partial |
+| M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green; `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events | Shipped |
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green with no negotiation loop | Partial |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Coverage gates pass and group G is green | Partial |
 | M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass | Planned |
 | M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build | Partial |
 | M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived | Planned |
 
-> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M2 and M3 code exists, but their group A/C gates and a no-leak run are still open, and M5 has not started.
+> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M3 code exists but its group C gate is still open, M4's coverage and interface gates are open, M6 has built all five floors but has not run their test matrix, and M5 has not started.
 
 > Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 

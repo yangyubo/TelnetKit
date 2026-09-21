@@ -298,7 +298,7 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 |---|---|
 | `connectTimeout` | Upper bound on address resolution plus TCP connect. |
 | `idleTimeout` | Nil disables idle closing. When set, a connection with no inbound and no outbound traffic for the interval closes and finishes the stream. |
-| `inboundBufferLimit` | Maximum buffered inbound bytes; exceeding it raises `.bufferOverflow` and closes. |
+| `inboundBufferLimit` | Maximum buffered inbound bytes; exceeding it emits a fatal `.protocolError` and closes. |
 | `subnegotiationLimit` | Maximum subnegotiation payload; exceeding it raises `.subnegotiationTooLarge`. |
 | `eventBufferPolicy` | `.bounded` finishes the stream with a `.warning` when full, `.unbounded` never drops, `.dropOldest` discards the oldest queued event and emits `.warning(.eventBufferOverflowDropped(count:))`. |
 | `newlinePolicy` | `.nvt` translates CR and LF for text sends and for received data; `.raw` passes bytes through. `binary` negotiation overrides both to raw while it is enabled. |
@@ -376,7 +376,7 @@ Every symbol below requires an automated test in `Tests/TelnetKitTests/PublicAPI
 | `EnvironmentScope`, `EnvironmentVariable` | all cases and properties |
 | `TelnetConfiguration` | `init` with every default, and all eight properties |
 | `TelnetEventBufferPolicy`, `TelnetNewlinePolicy` | all cases |
-| `TelnetError` | all 12 cases; `.alreadyClosed` and `.unsupportedFeature` are reachable as values only, since `close()` is idempotent and the v0.2 zlib path is out of scope while zlib is off |
+| `TelnetError` | all 12 cases; `.alreadyClosed`, `.bufferOverflow`, and `.unsupportedFeature` are reachable as values only, because `close()` is idempotent, an inbound overflow surfaces as `.protocolError`, and the v0.2 zlib path is out of scope |
 | `TelnetTransportFailure`, `TelnetTransportFailure.Kind` | `init(kind:message:isRetryable:)`, all properties and cases |
 | `TelnetWarning` | all five cases; `compressionUnavailable` is reserved for v0.2 zlib support and has no trigger while the build ships without zlib |
 | `TelnetProtocolError`, `TelnetErrorCode` | all cases |

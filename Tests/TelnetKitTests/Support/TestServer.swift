@@ -20,6 +20,7 @@ final class TestServer: Sendable {
     private let childBox: NIOLockedValueBox<Channel?>
     private let connectionPromise: EventLoopPromise<Channel>
     private let connectionDelivered: NIOLockedValueBox<Bool>
+    private let acceptedChildren: NIOLockedValueBox<[Channel]>
 
     private init(
         listener: Channel,
@@ -27,7 +28,8 @@ final class TestServer: Sendable {
         recorder: ByteRecorder,
         childBox: NIOLockedValueBox<Channel?>,
         connectionPromise: EventLoopPromise<Channel>,
-        connectionDelivered: NIOLockedValueBox<Bool>
+        connectionDelivered: NIOLockedValueBox<Bool>,
+        acceptedChildren: NIOLockedValueBox<[Channel]>
     ) {
         self.listener = listener
         self.port = port
@@ -35,6 +37,7 @@ final class TestServer: Sendable {
         self.childBox = childBox
         self.connectionPromise = connectionPromise
         self.connectionDelivered = connectionDelivered
+        self.acceptedChildren = acceptedChildren
     }
 
     deinit {
@@ -60,6 +63,7 @@ final class TestServer: Sendable {
         let childBox = NIOLockedValueBox<Channel?>(nil)
         let connectionPromise = group.next().makePromise(of: Channel.self)
         let delivered = NIOLockedValueBox(false)
+        let acceptedChildren = NIOLockedValueBox<[Channel]>([])
 
         let bootstrap = NIOTSListenerBootstrap(group: group)
             .childChannelInitializer { channel in
@@ -68,6 +72,12 @@ final class TestServer: Sendable {
                         recorder: recorder,
                         onActive: { child in
                             childBox.withLockedValue { $0 = child }
+                            // Keep only the live children, so a soak of many connections
+                            // does not retain every channel the fixture ever accepted.
+                            acceptedChildren.withLockedValue { children in
+                                children.removeAll { !$0.isActive }
+                                children.append(child)
+                            }
                             let first = delivered.withLockedValue { value -> Bool in
                                 let previous = !value
                                 value = true
@@ -89,8 +99,30 @@ final class TestServer: Sendable {
             recorder: recorder,
             childBox: childBox,
             connectionPromise: connectionPromise,
-            connectionDelivered: delivered
+            connectionDelivered: delivered,
+            acceptedChildren: acceptedChildren
         )
+    }
+
+    /// How many client connections the listener has accepted so far.
+    var acceptedConnectionCount: Int {
+        acceptedChildren.withLockedValue { $0.count }
+    }
+
+    /// True once every accepted client connection has closed; used to prove a cancelled
+    /// connect leaves nothing behind on the server.
+    func waitForNoActiveConnections(timeout: Duration = .seconds(2)) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            let active = acceptedChildren.withLockedValue { children in
+                children.contains { $0.isActive }
+            }
+            if !active { return true }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return acceptedChildren.withLockedValue { children in
+            !children.contains { $0.isActive }
+        }
     }
 
     /// Waits until a client connection is accepted and returns its channel.

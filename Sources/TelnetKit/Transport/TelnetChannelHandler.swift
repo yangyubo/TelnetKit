@@ -18,12 +18,14 @@ final class TelnetChannelHandler: ChannelDuplexHandler, Sendable {
 
     private struct HandlerState: Sendable {
         var finished = false
+        var readyCompleted = false
         var idleTask: Scheduled<Void>?
     }
 
     private let core: TelnetProtocolCore
     private let sink: TelnetEventSink
     private let session: TelnetSessionState
+    private let ready: EventLoopPromise<Void>
     private let logger: Logger?
     private let idleTimeout: TimeAmount?
     private let state = NIOLockedValueBox(HandlerState())
@@ -32,12 +34,14 @@ final class TelnetChannelHandler: ChannelDuplexHandler, Sendable {
         core: TelnetProtocolCore,
         sink: TelnetEventSink,
         session: TelnetSessionState,
+        ready: EventLoopPromise<Void>,
         logger: Logger?,
         idleTimeout: TimeAmount?
     ) {
         self.core = core
         self.sink = sink
         self.session = session
+        self.ready = ready
         self.logger = logger
         self.idleTimeout = idleTimeout
     }
@@ -55,6 +59,9 @@ final class TelnetChannelHandler: ChannelDuplexHandler, Sendable {
         }
         resetIdleTimer(context: context)
         context.fireChannelActive()
+        // `connect` waits on this, so it never returns a session whose first `send`
+        // would observe `.notConnected` before the channel became active.
+        completeReady(with: nil)
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -152,10 +159,36 @@ final class TelnetChannelHandler: ChannelDuplexHandler, Sendable {
         }
         guard !alreadyFinished else { return }
         state.withLockedValue { $0.idleTask?.cancel() }
+        // A channel that closes before it became active must release `connect`'s wait.
+        completeReady(
+            with: TelnetError.transportFailed(
+                TelnetTransportFailure(
+                    kind: .channelClosed,
+                    message: "the connection closed before it became active",
+                    isRetryable: true
+                )
+            )
+        )
         core.finish()
         core.destroy()
         session.setConnected(false)
         sink.finish()
+    }
+
+    /// Completes the readiness promise exactly once: success on `channelActive`, or the
+    /// error that ended the connection first.
+    private func completeReady(with error: (any Error)?) {
+        let first = state.withLockedValue { handlerState -> Bool in
+            guard !handlerState.readyCompleted else { return false }
+            handlerState.readyCompleted = true
+            return true
+        }
+        guard first else { return }
+        if let error {
+            ready.fail(error)
+        } else {
+            ready.succeed(())
+        }
     }
 
     private static func describe(_ address: SocketAddress?) -> String? {

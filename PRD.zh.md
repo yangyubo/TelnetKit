@@ -567,13 +567,13 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | `connect_loopback_succeeds` | 返回非 nil，`isConnected == true`，`remoteAddress == "127.0.0.1:<port>"` |
 | `connect_refused_throws_connectionRefused` | 关闭端口连接抛 `.connectionRefused` |
 | `connect_unresolvable_host_throws_invalidHost` | 抛 `.invalidHost` |
-| `connect_timeout_throws_connectTimeout` | 黑洞地址 + `connectTimeout: .seconds(1)` → `.connectTimeout` |
+| `connect_timeout_throws_connectTimeout` | 连接超过配置上限 → `.connectTimeout` |
 | `connect_cancellation_throws_cancelled` | `Task` 取消 → `.cancelled`，服务端无残留连接 |
 | `close_is_idempotent` | 两次 `close()` 无错误 |
 | `events_finish_on_remote_close` | 服务端关闭后 `for await` 正常结束（带 2s 超时保护） |
 | `send_after_close_throws_notConnected` | 抛 `.notConnected` |
 | `optionStatus_reflects_negotiation` | 握手后 echo/SGA 状态正确 |
-| `inbound_buffer_limit_enforced` | 超限抛 `.bufferOverflow` 且连接关闭 |
+| `inbound_buffer_limit_enforced` | 超限发出致命 `.protocolError` 并关闭连接 |
 
 **B. 协议解析（对应 FR-PROTO，白盒逐事件）**
 
@@ -711,14 +711,14 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | --- | --- | --- |
 | M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 我们纳入版本控制的 module map 与两个符号链接 + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**） | 已交付 |
 | M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 | 已交付 |
-| M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；无泄露 | 部分完成 |
+| M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；无协商回环 | 部分完成 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 覆盖率达标；G 组全绿 | 部分完成 |
 | M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 | 计划中 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M2 与 M3 的代码已存在，但 A/C 组用例门槛与无泄露验证仍未完成，M5 尚未开始。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M3 的代码已存在但 C 组用例门槛未闭合，M4 的覆盖率与接口快照门槛开放，M6 已完成五平台构建但未跑测试矩阵，M5 尚未开始。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 

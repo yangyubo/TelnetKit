@@ -1,4 +1,5 @@
 import Logging
+import NIOConcurrencyHelpers
 import NIOCore
 import NIOTransportServices
 
@@ -40,11 +41,16 @@ enum TelnetConnectionBootstrap {
         let ledger = TelnetOptionLedger()
         let session = TelnetSessionState()
         let logger = configuration.logger
+        // `channelActive` completes this; `connect` returns only once it does, so the
+        // session is ready to negotiate before the caller can call `send`.
+        let readyHolder = NIOLockedValueBox<EventLoopPromise<Void>?>(nil)
 
         let bootstrap = NIOTSConnectionBootstrap(group: NIOTSEventLoopGroup.singleton)
             .connectTimeout(TimeAmount(configuration.connectTimeout))
             .channelOption(NIOTSChannelOptions.waitForActivity, value: configuration.waitForConnectivity)
             .channelInitializer { channel in
+                let ready = channel.eventLoop.makePromise(of: Void.self)
+                readyHolder.withLockedValue { $0 = ready }
                 let core: TelnetProtocolCore
                 do {
                     core = try TelnetProtocolCore(
@@ -55,16 +61,20 @@ enum TelnetConnectionBootstrap {
                         emit: { event in sink.yield(event) }
                     )
                 } catch {
+                    ready.fail(error)
                     return channel.eventLoop.makeFailedFuture(error)
                 }
                 let handler = TelnetChannelHandler(
                     core: core,
                     sink: sink,
                     session: session,
+                    ready: ready,
                     logger: logger,
                     idleTimeout: configuration.idleTimeout.map(TimeAmount.init)
                 )
-                return channel.pipeline.addHandler(handler)
+                let added = channel.pipeline.addHandler(handler)
+                added.whenFailure { error in ready.fail(error) }
+                return added
             }
 
         let future = bootstrap.connect(to: address)
@@ -86,6 +96,20 @@ enum TelnetConnectionBootstrap {
                 port: port,
                 timeout: configuration.connectTimeout
             )
+        }
+
+        if let ready = readyHolder.withLockedValue({ $0 }) {
+            do {
+                try await ready.futureResult.get()
+            } catch {
+                channel.close(promise: nil)
+                throw TelnetNetworkEventMapping.connectError(
+                    from: error,
+                    host: host,
+                    port: port,
+                    timeout: configuration.connectTimeout
+                )
+            }
         }
 
         if Task.isCancelled {

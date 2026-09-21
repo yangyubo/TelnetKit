@@ -298,7 +298,7 @@ public enum TelnetNewlinePolicy: Sendable { case nvt, raw }
 |---|---|
 | `connectTimeout` | 地址解析加 TCP 连接的总上限。 |
 | `idleTimeout` | 为 nil 时禁用空闲关闭。设置后，在该时长内既无入站也无出站流量的连接会关闭并结束事件流。 |
-| `inboundBufferLimit` | 入站缓冲字节上限；超过时抛出 `.bufferOverflow` 并关闭。 |
+| `inboundBufferLimit` | 入站缓冲字节上限；超过时发出致命 `.protocolError` 并关闭。 |
 | `subnegotiationLimit` | 子协商载荷上限；超过时抛出 `.subnegotiationTooLarge`。 |
 | `eventBufferPolicy` | `.bounded` 在写满时发出 `.warning` 并结束事件流，`.unbounded` 永不丢弃，`.dropOldest` 丢弃最旧的排队事件并发出 `.warning(.eventBufferOverflowDropped(count:))`。 |
 | `newlinePolicy` | `.nvt` 对文本发送与收到的数据做 CR、LF 转换；`.raw` 原样透传。`binary` 协商启用期间会覆盖两者为 raw。 |
@@ -376,7 +376,7 @@ public enum TelnetErrorCode: Sendable, Equatable { case badValue, outOfMemory, o
 | `EnvironmentScope`、`EnvironmentVariable` | 全部 case 与属性 |
 | `TelnetConfiguration` | `init` 的每个默认值，以及全部八个属性 |
 | `TelnetEventBufferPolicy`、`TelnetNewlinePolicy` | 全部 case |
-| `TelnetError` | 全部 12 个 case；`.alreadyClosed` 与 `.unsupportedFeature` 仅作为值触达，因为 `close()` 幂等、且 v0.2 的 zlib 路径在 zlib 关闭期间不在范围内 |
+| `TelnetError` | 全部 12 个 case；`.alreadyClosed`、`.bufferOverflow` 与 `.unsupportedFeature` 仅作为值触达，因为 `close()` 幂等、入站超限以 `.protocolError` 呈现、且 v0.2 的 zlib 路径不在范围内 |
 | `TelnetTransportFailure`、`TelnetTransportFailure.Kind` | `init(kind:message:isRetryable:)`、全部属性与 case |
 | `TelnetWarning` | 全部五个 case；`compressionUnavailable` 为 v0.2 的 zlib 支持预留，在未链接 zlib 的构建中没有触发点 |
 | `TelnetProtocolError`、`TelnetErrorCode` | 全部 case |

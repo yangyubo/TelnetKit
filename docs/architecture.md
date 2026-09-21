@@ -116,7 +116,7 @@ Network.framework's error set (`NWError`) is mapped to `TelnetTransportFailure.K
 
 | Bound | Default | Owner | Failure |
 |---|---|---|---|
-| Inbound bytes without a data event | 64 KiB | `inboundBufferLimit` | `.bufferOverflow`, connection closes |
+| Inbound bytes without a data event | 64 KiB | `inboundBufferLimit` | `.protocolError`, connection closes |
 | Subnegotiation payload | 8 KiB | `subnegotiationLimit` | `.subnegotiationTooLarge` |
 | Inflated bytes per `inflate` call (v0.2, zlib off in the first release) | 16 MiB | `maxInflatedBytes` | `.bufferOverflow`, connection closes |
 | Queued events awaiting consumption | 1024 | `eventBufferPolicy` | policy-dependent: `.warning` with a drop count, or stream finish |

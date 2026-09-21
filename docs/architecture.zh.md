@@ -116,7 +116,7 @@ Network.framework 的错误集合（`NWError`）在 `TelnetNetworkEventMapping` 
 
 | 约束对象 | 默认值 | 所有者 | 失败表现 |
 |---|---|---|---|
-| 未产生数据事件的入站字节 | 64 KiB | `inboundBufferLimit` | `.bufferOverflow`，连接关闭 |
+| 未产生数据事件的入站字节 | 64 KiB | `inboundBufferLimit` | `.protocolError`，连接关闭 |
 | 子协商载荷 | 8 KiB | `subnegotiationLimit` | `.subnegotiationTooLarge` |
 | 单次 `inflate` 的输出字节（v0.2；首版不链接 zlib） | 16 MiB | `maxInflatedBytes` | `.bufferOverflow`，连接关闭 |
 | 等待消费的排队事件 | 1024 | `eventBufferPolicy` | 取决于策略：`.warning` 带丢弃计数，或结束事件流 |

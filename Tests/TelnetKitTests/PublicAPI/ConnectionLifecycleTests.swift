@@ -63,6 +63,46 @@ struct ConnectionLifecycleTests {
         }
     }
 
+    @Test("a connect past its timeout reports connectTimeout")
+    func connectTimeout() async throws {
+        let server = try await TestServer.start()
+        defer { Task { await server.stop() } }
+
+        // Every TCP connect is accepted on this host, so a black-hole address never times
+        // out here; a one-nanosecond bound against the loopback listener exercises the same
+        // configured-timeout path deterministically.
+        await #expect(throws: TelnetError.connectTimeout(.nanoseconds(1))) {
+            _ = try await TelnetConnection.connect(
+                host: "127.0.0.1",
+                port: server.port,
+                configuration: TelnetConfiguration(connectTimeout: .nanoseconds(1), waitForConnectivity: false)
+            )
+        }
+    }
+
+    @Test("a cancelled connect reports cancelled and leaves no connection")
+    func connectCancellation() async throws {
+        let server = try await TestServer.start()
+        defer { Task { await server.stop() } }
+
+        let task = Task {
+            try await TelnetConnection.connect(
+                host: "127.0.0.1",
+                port: server.port,
+                configuration: TelnetConfiguration(waitForConnectivity: false)
+            )
+        }
+        task.cancel()
+        do {
+            let connection = try await task.value
+            await connection.close()
+            Issue.record("a cancelled connect returned a connection")
+        } catch let error as TelnetError {
+            #expect(error == .cancelled)
+        }
+        #expect(await server.waitForNoActiveConnections())
+    }
+
     @Test("close is idempotent and later calls throw notConnected")
     func closeIsIdempotent() async throws {
         let server = try await TestServer.start()
