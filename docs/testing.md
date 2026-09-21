@@ -41,6 +41,7 @@ swift test                                         # all suites; must finish und
 swift test --no-parallel                           # isolate a flaky ordering bug
 swift test --list-tests                            # what exists, for the symbol audit
 swift test --list-tests | wc -l                    # count for the coverage checklist
+swift run telnetkit-client 127.0.0.1 2323           # manual: the CLI client against a server
 ```
 
 The echo server is a fixture, not a service: a suite binds its own loopback listener and stops it on teardown.

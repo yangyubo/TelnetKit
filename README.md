@@ -41,15 +41,15 @@ After cloning, initialise the submodule once; the first build fails without it:
 git submodule update --init --recursive
 ```
 
-The library product is what this milestone ships; the CLI demo and echo server executables are not part of it yet. A minimal session:
+The package ships the `TelnetKit` library and the `telnetkit-client` CLI:
 
-```swift
-let connection = try await TelnetConnection.connect(host: "your.host", port: 23)
-try await connection.send(text: "hello")
-await connection.close()
+```sh
+swift run telnetkit-client 127.0.0.1 2323
 ```
 
-See [Use the library](#use-the-library) for event consumption.
+It prints server data, forwards keystrokes, and enters command mode on `^]`. Library use is one `await`;
+see [Use the library](#use-the-library).
+The echo server and the SwiftUI example are not shipped yet.
 
 ## Use the library
 
@@ -102,7 +102,7 @@ await connection.close()
 - Proxy mode is not supported: transparent forwarding between two peers is a middle-man and debug-tool use, and this library is a Telnet endpoint.
 - Telnet over TLS/SSL is out of scope: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options. Apple's own telnet and Homebrew's netkit-telnet support neither, upstream libtelnet implements neither option, and the IETF drafts never became RFCs.
 - Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
-- The CLI demo and the echo server are not provided in this milestone; when they ship they are macOS-only executables, because watchOS, tvOS, and visionOS have no process or loopback-server semantics. The library itself builds for all five.
+- The `telnetkit-client` CLI ships as a macOS executable; the echo server and the SwiftUI example are not provided. The library core itself builds for all five.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
 - SSH, RLogin, and BBS file-transfer protocols are out of scope.
 

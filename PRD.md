@@ -148,7 +148,7 @@ TelnetKit/
 │   │   ├── TelnetChannelHandler.swift
 │   │   ├── TelnetConnectionBootstrap.swift
 │   │   └── TelnetNetworkEventMapping.swift
-│   ├── TelnetDemo/                     # [executable, macOS only] CLI demo
+│   ├── TelnetKitClient/                # [executable, macOS only] the telnetkit-client CLI
 │   │   └── main.swift
 │   └── TelnetEchoServer/               # [executable, macOS only] local loopback server (demo + integration fixture)
 │       └── main.swift
@@ -665,7 +665,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 
 | Name | Form | Purpose |
 | --- | --- | --- |
-| `TelnetDemo` | `.executableTarget` (CLI) | The minimal verifiable path: connect → print events → send a command → disconnect; covers every public interface |
+| `telnetkit-client` | `.executableTarget` (CLI, macOS only) | A complete interactive Telnet client that accepts the `telnet(1)` flags and drives TelnetKit; it is a working tool rather than an interface showcase |
 | `TelnetEchoServer` | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, and warning scenarios |
 | `TelnetKitDemoApp` | SwiftUI macOS app (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
 
@@ -698,7 +698,7 @@ This PRD's engineering constraints are split into development documents kept bes
 
 ### 9.3 Demo acceptance criteria
 
-1. `swift run TelnetEchoServer` plus `swift run TelnetDemo --host 127.0.0.1 --port 2323` runs with one command, needing no network and no external service.
+1. `swift run telnetkit-client 127.0.0.1 2323` reaches a local server and carries an interaction, needing no network and no external service.
 2. The demo can reach a real external Telnet service (a public BBS or a device) and complete one full interaction: the login prompt is visible and commands can be typed; on iOS a minimal simulator example runs the same path against the loopback server.
 3. `TelnetKitDemoApp` is usable the moment it opens on macOS 15+; resizing the window triggers a NAWS report that is visible in the echo server log. The library itself builds on an iOS 18+ simulator and passes every non-network test there.
 4. The demo code is documentation: every public interface appears at least once in it, and the README carries a matching code snippet.
@@ -714,7 +714,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green; `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events | Shipped |
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green; repeated and simultaneous negotiation produces a bounded byte count | Shipped |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Protocol line coverage is 92.3%; the DocC build reports 0 target diagnostics; the symbol graph holds no forbidden name; the API baseline shows no breaking change | Shipped |
-| M5 demo | `TelnetEchoServer`, the CLI demo, and the SwiftUI demo app | All four acceptance criteria in §9.3 pass | Planned |
+| M5 demo | `telnetkit-client` (shipped), `TelnetEchoServer`, and the SwiftUI demo app | The CLI client reaches a server and carries an interaction; the four §9.3 criteria still need the echo server and the app | Partial |
 | M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build | Partial |
 | M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived | Planned |
 
@@ -780,7 +780,7 @@ let package = Package(
     platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
-        .executable(name: "TelnetDemo", targets: ["TelnetDemo"]),
+        .executable(name: "telnetkit-client", targets: ["TelnetKitClient"]),
         .executable(name: "TelnetEchoServer", targets: ["TelnetEchoServer"]),
     ],
     dependencies: [
@@ -808,7 +808,7 @@ let package = Package(
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        .executableTarget(name: "TelnetDemo", dependencies: ["TelnetKit"]),
+        .executableTarget(name: "TelnetKitClient", dependencies: ["TelnetKit"], path: "Sources/TelnetKitClient"),
         // Executables declare macOS only: watchOS, tvOS, and visionOS have no process or loopback-server semantics.
         .executableTarget(name: "TelnetEchoServer", dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),

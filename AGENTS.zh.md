@@ -26,7 +26,7 @@ Sources/CLibTelnet/            我们的 module map、两个指向子模块的�
 Sources/TelnetKit/Public/      公开类型；调用方唯一可见的符号
 Sources/TelnetKit/Protocol/    对 telnet_t 的内部 Swift 封装
 Sources/TelnetKit/Transport/   内部 NIOTS handler、bootstrap 与路径事件映射
-Sources/TelnetDemo/            CLI 演示可执行文件（已设计，尚未编写）
+Sources/TelnetKitClient/       telnetkit-client 命令行客户端，本包唯一的可执行产物
 Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端（已设计，尚未编写）
 Tests/CLibTelnetTests/         内置 libtelnet 套件；测试套件位于 Tests/TelnetKitTests/
 Examples/TelnetKitDemoApp/     SwiftUI 演示应用（已设计，尚未编写）
@@ -34,15 +34,16 @@ docs/                          架构、公开接口契约、测试方案、文�
 .agents/skills/                可复用工作流
 ```
 
-包产物：仅库 `TelnetKit`；`TelnetDemo` 与 `TelnetEchoServer` 已设计但尚未声明。`CLibTelnet` 始终是内部 target，绝不成为 product。
+包产物：库 `TelnetKit` 与可执行文件 `telnetkit-client`；`TelnetEchoServer` 已设计但尚未声明。`CLibTelnet` 始终是内部 target，绝不成为 product。
 
 ## 命令
 
 ```sh
 git submodule update --init --recursive   # 克隆后执行一次
 swift build                       # 构建全部 target 的 debug 版本
-swift test                        # 两个测试 target 共 115 个测试；离线且在 60s 内
+swift test                        # 115 个测试，离线且在 60s 内
 swift test --filter TelnetProtocolCoreTests   # 迭代时只跑一个套件
+swift run telnetkit-client 127.0.0.1 2323     # 交互式命令行客户端
 swift build -Xswiftc -strict-concurrency=complete   # 并发检查
 swift build --configuration release               # release 构建与体积检查
 swift package describe            # target 与 product 清单

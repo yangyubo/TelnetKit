@@ -41,15 +41,15 @@ targets: [
 git submodule update --init --recursive
 ```
 
-本里程碑交付的是库产品；CLI Demo 与回显服务端可执行文件尚未提供。最小会话：
+本包交付 `TelnetKit` 库与 `telnetkit-client` 命令行客户端：
 
-```swift
-let connection = try await TelnetConnection.connect(host: "your.host", port: 23)
-try await connection.send(text: "hello")
-await connection.close()
+```sh
+swift run telnetkit-client 127.0.0.1 2323
 ```
 
+它把服务端数据打印到 stdout、把按键转发给对端，并在转义字符 `^]` 上进入命令模式；库的用法只有一次 `await`，
 事件消费见[使用库](#使用库)。
+回显服务端与 SwiftUI 示例尚未交付。
 
 ## 使用库
 
@@ -102,7 +102,7 @@ await connection.close()
 - 不支持代理模式：在两个对端之间透明转发属于中间人与调试工具场景，而本库是 Telnet 端点。
 - 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项。Apple 自带 telnet 与 Homebrew 的 netkit-telnet 都不支持，上游 libtelnet 两个选项都未实现，IETF 相关草案也从未成为 RFC。
 - 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
-- 本里程碑不提供 CLI Demo 与回显服务端；它们发布后是仅 macOS 可执行文件，因为 watchOS、tvOS、visionOS 没有进程与回环服务端语义。库本身在五个平台都可构建。
+- `telnetkit-client` 命令行客户端以仅 macOS 可执行文件交付；回显服务端与 SwiftUI 示例尚未提供。库本体在五个平台均可构建。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。
 - SSH、RLogin 与 BBS 文件传输协议不在范围内。
 

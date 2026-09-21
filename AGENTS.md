@@ -26,7 +26,7 @@ Sources/CLibTelnet/            our module map, two symlinks into the submodule, 
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
 Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
-Sources/TelnetDemo/            CLI demo executable (designed, not written)
+Sources/TelnetKitClient/       the telnetkit-client CLI, the package's only executable
 Sources/TelnetEchoServer/      macOS-only local echo server (designed, not written)
 Tests/CLibTelnetTests/         the vendored libtelnet suite; Tests/TelnetKitTests/ holds the Swift suites
 Examples/TelnetKitDemoApp/     SwiftUI demo application (designed, not written)
@@ -34,15 +34,16 @@ docs/                          architecture, public API contract, test plan, doc
 .agents/skills/                repeatable workflows
 ```
 
-Package products: library `TelnetKit` only; `TelnetDemo` and `TelnetEchoServer` are designed but not declared yet. `CLibTelnet` stays internal and never becomes a product.
+Package products: library `TelnetKit` and the `telnetkit-client` executable; `TelnetEchoServer` is designed but not declared. `CLibTelnet` stays internal and never becomes a product.
 
 ## Commands
 
 ```sh
 git submodule update --init --recursive   # required once after cloning
 swift build                       # debug build of every target
-swift test                        # 115 tests across both test targets; offline, under 60s
+swift test                        # 115 tests, offline, under 60s
 swift test --filter TelnetProtocolCoreTests   # one suite while iterating
+swift run telnetkit-client 127.0.0.1 2323     # the interactive CLI client
 swift build -Xswiftc -strict-concurrency=complete   # concurrency error check
 swift build --configuration release               # release build and binary-size check
 swift package describe            # target and product inventory

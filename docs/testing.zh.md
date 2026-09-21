@@ -41,6 +41,7 @@ swift test                                         # 全部套件；必须在 60
 swift test --no-parallel                           # 隔离顺序相关的偶发缺陷
 swift test --list-tests                            # 列出已有测试，供符号审计使用
 swift test --list-tests | wc -l                    # 覆盖率清单核对用的计数
+swift run telnetkit-client 127.0.0.1 2323           # 手工：用 CLI 客户端连服务端
 ```
 
 回显服务端是夹具而不是服务：套件自己绑定回环监听，并在 teardown 中停掉。

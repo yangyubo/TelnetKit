@@ -14,8 +14,9 @@ All notable changes to TelnetKit are recorded here. The format follows [Keep a C
 - Optional swift-log logging: lifecycle at info, negotiation at debug, protocol frames at trace, errors at error; payload bytes are never logged.
 - The connect timeout, cancellation, idle close, `waitForConnectivity`, and bounded inbound and subnegotiation buffers.
 - Suites: a white-box protocol suite, a black-box public API suite over a loopback fixture, and integration coverage for concurrency, timeouts, cancellation, idle close, and path mapping.
+- The `telnetkit-client` CLI: a complete interactive Telnet client that accepts the `telnet(1)` flags, forwards keystrokes, and enters command mode on the escape character.
 
 ### Known limitations
 
-- The `TelnetDemo` and `TelnetEchoServer` executables and the SwiftUI example are not shipped yet.
+- The `TelnetEchoServer` fixture and the SwiftUI example are not shipped yet.
 - MCCP2, Telnet over TLS, proxy mode, and non-Apple platforms are out of scope; see [README.md](README.md#known-limitations).

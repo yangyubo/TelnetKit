@@ -148,7 +148,7 @@ TelnetKit/
 │   │   ├── TelnetChannelHandler.swift
 │   │   ├── TelnetConnectionBootstrap.swift
 │   │   └── TelnetNetworkEventMapping.swift
-│   ├── TelnetDemo/                     # [可执行，仅 macOS] CLI Demo
+│   ├── TelnetKitClient/                # [可执行，仅 macOS] telnetkit-client 命令行客户端
 │   │   └── main.swift
 │   └── TelnetEchoServer/               # [可执行，仅 macOS] 本地回环服务端（Demo + 集成测试夹具）
 │       └── main.swift
@@ -665,7 +665,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 | 名称 | 形态 | 作用 |
 | --- | --- | --- |
-| `TelnetDemo` | `.executableTarget`（CLI） | 最小可验证：连接 → 打印事件 → 发送命令 → 断开；覆盖全部公开接口 |
+| `telnetkit-client` | `.executableTarget`（CLI，仅 macOS） | 完整交互式 Telnet 客户端：接受 `telnet(1)` 参数并驱动 TelnetKit；它是可用工具，而不是接口展示程序 |
 | `TelnetEchoServer` | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning 场景 |
 | `TelnetKitDemoApp` | SwiftUI macOS App（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
 
@@ -698,7 +698,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 
 ### 9.3 Demo 验收标准
 
-1. `swift run TelnetEchoServer` + `swift run TelnetDemo --host 127.0.0.1 --port 2323` 一条命令即可跑通，无需网络与外部服务。
+1. `swift run telnetkit-client 127.0.0.1 2323` 能连上本地服务端并完成一次交互，无需网络与外部服务。
 2. Demo 能连真实外部 Telnet 服务（如公开 BBS / 设备）并完成一次完整交互（登录提示可见、可输入命令）；iOS 侧以模拟器内的最小示例打同一台回环服务端，验证同一路径。
 3. `TelnetKitDemoApp` 在 macOS 15+ 打开即可用；窗口缩放触发 NAWS 上报（EchoServer 日志可见）。库本身在 iOS 18+ 模拟器上构建通过并跑完全部非网络测试。
 4. Demo 代码即文档：每个公开接口在 Demo 中至少出现一次，且在 README 中有对应代码片段。
@@ -714,7 +714,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
-| M5 Demo | `TelnetEchoServer` + CLI Demo + SwiftUI DemoApp | §9.3 四条验收全部通过 | 计划中 |
+| M5 Demo | `telnetkit-client`（已交付）+ `TelnetEchoServer` + SwiftUI DemoApp | CLI 客户端能连服务端并完成交互；§9.3 四条验收仍需回显服务端与 App | 部分完成 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
@@ -780,7 +780,7 @@ let package = Package(
     platforms: [.macOS(.v15), .iOS(.v18), .watchOS(.v11), .tvOS(.v18), .visionOS(.v2)],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
-        .executable(name: "TelnetDemo", targets: ["TelnetDemo"]),
+        .executable(name: "telnetkit-client", targets: ["TelnetKitClient"]),
         .executable(name: "TelnetEchoServer", targets: ["TelnetEchoServer"]),
     ],
     dependencies: [
@@ -808,7 +808,7 @@ let package = Package(
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        .executableTarget(name: "TelnetDemo", dependencies: ["TelnetKit"]),
+        .executableTarget(name: "TelnetKitClient", dependencies: ["TelnetKit"], path: "Sources/TelnetKitClient"),
         // 可执行产物只声明 macOS：watchOS/tvOS/visionOS 没有进程与回环服务端语义。
         .executableTarget(name: "TelnetEchoServer", dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),

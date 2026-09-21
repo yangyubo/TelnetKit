@@ -18,6 +18,10 @@ let package = Package(
     ],
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
+        // The CLI telnet client. Its product name is the command a caller types; the
+        // target carries a Swift identifier. It is a macOS command: it drives a terminal
+        // and is built by `swift run`, so the five-platform matrix builds `TelnetKit`.
+        .executable(name: "telnetkit-client", targets: ["TelnetKitClient"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.103.0"),
@@ -53,6 +57,13 @@ let package = Package(
             ],
             path: "Sources/TelnetKit",
             swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The interactive CLI client: argument compatibility with telnet(1), the event
+        // stream printed to stdout, and keystrokes forwarded to the server.
+        .executableTarget(
+            name: "TelnetKitClient",
+            dependencies: ["TelnetKit"],
+            path: "Sources/TelnetKitClient"
         ),
         // The libtelnet suite drives the C library directly through CLibTelnet, so that a
         // parse bug is caught without a socket. The Swift-typed protocol suite in

@@ -14,8 +14,9 @@ TelnetKit 的所有重要变更都记录在此。格式遵循 [Keep a Changelog]
 - 可选的 swift-log 日志：生命周期 info、协商 debug、协议帧 trace、错误 error；绝不记录载荷字节。
 - 连接超时、取消、空闲关闭、`waitForConnectivity`，以及有界的入站与子协商缓冲。
 - 测试套件：白盒协议套件、基于回环夹具的黑盒公开接口套件，以及并发、超时、取消、空闲关闭与路径映射的集成覆盖。
+- `telnetkit-client` 命令行客户端：完整交互式 Telnet 客户端，接受 `telnet(1)` 参数、转发按键，并在转义字符上进入命令模式。
 
 ### 已知限制
 
-- `TelnetDemo` 与 `TelnetEchoServer` 可执行文件及 SwiftUI 示例尚未交付。
+- `TelnetEchoServer` 夹具与 SwiftUI 示例尚未交付。
 - MCCP2、Telnet over TLS、代理模式与非 Apple 平台不在范围内；见 [README.zh.md](README.zh.md#已知限制)。

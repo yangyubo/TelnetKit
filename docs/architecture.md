@@ -39,7 +39,7 @@ The decision record:
 | Transport | `NIOTSConnectionBootstrap` on `NIOTSEventLoopGroup` | Network.framework is Apple's supported transport and supplies connection management, proxy and VPN integration, path monitoring, and energy behavior without per-feature code |
 | No POSIX path | `NIOPosix` is not a dependency | A second transport would double the invariants (backpressure, cancellation, path reporting) to prove on five platforms while adding no capability a caller asked for |
 | No TLS | Telnet over TLS/SSL is unsupported: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options | The standard was abandoned, devices that offer it are rare, neither Apple's nor Homebrew's telnet implements it, upstream libtelnet implements neither option, and confidentiality belongs to a VPN or a bastion host rather than to this library |
-| Executables | macOS only | `TelnetEchoServer` and the CLI demo need a process and a loopback listener, which watchOS, tvOS, and visionOS do not provide |
+| Executables | macOS only | `telnetkit-client` and the echo server need a process, a terminal, and a loopback listener, which watchOS, tvOS, and visionOS do not provide |
 
 Test placement follows the same split: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs on macOS and the iOS simulator.
 
