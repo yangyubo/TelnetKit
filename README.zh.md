@@ -77,7 +77,8 @@ Task {
     }
 }
 
-try await connection.send(text: "hello telnet")
+// send(text:) 只转换字符串里已有的换行，不会自行添加。
+try await connection.send(text: "hello telnet\n")
 try await connection.sendWindowSize(columns: 120, rows: 40)
 await connection.close()
 ```

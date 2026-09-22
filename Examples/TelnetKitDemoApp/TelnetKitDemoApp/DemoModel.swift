@@ -264,13 +264,20 @@ final class DemoModel {
     // MARK: Sending
 
     /// `send(text:lineEnding:)` with the selected line ending.
+    ///
+    /// `send(text:lineEnding:)` translates the line endings a string already carries; it does
+    /// not add one, so the demo appends the newline that ends the line the user typed. Without
+    /// it a telnetd never sees a complete line: it echoes the name and waits for the terminator
+    /// instead of prompting for the password.
     func sendCurrentLine() {
         let text = inputText
         guard !text.isEmpty else { return }
         let ending = lineEnding
         inputText = ""
-        appendOutput(text + "\n")
-        perform(.sendText(text, lineEnding: ending))
+        if localEchoEnabled {
+            appendOutput(text + "\n")
+        }
+        perform(.sendText(text + "\n", lineEnding: ending))
     }
 
     /// `send(text:)`, which always uses `TelnetLineEnding.crlf`.
@@ -278,8 +285,10 @@ final class DemoModel {
         let text = inputText
         guard !text.isEmpty else { return }
         inputText = ""
-        appendOutput(text + "\n")
-        perform(.sendTextDefault(text))
+        if localEchoEnabled {
+            appendOutput(text + "\n")
+        }
+        perform(.sendTextDefault(text + "\n"))
     }
 
     /// `send(_:)` with the bytes parsed from the hexadecimal field.

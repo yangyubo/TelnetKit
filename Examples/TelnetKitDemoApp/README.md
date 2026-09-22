@@ -27,7 +27,7 @@ Both targets share the sources under `TelnetKitDemoApp/`. The iOS simulator reac
 ## What to try
 
 1. Press **Connect**. The status bar shows `remoteAddress` and `localAddress`, and the option table fills from `optionStatus(_:)` as negotiation arrives. A real telnetd withholds its login prompt until TERMINAL-TYPE is answered, so the demo answers `TERMINAL-TYPE SEND` and `NEW-ENVIRON SEND` immediately; each has a switch in the **Protocol** tab that hands the answer back to the buttons.
-2. Type a line and press Return. The line-ending picker drives `send(text:lineEnding:)`, the **send(text:)** button drives `send(text:)`, and the hexadecimal field drives `send(_:)` and `sendRaw(_:)`.
+2. Type a line and press Return. The demo appends the newline that ends the line, because `send(text:lineEnding:)` translates the newlines a string already carries rather than adding one; the picker chooses CR LF, CR NUL, or LF, the **send(text:)** button takes the `send(text:)` default, and the hexadecimal field drives `send(_:)` and `sendRaw(_:)`.
 3. Resize the window. Once the peer answers `do windowSize`, each size change is reported with `sendWindowSize(columns:rows:)` and the echo server prints `NAWS <columns>x<rows>`.
 4. Open the **Protocol** tab for `negotiate(_:option:)`, `requestOption(_:)`, `subnegotiate(option:payload:)`, `send(command:)`, `replyTerminalType(_:)`, `sendEnvironment(_:scope:)`, and a manual `sendWindowSize(columns:rows:)`.
 5. Press an **Error injection** button: each one reaches a real `TelnetError` path, and **Public values** renders every error, warning, and code case, including the three this build cannot trigger.

@@ -77,7 +77,8 @@ Task {
     }
 }
 
-try await connection.send(text: "hello telnet")
+// send(text:) rewrites the newlines the string already carries; it does not add one.
+try await connection.send(text: "hello telnet\n")
 try await connection.sendWindowSize(columns: 120, rows: 40)
 await connection.close()
 ```

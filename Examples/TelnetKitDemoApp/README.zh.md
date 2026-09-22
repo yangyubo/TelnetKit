@@ -27,7 +27,7 @@ swift run telnetkit-echo-server
 ## 可以试什么
 
 1. 点 **Connect**。状态栏显示 `remoteAddress` 与 `localAddress`，选项表随协商到达由 `optionStatus(_:)` 逐步填充。真实 telnetd 在 TERMINAL-TYPE 被应答前不会打印登录提示，因此 Demo 会立即应答 `TERMINAL-TYPE SEND` 与 `NEW-ENVIRON SEND`；**Protocol** 标签页为两者各提供一个开关，把它交回手动按钮。
-2. 输入一行后回车。行尾选择器驱动 `send(text:lineEnding:)`，**send(text:)** 按钮驱动 `send(text:)`，十六进制字段驱动 `send(_:)` 与 `sendRaw(_:)`。
+2. 输入一行后回车。Demo 会补上结束该行的换行符，因为 `send(text:lineEnding:)` 只转换字符串里已有的换行、不会自行添加；选择器可选 CR LF、CR NUL 或 LF，**send(text:)** 按钮走 `send(text:)` 的默认值，十六进制字段驱动 `send(_:)` 与 `sendRaw(_:)`。
 3. 缩放窗口。对端应答 `do windowSize` 之后，每次尺寸变化都通过 `sendWindowSize(columns:rows:)` 上报，回显服务端会打印 `NAWS <columns>x<rows>`。
 4. 打开 **Protocol** 标签页，操作 `negotiate(_:option:)`、`requestOption(_:)`、`subnegotiate(option:payload:)`、`send(command:)`、`replyTerminalType(_:)`、`sendEnvironment(_:scope:)` 以及手动 `sendWindowSize(columns:rows:)`。
 5. 按任一 **Error injection** 按钮：每个按钮都会走到真实的 `TelnetError` 路径；**Public values** 会渲染全部错误、警告与错误码 case，包括这个构建无法触发的三个。
