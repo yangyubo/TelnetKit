@@ -33,17 +33,42 @@ struct DemoConnectionSettings {
     var logLevel = DemoLoggerLevel.debug
 
     // MARK: TelnetOptions
-    /// Options this end offers with `will`.
-    var localOptions: Set<TelnetOption> = [.binary, .suppressGoAhead, .terminalType, .windowSize]
-    /// Options this end requests with `do`.
-    var remoteOptions: Set<TelnetOption> = [.suppressGoAhead, .echo]
+    /// Options this end offers with `will`. The initial set is `TelnetOptions.standardClient`.
+    var localOptions: Set<TelnetOption> = DemoConnectionSettings.standardLocalOptions
+    /// Options this end requests with `do`. The initial set is `TelnetOptions.standardClient`.
+    var remoteOptions: Set<TelnetOption> = DemoConnectionSettings.standardRemoteOptions
+
+    private static var standardLocalOptions: Set<TelnetOption> {
+        Set(TelnetOptions.standardClient.local.filter(\.enabledByDefault).map(\.option))
+    }
+
+    private static var standardRemoteOptions: Set<TelnetOption> {
+        Set(TelnetOptions.standardClient.remote.filter(\.requestOnConnect).map(\.option))
+    }
 
     /// The option set the connection is opened with.
     var telnetOptions: TelnetOptions {
         TelnetOptions(
-            local: localOptions.sorted { $0.rawValue < $1.rawValue }.map { .init($0) },
-            remote: remoteOptions.sorted { $0.rawValue < $1.rawValue }.map { .init($0) }
+            local: localOptions.sorted { $0.rawValue < $1.rawValue }
+                .map { TelnetOptions.LocalOption($0) },
+            remote: remoteOptions.sorted { $0.rawValue < $1.rawValue }
+                .map { TelnetOptions.RemoteOption($0) }
         )
+    }
+
+    /// Replaces both lists with `TelnetOptions.standardClient`, the `telnet(1)` client role.
+    mutating func applyStandardClient() {
+        let options = TelnetOptions.standardClient
+        localOptions = Set(options.local.filter(\.enabledByDefault).map(\.option))
+        remoteOptions = Set(options.remote.filter(\.requestOnConnect).map(\.option))
+    }
+
+    /// Replaces both lists with `TelnetOptions.serverRequesting(_:)`, the peer-side set a
+    /// server caller declares so the client answers them.
+    mutating func applyServerRequesting(_ requested: [TelnetOption]) {
+        let options = TelnetOptions.serverRequesting(requested)
+        localOptions = Set(options.local.filter(\.enabledByDefault).map(\.option))
+        remoteOptions = Set(options.remote.filter(\.requestOnConnect).map(\.option))
     }
 
     /// The configuration the connection is opened with.

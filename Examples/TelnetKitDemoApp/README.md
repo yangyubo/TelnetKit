@@ -26,10 +26,10 @@ Both targets share the sources under `TelnetKitDemoApp/`. The iOS simulator reac
 
 ## What to try
 
-1. Press **Connect**. The status bar shows `remoteAddress` and `localAddress`, and the option table fills from `optionStatus(_:)` as negotiation arrives. A real telnetd withholds its login prompt until TERMINAL-TYPE is answered, so the demo answers `TERMINAL-TYPE SEND` and `NEW-ENVIRON SEND` immediately; each has a switch in the **Protocol** tab that hands the answer back to the buttons.
+1. Press **Connect**. The status bar shows `remoteAddress` and `localAddress`, and the option table fills from `optionStatus(_:)` as negotiation arrives. A real telnetd withholds its login prompt until TERMINAL-TYPE is answered, so the demo answers `TERMINAL-TYPE SEND` and `NEW-ENVIRON SEND` immediately; each has a switch in the **Protocol** tab that hands the answer back to the buttons. The two **Preset** buttons fill the option checkboxes from `TelnetOptions.standardClient` and `TelnetOptions.serverRequesting(_:)`.
 2. Type a line and press Return. The demo appends the newline that ends the line, because `send(text:lineEnding:)` translates the newlines a string already carries rather than adding one; the picker chooses CR LF, CR NUL, or LF, the **send(text:)** button takes the `send(text:)` default, and the hexadecimal field drives `send(_:)` and `sendRaw(_:)`.
 3. Resize the window. Once the peer answers `do windowSize`, each size change is reported with `sendWindowSize(columns:rows:)` and the echo server prints `NAWS <columns>x<rows>`.
-4. Open the **Protocol** tab for `negotiate(_:option:)`, `requestOption(_:)`, `subnegotiate(option:payload:)`, `send(command:)`, `replyTerminalType(_:)`, `sendEnvironment(_:scope:)`, and a manual `sendWindowSize(columns:rows:)`.
+4. Open the **Protocol** tab for `negotiate(_:option:)`, `requestOption(_:)`, `subnegotiate(option:payload:)`, `send(command:)`, `replyTerminalType(_:)`, `sendEnvironment(_:scope:)`, and a manual `sendWindowSize(columns:rows:)`; an unmodeled option code overrides the pickers through `TelnetOption(rawValue:)`.
 5. Press an **Error injection** button: each one reaches a real `TelnetError` path, and **Public values** renders every error, warning, and code case, including the three this build cannot trigger.
 6. Turn on **Inject a swift-log Logger**, switch the log level, and watch the library's records in the **Log** tab.
 
@@ -45,9 +45,9 @@ xcodegen generate
 
 ## Acceptance
 
-**Verified on this machine.** Both schemes build with zero warnings: `-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`, and `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'` with the Xcode 27 toolchain.
+**Verified on this machine.** Both schemes build with zero warnings: `-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`, and `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'` with the Xcode 27 toolchain. A session against a real telnetd reached its password prompt and then a shell, a window resize made `telnetkit-echo-server` print `NAWS 105x32`, and the library passed 115 tests on the iOS 18 simulator.
 
-The interactive steps of PRD §9.3 are manual and are not recorded as evidence: a session against a real public service, and the window resize that the echo server prints as `NAWS <columns>x<rows>`.
+One clause of PRD §9.3 criterion 2 is still open: running this app in the iOS simulator against the loopback server. Start `swift run telnetkit-echo-server`, run the `TelnetKitDemoApp-iOS` scheme, and press **Connect**.
 
 ## Documentation
 

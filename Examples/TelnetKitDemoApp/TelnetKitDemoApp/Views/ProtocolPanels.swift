@@ -97,6 +97,15 @@ struct ProtocolOperationsPanel: View {
                     }
                     Button("send(command:)") { model.sendSelectedCommand() }
                 }
+
+                HStack(spacing: 8) {
+                    TextField("unmodeled option code, empty to use the pickers", text: $model.customOptionCode)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 220)
+                    Text("TelnetOption(rawValue:)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

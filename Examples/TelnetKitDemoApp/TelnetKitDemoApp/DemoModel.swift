@@ -53,6 +53,9 @@ final class DemoModel {
     var subnegotiationOption = TelnetOption.newEnvironment
     var subnegotiationHex = "01 00"
     var selectedCommand = TelnetCommand.areYouThere
+    /// A decimal option code that overrides the option pickers while it is set, so the manual
+    /// operations can reach a code the library models with no constant (`init(rawValue:)`).
+    var customOptionCode = ""
 
     // MARK: Automatic answers
     /// Answer a `TERMINAL-TYPE SEND` at once, the way `telnet(1)` does.
@@ -323,7 +326,7 @@ final class DemoModel {
             return
         }
         let action = negotiationAction
-        let option = negotiationOption
+        let option = effectiveNegotiationOption
         Task { [weak self] in
             await self?.runNegotiate(action, option: option, connection: connection)
         }
@@ -351,7 +354,7 @@ final class DemoModel {
 
     /// `requestOption(_:)` with the selected option.
     func requestSelectedOption() {
-        perform(.requestOption(requestOptionSelection))
+        perform(.requestOption(effectiveRequestOption))
     }
 
     /// `subnegotiate(option:payload:)` with the bytes parsed from the hexadecimal field.
@@ -363,7 +366,28 @@ final class DemoModel {
             )
             return
         }
-        perform(.subnegotiate(subnegotiationOption, payload))
+        perform(.subnegotiate(effectiveSubnegotiationOption, payload))
+    }
+
+    /// The option the manual operations act on: an unmodeled code when one is typed, and the
+    /// picker selection otherwise.
+    private var effectiveNegotiationOption: TelnetOption {
+        unmodeledOption ?? negotiationOption
+    }
+
+    private var effectiveRequestOption: TelnetOption {
+        unmodeledOption ?? requestOptionSelection
+    }
+
+    private var effectiveSubnegotiationOption: TelnetOption {
+        unmodeledOption ?? subnegotiationOption
+    }
+
+    /// The option built from `customOptionCode` through `TelnetOption(rawValue:)`, or nil when
+    /// the field is empty or not a byte.
+    private var unmodeledOption: TelnetOption? {
+        guard !customOptionCode.isEmpty, let code = UInt8(customOptionCode) else { return nil }
+        return TelnetOption(rawValue: code)
     }
 
     /// `replyTerminalType(_:)`; valid only while a `.terminalTypeRequested` event is pending.
@@ -428,7 +452,7 @@ final class DemoModel {
 
         case .oversizedSubnegotiation:
             let oversized = [UInt8](repeating: 0x41, count: settings.subnegotiationLimit + 1)
-            perform(.subnegotiate(subnegotiationOption, oversized))
+            perform(.subnegotiate(effectiveSubnegotiationOption, oversized))
 
         case .terminalTypeWithoutRequest:
             // `replyTerminalType` throws `.invalidConfiguration` when nothing is pending.

@@ -103,6 +103,13 @@ struct OptionChecklist: View {
                      : "isValid is false: binary with lineMode in local; connect throws .invalidConfiguration.")
                     .font(.caption)
                     .foregroundStyle(model.settings.telnetOptions.isValid ? Color.secondary : Color.red)
+                HStack(spacing: 8) {
+                    Button("Preset .standardClient") { model.settings.applyStandardClient() }
+                    Button("Preset serverRequesting") {
+                        model.settings.applyServerRequesting([.terminalType, .windowSize, .newEnvironment])
+                    }
+                }
+                .font(.caption)
             }
         }
     }
