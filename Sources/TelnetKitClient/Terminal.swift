@@ -22,6 +22,17 @@ enum Terminal {
         _ = tcsetattr(STDIN_FILENO, TCSANOW, &settings)
     }
 
+    /// The terminal's current size in character cells, or nil when stdout is not a
+    /// terminal or the kernel reports a zero dimension.
+    static func windowSize() -> (columns: Int, rows: Int)? {
+        var size = winsize()
+        guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 else { return nil }
+        let columns = Int(size.ws_col)
+        let rows = Int(size.ws_row)
+        guard columns > 0, rows > 0 else { return nil }
+        return (columns, rows)
+    }
+
     /// Stops the process the way ^Z does, then re-enters raw mode when it resumes.
     static func suspend() {
         raise(SIGTSTP)

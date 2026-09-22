@@ -1,4 +1,5 @@
 import Darwin
+import Dispatch
 import Foundation
 import TelnetKit
 
@@ -18,6 +19,9 @@ actor TelnetClient {
     private var localEcho = true
     private var inCommandMode = false
     private var commandBuffer: [UInt8] = []
+    /// The peer accepted NAWS, so a resize is reported instead of dropped.
+    private var windowSizeEnabled = false
+    private var resizeSource: DispatchSourceSignal?
 
     init(arguments: ClientArguments) {
         self.arguments = arguments
@@ -29,6 +33,7 @@ actor TelnetClient {
 
     func run() async {
         terminalSettings = Terminal.enterRawMode()
+        watchWindowResizes()
         if let host = arguments.host {
             await open(host: host, port: arguments.port)
         } else {
@@ -76,6 +81,7 @@ actor TelnetClient {
     private func close() async {
         eventsTask?.cancel()
         eventsTask = nil
+        windowSizeEnabled = false
         if let connection {
             await connection.close()
         }
@@ -119,6 +125,12 @@ actor TelnetClient {
             if debug {
                 writeError("negotiation \(action) \(option.displayName)")
             }
+            // The peer asked this end to report NAWS; RFC 1073 sends the size only after
+            // the option is enabled in this direction.
+            if option == .windowSize, action == .do {
+                windowSizeEnabled = true
+                await sendWindowSize()
+            }
 
         case .command(let command):
             if debug {
@@ -156,6 +168,30 @@ actor TelnetClient {
 
         case .protocolError(let error):
             writeError("protocol error: \(error)")
+        }
+    }
+
+    // MARK: Window size
+
+    /// Reports the terminal size whenever the kernel resizes it. The signal source lives
+    /// for the whole process, so a session opened later still reports its size.
+    private func watchWindowResizes() {
+        signal(SIGWINCH, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .global())
+        source.setEventHandler { [weak self] in
+            guard let self else { return }
+            Task { await self.sendWindowSize() }
+        }
+        source.resume()
+        resizeSource = source
+    }
+
+    private func sendWindowSize() async {
+        guard windowSizeEnabled, let connection, let size = Terminal.windowSize() else { return }
+        do {
+            try await connection.sendWindowSize(columns: size.columns, rows: size.rows)
+        } catch {
+            report(error)
         }
     }
 

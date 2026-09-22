@@ -144,7 +144,7 @@ public struct TelnetOptions: Sendable {
 
 `isValid` 对协议拒绝的组合为 false，目前是 `local` 中同时出现 `binary` 与 `lineMode`。`connect` 会抛出 `.invalidConfiguration`，而不是协商一个非法组合。
 
-`standardClient` 是本端提供 `binary`、`suppressGoAhead`、`terminalType`，并向对端索取 `suppressGoAhead`、`echo`。`serverRequesting(_:)` 构造服务端调用方需要的那组对端选项。
+`standardClient` 是本端提供 `binary`、`suppressGoAhead`、`terminalType`、`windowSize`，并向对端索取 `suppressGoAhead`、`echo`。`serverRequesting(_:)` 构造服务端调用方需要的那组对端选项。
 
 ## 事件
 

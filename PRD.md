@@ -305,7 +305,7 @@ public struct TelnetOptions: Sendable {
     public var local: [LocalOption]
     public var remote: [RemoteOption]
 
-    /// A common preset: BINARY + SGA + TTYPE offered locally, SGA + ECHO requested from the peer
+    /// A common preset: BINARY + SGA + TTYPE + NAWS offered locally, SGA + ECHO requested from the peer
     public static var standardClient: TelnetOptions { get }
     /// A server-side caller actively requests TTYPE / NAWS / NEW-ENVIRON from the client
     public static func serverRequesting(_ options: [TelnetOption]) -> TelnetOptions

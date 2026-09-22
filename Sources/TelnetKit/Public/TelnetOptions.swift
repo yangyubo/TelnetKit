@@ -56,20 +56,23 @@ public struct TelnetOptions: Sendable {
         return true
     }
 
-    /// BINARY, SGA, and TERMINAL-TYPE offered locally, with SGA and ECHO requested
+    /// BINARY, SGA, TERMINAL-TYPE, and NAWS offered locally, with SGA and ECHO requested
     /// remotely.
     ///
     /// This is the `telnet(1)` client role: the local end asks the peer to echo and does
     /// not echo itself, so a peer that answers `will echo` takes over the display of typed
     /// input, and the local end echoes only when the peer declines. Offering
     /// TERMINAL-TYPE makes a telnetd answer the terminal type, so the session's `TERM` is
-    /// the caller's terminal rather than the server's `network` fallback.
+    /// the caller's terminal rather than the server's `network` fallback; offering NAWS
+    /// lets a full-screen peer size its display, once the caller reports the size with
+    /// `sendWindowSize(columns:rows:)`.
     public static var standardClient: TelnetOptions {
         TelnetOptions(
             local: [
                 LocalOption(.binary),
                 LocalOption(.suppressGoAhead),
                 LocalOption(.terminalType),
+                LocalOption(.windowSize),
             ],
             remote: [
                 RemoteOption(.suppressGoAhead),

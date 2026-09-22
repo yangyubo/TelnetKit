@@ -12,12 +12,13 @@ struct NegotiationTests {
 
         let connection = try await connectToServer(server, options: .standardClient)
 
-        // One verb per declared entry: the three local options in order, then the two
+        // One verb per declared entry: the four local options in order, then the two
         // remote ones, each as IAC <verb> <option>.
         let expected: [UInt8] = [
             0xFF, 0xFB, 0x00,  // IAC WILL BINARY
             0xFF, 0xFB, 0x03,  // IAC WILL SGA
             0xFF, 0xFB, 0x18,  // IAC WILL TERMINAL-TYPE
+            0xFF, 0xFB, 0x1F,  // IAC WILL NAWS
             0xFF, 0xFD, 0x03,  // IAC DO SGA
             0xFF, 0xFD, 0x01,  // IAC DO ECHO
         ]

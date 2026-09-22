@@ -18,7 +18,7 @@ All notable changes to TelnetKit are recorded here. The format follows [Keep a C
 
 ### Changed
 
-- `TelnetOptions.standardClient` requests ECHO from the peer, no longer offers it locally, and offers TERMINAL-TYPE, matching `telnet(1)`.
+- `TelnetOptions.standardClient` requests ECHO from the peer, no longer offers it locally, and offers TERMINAL-TYPE and NAWS, matching `telnet(1)`.
 - `.localEchoChanged(enabled:)` reports whether the local end should echo, as its contract states, rather than the peer's echo state.
 
 ### Known limitations

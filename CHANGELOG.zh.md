@@ -18,7 +18,7 @@ TelnetKit 的所有重要变更都记录在此。格式遵循 [Keep a Changelog]
 
 ### 变更
 
-- `TelnetOptions.standardClient` 改为向对端索取 ECHO、不再本端提供 ECHO，并提供 TERMINAL-TYPE，与 `telnet(1)` 一致。
+- `TelnetOptions.standardClient` 改为向对端索取 ECHO、不再本端提供 ECHO，并提供 TERMINAL-TYPE 与 NAWS，与 `telnet(1)` 一致。
 - `.localEchoChanged(enabled:)` 报告本端是否应回显（与其契约一致），而非对端的回显状态。
 
 ### 已知限制
