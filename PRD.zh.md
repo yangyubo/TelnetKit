@@ -66,7 +66,7 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 | --- | --- | --- |
 | US-1 | 作为开发者，我可以用一行 `try await TelnetConnection.connect(host:port:)` 建立连接并拿到会话对象 | P0 |
 | US-2 | 作为开发者，我可以用 `for await event in conn.events` 消费服务端数据与协商事件，不需要注册回调 | P0 |
-| US-3 | 作为开发者，我可以用 `send(text:)` 发送一行命令，库自动处理 CR/LF（NVT）转换与 `0xFF` 转义 | P0 |
+| US-3 | 作为开发者，我可以用 `send(text:)` 发送文本，库自动把它已有的 CR/LF（NVT）行尾转换掉并转义 `0xFF` | P0 |
 | US-4 | 作为开发者，我可以声明本端支持的选项（`will`/`wont`/`do`/`dont`），库自动完成 RFC 1143 协商而不产生协商回环 | P0 |
 | US-5 | 作为开发者，服务端请求 `TTYPE` 时我能自动/手动回应终端类型；请求 `NAWS` 时自动上报窗口尺寸 | P1 |
 | US-6 | 作为开发者，连接异常（DNS 失败、超时、对端断开、缓冲区溢出）会以类型化错误抛出，我可以用 `switch` 精确处理 | P0 |
@@ -491,8 +491,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 
 | ID | 需求 | 优先级 | 验收标准 |
 | --- | --- | --- | --- |
-| FR-TEXT-01 | `send(text:)` 默认 CRLF 行尾（`TelnetLineEnding.crlf`） | P0 | 出站字节断言 `0D 0A` |
-| FR-TEXT-02 | 支持 `crNul` / `lf` / `none` 行尾策略 | P1 | 三种策略字节断言 |
+| FR-TEXT-01 | `send(text:)` 默认把字符串已有的行尾改写为 CRLF（`TelnetLineEnding.crlf`）；它不补行尾 | P0 | `send(text: "hi\n")` 写出 `68 69 0D 0A`，`send(text: "hi")` 写出 `68 69` |
+| FR-TEXT-02 | 支持把字符串已有的行尾改写为 `crNul` / `lf` / `none` | P1 | 三种策略字节断言，且 `.none` 保持原样 |
 | FR-TEXT-03 | BINARY 模式已协商时不做 CR/LF 转换（与 `TELNET_FLAG_NVT_EOL` 语义一致） | P0 | 二进制模式下 `0x0A` 保真 |
 | FR-TEXT-04 | 所有文本按 UTF-8 编码；非法字符按 `.lossy` 策略替换并记 warning | P1 | 非 UTF-8 输入不崩溃 |
 | FR-TEXT-05 | `send(_ bytes:)` 自动转义 `0xFF`，`sendRaw` 不转义（供高级用法） | P0 | 字节断言 |

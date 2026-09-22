@@ -84,8 +84,8 @@ extension TelnetConnection {
 | 成员 | 契约 |
 |---|---|
 | `send(_:)` | 发送应用字节。按 NVT 把每个 `0xFF` 翻倍为 `0xFF 0xFF`。不改变 CR 与 LF。 |
-| `send(text:)` | 把 `text` 编码为 UTF-8，应用 `configuration.newlinePolicy` 与 `TelnetLineEnding.crlf`，然后转义。 |
-| `send(text:lineEnding:)` | 用显式指定的行尾发送 `text`，忽略配置的默认值。 |
+| `send(text:)` | 把 `text` 编码为 UTF-8，按 `configuration.newlinePolicy` 与 `TelnetLineEnding.crlf` 改写它已有的换行，然后转义。它绝不补行尾：`send(text: "hi")` 写出 `68 69`，`send(text: "hi\n")` 写出 `68 69 0D 0A`。 |
+| `send(text:lineEnding:)` | 同上，但用显式指定的行尾替代配置的默认值。想结束一行的调用方要把换行写进 `text`。 |
 | `sendRaw(_:)` | 发送字节，不做转义也不做行尾转换。用于承载已经编码好的 Telnet 字节流；若字节中含裸 `IAC`，可能破坏会话。 |
 | `send(command:)` | 以 `IAC <command>` 发送一个 Telnet 命令。 |
 

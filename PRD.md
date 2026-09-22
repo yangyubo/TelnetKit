@@ -66,7 +66,7 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 | --- | --- | --- |
 | US-1 | As a developer, I establish a connection and get a session object with one line, `try await TelnetConnection.connect(host:port:)` | P0 |
 | US-2 | As a developer, I consume server data and negotiation events with `for await event in conn.events`, without registering a callback | P0 |
-| US-3 | As a developer, I send a command line with `send(text:)`, and the library handles the CR/LF (NVT) translation and `0xFF` escaping | P0 |
+| US-3 | As a developer, I send text with `send(text:)`, and the library translates the CR/LF (NVT) line endings the string carries and escapes `0xFF` | P0 |
 | US-4 | As a developer, I declare the options this end supports (`will`/`wont`/`do`/`dont`), and the library completes RFC 1143 negotiation without a negotiation loop | P0 |
 | US-5 | As a developer, I answer the terminal type when the server requests `TTYPE`, and the window size is reported when it requests `NAWS` | P1 |
 | US-6 | As a developer, connection failures (DNS failure, timeout, peer disconnect, buffer overflow) are thrown as typed errors I can handle with `switch` | P0 |
@@ -491,8 +491,8 @@ public struct TelnetTransportFailure: Error, Sendable, Equatable {
 
 | ID | Requirement | Priority | Acceptance criterion |
 | --- | --- | --- | --- |
-| FR-TEXT-01 | `send(text:)` uses a CRLF line ending by default (`TelnetLineEnding.crlf`) | P0 | Outbound bytes assert `0D 0A` |
-| FR-TEXT-02 | Support the `crNul`, `lf`, and `none` line endings | P1 | All three assert their bytes |
+| FR-TEXT-01 | `send(text:)` rewrites the line endings a string carries to CR LF by default (`TelnetLineEnding.crlf`); it does not add a terminator | P0 | `send(text: "hi\n")` writes `68 69 0D 0A` and `send(text: "hi")` writes `68 69` |
+| FR-TEXT-02 | Support the `crNul`, `lf`, and `none` line endings for the line endings a string carries | P1 | All three assert their bytes, and `.none` leaves them unchanged |
 | FR-TEXT-03 | Skip CR/LF translation when BINARY is negotiated (matching `TELNET_FLAG_NVT_EOL` semantics) | P0 | `0x0A` survives intact in binary mode |
 | FR-TEXT-04 | Encode all text as UTF-8; replace illegal input lossily and log a warning | P1 | Non-UTF-8 input does not crash |
 | FR-TEXT-05 | `send(_ bytes:)` escapes `0xFF` automatically; `sendRaw` does not (for advanced use) | P0 | The byte assertions pass |

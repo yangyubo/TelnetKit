@@ -1,6 +1,10 @@
 import Logging
 
-/// The line ending `send(text:)` applies when the NVT newline policy is active.
+/// The line ending a text send substitutes for the newlines its string carries.
+///
+/// The ending is never added: `send(text: "hi")` writes no terminator, and
+/// `send(text: "hi\n")` writes the ending in place of the `\n`. A caller that means
+/// to end a line includes the newline in the text.
 public enum TelnetLineEnding: Sendable, Hashable, CaseIterable {
     /// CR LF, the NVT default.
     case crlf

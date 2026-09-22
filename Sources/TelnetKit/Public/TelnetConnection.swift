@@ -84,13 +84,17 @@ public actor TelnetConnection {
         try await perform(.send(bytes))
     }
 
-    /// Encodes `text` as UTF-8, applies the configured newline policy with
-    /// `TelnetLineEnding.crlf`, then escapes.
+    /// Encodes `text` as UTF-8, rewrites the newlines it already carries per the configured
+    /// newline policy with `TelnetLineEnding.crlf`, then escapes.
+    ///
+    /// No terminator is added: `send(text: "hi")` writes `68 69`, and
+    /// `send(text: "hi\n")` writes `68 69 0D 0A`.
     public func send(text: String) async throws(TelnetError) {
         try await perform(.sendText(text, .crlf))
     }
 
-    /// Sends `text` with an explicit line ending, ignoring the configured default.
+    /// The same as `send(text:)` with an explicit line ending instead of the configured
+    /// default. The ending replaces the newlines the string carries; it is never added.
     public func send(text: String, lineEnding: TelnetLineEnding) async throws(TelnetError) {
         try await perform(.sendText(text, lineEnding))
     }

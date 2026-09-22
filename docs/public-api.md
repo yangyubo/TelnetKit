@@ -84,8 +84,8 @@ extension TelnetConnection {
 | Member | Contract |
 |---|---|
 | `send(_:)` | Sends application bytes. Doubles every `0xFF` to `0xFF 0xFF` per NVT. Does not alter CR or LF. |
-| `send(text:)` | Encodes `text` as UTF-8, applies `configuration.newlinePolicy` and `TelnetLineEnding.crlf`, then escapes. |
-| `send(text:lineEnding:)` | Sends `text` with an explicit line ending, ignoring the configured default. |
+| `send(text:)` | Encodes `text` as UTF-8, rewrites the newlines it already carries per `configuration.newlinePolicy` and `TelnetLineEnding.crlf`, then escapes. It never adds a terminator: `send(text: "hi")` writes `68 69` and `send(text: "hi\n")` writes `68 69 0D 0A`. |
+| `send(text:lineEnding:)` | The same, with an explicit line ending instead of the configured default. A caller that means to end a line includes the newline in `text`. |
 | `sendRaw(_:)` | Sends bytes with no escaping and no line-ending translation. Intended for carrying an already-encoded Telnet stream; it can break the session if the bytes contain a bare `IAC`. |
 | `send(command:)` | Sends a Telnet command as `IAC <command>`. |
 
