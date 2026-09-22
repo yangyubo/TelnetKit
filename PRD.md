@@ -633,16 +633,6 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | `memory_stable_after_100k_events` | Resident memory growth after 100,000 events stays under the threshold |
 | `no_dangling_buffer_with_asan` | The full protocol suite passes under an ASan build |
 
-**H. Real server (Apple's telnetd from Homebrew)**
-
-| Case | Assertion |
-| --- | --- |
-| `real_server_connects` | The TCP connection completes and the first bytes are valid Telnet (`FF` in the leading window or plain text with no stray `FF`) |
-| `real_server_negotiation_settles` | Negotiation stops within a bounded number of messages and does not loop |
-| `real_server_session_stays_usable` | The session sends and receives for a bounded period without `.protocolError` |
-| `real_server_closes_cleanly` | `close()` finishes the event stream exactly once and leaves no pending write |
-| `real_server_suite_skips_without_server` | With `TELNETKIT_TEST_SERVER_HOST` unset the suite reports a skip rather than a failure |
-
 **G. Public interface contract (§5.6)**
 
 | Case | Assertion |
@@ -753,7 +743,6 @@ This PRD's engineering constraints are split into development documents kept bes
 | Q3 | Should the SwiftUI demo app be an in-package executable target or a separate `Examples/` Xcode project? | A separate project under `Examples/` so that referencing SwiftUI inside the package cannot slow `swift test`, while reusing the `Sources/TelnetKit/Demos` components |
 | Q4 | Is `swift-metrics` or `swift-service-lifecycle` integration needed? | Not in the first release; swift-log is enough |
 | Q5 | Should Chinese documentation ship alongside the English? | Decided: every human-facing document is a bilingual pair under the [documentation standard](docs/AGENTS.md#bilingual-pairs), so this PRD pairs with [PRD.zh.md](PRD.zh.md) |
-| Q6 | Should the CI runner upstream open a real Telnet server for tests? | No: the real-server suite is a local and manual step, and CI runs the deterministic fixture only |
 
 ---
 

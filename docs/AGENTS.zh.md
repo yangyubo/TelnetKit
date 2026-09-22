@@ -54,7 +54,7 @@
 | `docs/AGENTS.md` | 1,700：本文件负责双语配对机制与九个层级的归属表 |
 | `docs/architecture.md` | 2,100：平台与传输层决策表以及路径事件流无法在不丢失设计契约的前提下下沉 |
 | `docs/public-api.md` | 3,300：调用方契约对每个公开符号穷尽，其失败、顺序与取消信息无法在不丢契约的前提下下沉 |
-| `docs/testing.md` | 2,300：它负责真实服务端与模拟器连宿主的流程，以及覆盖率、DocC、API 基线三道门槛 |
+| `docs/testing.md` | 2,300：它负责模拟器运行流程，以及覆盖率、DocC、API 基线三道门槛 |
 | `README.md` | 900 |
 | `.agents/skills/*/SKILL.md` 下的 skill | 1,400 |
 | `PRD.md` | 不设上限：它拥有需求细节 |

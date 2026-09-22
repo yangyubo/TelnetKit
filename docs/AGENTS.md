@@ -54,7 +54,7 @@ The ceilings below are guardrails, not reduction targets. Measure with `wc -w` o
 | `docs/AGENTS.md` | 1,700: this file owns the bilingual pairing mechanics and the tier table for nine tiers |
 | `docs/architecture.md` | 2,100: the platform and transport decision table plus the path-event flow cannot be relocated without losing the design contract |
 | `docs/public-api.md` | 3,300: the caller contract is exhaustive about every public symbol and its failure, ordering, and cancellation rows cannot be relocated without losing the contract |
-| `docs/testing.md` | 2,300: it owns the real-server and simulator-against-host procedure plus the coverage, DocC, and API-baseline gates |
+| `docs/testing.md` | 2,300: it owns the simulator run procedure plus the coverage, DocC, and API-baseline gates |
 | `README.md` | 900 |
 | A skill under `.agents/skills/*/SKILL.md` | 1,400 |
 | `PRD.md` | unbudgeted: it owns requirement detail |

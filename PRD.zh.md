@@ -633,16 +633,6 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | `memory_stable_after_100k_events` | 10 万事件后常驻内存增幅 < 阈值 |
 | `no_dangling_buffer_with_asan` | ASan 构建下全量协议测试通过 |
 
-**H. 真实服务端（经 Homebrew 安装的 Apple telnetd）**
-
-| 用例 | 断言 |
-| --- | --- |
-| `real_server_connects` | TCP 连接完成，且首批字节是合法 Telnet（前导窗口内出现 `FF`，或为不含游离 `FF` 的纯文本） |
-| `real_server_negotiation_settles` | 协商在有限条报文内收敛，不回环 |
-| `real_server_session_stays_usable` | 会话在有限时长内持续收发，且不产生 `.protocolError` |
-| `real_server_closes_cleanly` | `close()` 使事件流恰好结束一次，且没有未完成的写入 |
-| `real_server_suite_skips_without_server` | 未设置 `TELNETKIT_TEST_SERVER_HOST` 时套件报告跳过而不是失败 |
-
 **G. 公开接口契约（对应 §5.6）**
 
 | 用例 | 断言 |
@@ -753,7 +743,6 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
 | Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
 | Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.zh.md#双语配对)，因此本 PRD 与 [PRD.md](PRD.md) 配对 |
-| Q6 | CI 是否需要拉起真实 Telnet 服务端来跑测试？ | 不需要：真实服务端套件属于本地与手工步骤，CI 只跑确定性夹具 |
 
 ---
 

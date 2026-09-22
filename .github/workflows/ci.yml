@@ -1,8 +1,8 @@
 name: CI
 
-# The deterministic gates from docs/testing.md. The real-server suite and the manual
-# simulator/device checks stay on a developer Mac; this workflow never reaches the
-# external network and never needs a device.
+# The deterministic gates from docs/testing.md. The manual simulator and device checks
+# stay on a developer Mac; this workflow never reaches the external network and never
+# needs a device.
 on:
   push:
     branches: [main]
