@@ -45,9 +45,7 @@ xcodegen generate
 
 ## Acceptance
 
-**Verified on this machine.** Both schemes build with zero warnings: `-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`, and `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'` with the Xcode 27 toolchain. A session against a real telnetd reached its password prompt and then a shell, a window resize made `telnetkit-echo-server` print `NAWS 105x32`, and the library passed 115 tests on the iOS 18 simulator.
-
-One clause of PRD §9.3 criterion 2 is still open: running this app in the iOS simulator against the loopback server. Start `swift run telnetkit-echo-server`, run the `TelnetKitDemoApp-iOS` scheme, and press **Connect**.
+**Verified on this machine.** Both schemes build with zero warnings: `-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`, and `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'` with the Xcode 27 toolchain. A session against a real telnetd reached its password prompt and then a shell, a window resize made `telnetkit-echo-server` print `NAWS 105x32`, the `TelnetKitDemoApp-iOS` scheme ran in the simulator against the loopback server, and the library passed 115 tests on the iOS 18 simulator.
 
 ## Documentation
 

@@ -126,5 +126,5 @@ The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches t
 Three things cannot be automated on a hosted runner and are recorded as evidence in the milestone checklist:
 
 1. A public Telnet service over the internet answers a login prompt, which is the only check that leaves the local network. Recorded: the SwiftUI demo answered a real telnetd, reached its password prompt, and carried the session into a shell.
-2. The SwiftUI demo app in the iOS simulator reaches `swift run telnetkit-echo-server` over loopback, the iOS clause of PRD §9.3 criterion 2. Not recorded: the app has not been run in the simulator yet.
+2. The SwiftUI demo app in the iOS simulator reaches `swift run telnetkit-echo-server` over loopback, the iOS clause of PRD §9.3 criterion 2. Recorded: the `TelnetKitDemoApp-iOS` scheme ran in the simulator and connected over loopback.
 3. A cellular-to-Wi-Fi switch on a device, and background suspension on iOS or watchOS, show `.pathChanged` and the documented disconnect behavior.

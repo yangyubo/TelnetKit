@@ -705,11 +705,11 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
-| M5 Demo | `telnetkit-client`、`telnetkit-echo-server` 与 `Examples/TelnetKitDemoApp/` 下的 SwiftUI Demo 应用 | 标准 1、3、4 成立：客户端能连上回显服务端，缩放窗口时服务端日志打印 `NAWS 105x32`，库在 iOS 18 模拟器上 115 个测试全绿，App 覆盖全部公开接口且有配套 README 片段。标准 2 对真实 telnetd 成立且会话进入了 shell；其 iOS 模拟器子句尚未记录 | 部分完成 |
+| M5 Demo | `telnetkit-client`、`telnetkit-echo-server` 与 `Examples/TelnetKitDemoApp/` 下的 SwiftUI Demo 应用 | §9.3 四条标准全部成立：客户端能连上回显服务端，对真实 telnetd 的会话进入 shell，缩放窗口时服务端日志打印 `NAWS 105x32`，库在 iOS 18 模拟器上 115 个测试全绿且 App 在 iOS 模拟器里跑通回环服务端，App 覆盖全部公开接口且有配套 README 片段 | 已交付 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建但未跑测试矩阵；M5 除标准 2 的「iOS 模拟器里让 App 跑通回环服务端」外全部验收成立，跑完这一步即可转为已交付。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建，macOS 与 iOS 套件在本地全绿，尚缺 CI 矩阵与设备上的路径事件、后台挂起复核；M5 的 §9.3 四条标准全部成立。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 

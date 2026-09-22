@@ -126,5 +126,5 @@ xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPh
 有三件事无法在托管 runner 上自动化，作为证据记录在里程碑清单中：
 
 1. 公网上的真实 Telnet 服务能应答登录提示，这是唯一离开本地网络的检查。已记录：SwiftUI Demo 应答了真实 telnetd、走到密码提示，并进入 shell 完成会话。
-2. iOS 模拟器里的 SwiftUI Demo 应用经回环连上 `swift run telnetkit-echo-server`，即 PRD §9.3 标准 2 的 iOS 子句。未记录：App 尚未在模拟器里跑过。
+2. iOS 模拟器里的 SwiftUI Demo 应用经回环连上 `swift run telnetkit-echo-server`，即 PRD §9.3 标准 2 的 iOS 子句。已记录：`TelnetKitDemoApp-iOS` scheme 在模拟器里运行并连上回环服务端。
 3. 在设备上做蜂窝↔Wi‑Fi 切换，以及 iOS 或 watchOS 上进入后台，能观察到 `.pathChanged` 与文档所述断连行为。

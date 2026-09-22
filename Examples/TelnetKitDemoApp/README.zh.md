@@ -45,9 +45,7 @@ xcodegen generate
 
 ## 验收
 
-**已在本机验证。** 两个 scheme 都在 Xcode 27 工具链下零警告构建：`-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`，以及 `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'`。对真实 telnetd 的会话走到了密码提示并进入 shell，缩放窗口使 `telnetkit-echo-server` 打印 `NAWS 105x32`，库在 iOS 18 模拟器上 115 个测试全绿。
-
-PRD §9.3 标准 2 还剩一个子句未完成：在 iOS 模拟器里让本应用跑通回环服务端。先 `swift run telnetkit-echo-server`，再运行 `TelnetKitDemoApp-iOS` scheme 并按 **Connect**。
+**已在本机验证。** 两个 scheme 都在 Xcode 27 工具链下零警告构建：`-scheme TelnetKitDemoApp -destination 'generic/platform=macOS'`，以及 `-scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'`。对真实 telnetd 的会话走到了密码提示并进入 shell，缩放窗口使 `telnetkit-echo-server` 打印 `NAWS 105x32`，`TelnetKitDemoApp-iOS` scheme 在模拟器里跑通回环服务端，库在 iOS 18 模拟器上 115 个测试全绿。
 
 ## 文档
 

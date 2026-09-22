@@ -10,7 +10,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 The `TelnetKit` library exists and is tested, and all three demos are written; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
 
-- **Verified.** Reproduced on this machine: `swift test` passes 115 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2), `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, and the DocC build reports 0 target diagnostics.
+- **Verified.** Reproduced on this machine: `swift test` passes 115 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors, `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, the DocC build reports 0 target diagnostics, and `TelnetKitDemoApp` builds for macOS and iOS and runs against a real telnetd.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
 - **Designed.** Planned behavior of code that is not written. Mark designed statements as requirements, never as descriptions of existing behavior, and delete the marker when the behavior ships.
 
@@ -86,7 +86,7 @@ Never run `git push` and never ask whether to push; a commit stays local until t
 
 One home per fact, under the tiers in [docs/AGENTS.md](docs/AGENTS.md). `AGENTS.md` carries standing orders and links; [docs/architecture.md](docs/architecture.md) maps composition; [docs/public-api.md](docs/public-api.md) defines the public contract; [PRD.md](PRD.md) owns requirements, acceptance criteria, and milestone scope; package READMEs serve consumers; [.agents/skills/](.agents/skills/) holds reusable workflows. Generated or copied content is never hand-edited except at its owner.
 
-**Every document is bilingual.** The English file and its `.zh.md` counterpart land in the same change, with the same headings, lists, tables, code, link targets, and physical line count, so `docs/architecture.md` pairs with `docs/architecture.zh.md`. The counterpart is named in the first three lines of the file and links back from the other side. An untranslated document is a failing document, not a follow-up. Full mechanics, translation rules, and the validation command are in [docs/AGENTS.md](docs/AGENTS.md#bilingual-pairs).
+**Every document is bilingual.** The English file and its `.zh.md` counterpart land in the same change, with the same headings, lists, tables, code, link targets, and physical line count. The counterpart is named in the first three lines of the file and links back from the other side. An untranslated document is a failing document, not a follow-up. Full mechanics, translation rules, and the validation command are in [docs/AGENTS.md](docs/AGENTS.md#bilingual-pairs).
 
 Update the affected README and the public API contract in the same change as the code. State current behavior in present tense; keep history in commits and the PRD changelog, not in prose.
 
