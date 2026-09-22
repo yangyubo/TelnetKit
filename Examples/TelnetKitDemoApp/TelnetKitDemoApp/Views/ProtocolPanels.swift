@@ -109,6 +109,13 @@ struct CapabilitiesPanel: View {
     var body: some View {
         GroupBox("Terminal capabilities") {
             VStack(alignment: .leading, spacing: 8) {
+                Text("A real telnetd usually withholds its login prompt until the terminal type is answered, so both answers are automatic by default. Turn a switch off to answer by hand; pressing a button with no request pending throws .invalidConfiguration.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle("Answer TERMINAL-TYPE automatically", isOn: $model.autoAnswerTerminalType)
+                Toggle("Answer NEW-ENVIRON automatically", isOn: $model.autoAnswerEnvironment)
+
                 HStack(spacing: 8) {
                     TextField("terminal type", text: $model.terminalType)
                         .textFieldStyle(.roundedBorder)

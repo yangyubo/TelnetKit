@@ -16,7 +16,7 @@ All notable changes to TelnetKit are recorded here. The format follows [Keep a C
 - Suites: a white-box protocol suite, a black-box public API suite over a loopback fixture, and integration coverage for concurrency, timeouts, cancellation, idle close, and path mapping.
 - The `telnetkit-client` CLI: a complete interactive Telnet client that accepts the `telnet(1)` flags, forwards keystrokes, and enters command mode on the escape character.
 - The `telnetkit-echo-server` executable: a local macOS peer that answers TERMINAL-TYPE, NAWS, and NEW-ENVIRON, echoes session data, and injects the malformed negotiation, subnegotiation, warning, and oversized exchanges on request.
-- The `TelnetKitDemoApp` SwiftUI app under `Examples/`: a macOS and iOS target over the local package that covers every public interface, reports NAWS on window resize, and injects the reachable `TelnetError` cases.
+- The `TelnetKitDemoApp` SwiftUI app under `Examples/`: a macOS and iOS target over the local package that covers every public interface, answers TERMINAL-TYPE and NEW-ENVIRON so a telnetd that gates its login prompt on them still prints it, reports NAWS on window resize, and injects the reachable `TelnetError` cases.
 
 ### Changed
 

@@ -16,7 +16,7 @@ TelnetKit 的所有重要变更都记录在此。格式遵循 [Keep a Changelog]
 - 测试套件：白盒协议套件、基于回环夹具的黑盒公开接口套件，以及并发、超时、取消、空闲关闭与路径映射的集成覆盖。
 - `telnetkit-client` 命令行客户端：完整交互式 Telnet 客户端，接受 `telnet(1)` 参数、转发按键，并在转义字符上进入命令模式。
 - `telnetkit-echo-server` 可执行文件：本地 macOS 对端，应答 TERMINAL-TYPE、NAWS 与 NEW-ENVIRON，回显会话数据，并可按请求注入异常协商、子协商、警告与超长子协商场景。
-- `Examples/` 下的 `TelnetKitDemoApp` SwiftUI 应用：面向本地包的 macOS 与 iOS target，覆盖全部公开接口，在窗口缩放时上报 NAWS，并可注入可达的 `TelnetError` case。
+- `Examples/` 下的 `TelnetKitDemoApp` SwiftUI 应用：面向本地包的 macOS 与 iOS target，覆盖全部公开接口，自动应答 TERMINAL-TYPE 与 NEW-ENVIRON（使以它们为前提才打印登录提示的 telnetd 正常工作），在窗口缩放时上报 NAWS，并可注入可达的 `TelnetError` case。
 
 ### 变更
 

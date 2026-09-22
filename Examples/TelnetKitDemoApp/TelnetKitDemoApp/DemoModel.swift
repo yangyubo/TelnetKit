@@ -54,6 +54,15 @@ final class DemoModel {
     var subnegotiationHex = "01 00"
     var selectedCommand = TelnetCommand.areYouThere
 
+    // MARK: Automatic answers
+    /// Answer a `TERMINAL-TYPE SEND` at once, the way `telnet(1)` does.
+    ///
+    /// A telnetd commonly withholds its login prompt until the terminal type is answered, so
+    /// a caller that leaves the answer to a button sees no server output at all.
+    var autoAnswerTerminalType = true
+    /// Answer a `NEW-ENVIRON SEND` with the rows above.
+    var autoAnswerEnvironment = true
+
     // MARK: Records
     private(set) var eventRecords: [DemoEventRecord] = []
     private(set) var logRecords: [DemoLogRecord] = []
@@ -205,7 +214,21 @@ final class DemoModel {
             localEchoEnabled = enabled
         case .terminalTypeRequested:
             terminalTypeRequestPending = true
-        case .terminalType, .environmentRequested, .environment, .subnegotiation, .command,
+            if autoAnswerTerminalType {
+                // The peer is waiting for the terminal type before it says anything; answer
+                // now, and leave the manual button for a repeated SEND.
+                perform(.replyTerminalType(terminalType))
+            }
+        case .environmentRequested(let scope):
+            if autoAnswerEnvironment {
+                let values = environmentRows
+                    .filter { !$0.name.isEmpty }
+                    .map { EnvironmentVariable(name: $0.name, value: $0.value.isEmpty ? nil : $0.value, scope: scope) }
+                if !values.isEmpty {
+                    perform(.sendEnvironment(values, scope))
+                }
+            }
+        case .terminalType, .environment, .subnegotiation, .command,
              .mssp, .zmp, .compressionEnabled, .pathChanged, .betterPathAvailable,
              .betterPathUnavailable, .viabilityChanged, .waitingForConnectivity, .warning,
              .protocolError:

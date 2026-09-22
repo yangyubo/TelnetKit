@@ -26,7 +26,7 @@ swift run telnetkit-echo-server
 
 ## 可以试什么
 
-1. 点 **Connect**。状态栏显示 `remoteAddress` 与 `localAddress`，选项表随协商到达由 `optionStatus(_:)` 逐步填充。
+1. 点 **Connect**。状态栏显示 `remoteAddress` 与 `localAddress`，选项表随协商到达由 `optionStatus(_:)` 逐步填充。真实 telnetd 在 TERMINAL-TYPE 被应答前不会打印登录提示，因此 Demo 会立即应答 `TERMINAL-TYPE SEND` 与 `NEW-ENVIRON SEND`；**Protocol** 标签页为两者各提供一个开关，把它交回手动按钮。
 2. 输入一行后回车。行尾选择器驱动 `send(text:lineEnding:)`，**send(text:)** 按钮驱动 `send(text:)`，十六进制字段驱动 `send(_:)` 与 `sendRaw(_:)`。
 3. 缩放窗口。对端应答 `do windowSize` 之后，每次尺寸变化都通过 `sendWindowSize(columns:rows:)` 上报，回显服务端会打印 `NAWS <columns>x<rows>`。
 4. 打开 **Protocol** 标签页，操作 `negotiate(_:option:)`、`requestOption(_:)`、`subnegotiate(option:payload:)`、`send(command:)`、`replyTerminalType(_:)`、`sendEnvironment(_:scope:)` 以及手动 `sendWindowSize(columns:rows:)`。
