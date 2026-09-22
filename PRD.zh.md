@@ -699,7 +699,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 ## 10. 里程碑与交付计划
 
 | 里程碑 | 内容 | 出口标准 | 状态 |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | M0 脚手架 | `Package.swift`（五平台 + NIOTS 依赖）、libtelnet 子模块 + 我们纳入版本控制的 module map 与两个符号链接 + `UPSTREAM.md`（记录 pin 住的 commit）、目录骨架、CI 骨架、LICENSE/NOTICE | `swift build`/`swift test` 在 macOS 15 目标下通过，且五平台均可构建（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**） | 已交付 |
 | M1 协议层 | `TelnetProtocolCore` + 全部 `TelnetEvent` 映射 + NVT 编码 + L1 单测（B/D 组） | B/D 组用例全绿，ASan 通过 | 已交付 |
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |

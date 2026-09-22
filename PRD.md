@@ -699,7 +699,7 @@ This PRD's engineering constraints are split into development documents kept bes
 ## 10. Milestones and delivery plan
 
 | Milestone | Content | Exit criterion | Status |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | M0 scaffolding | `Package.swift` (five platforms plus the NIOTS dependency), the libtelnet submodule with our tracked module map, two symlinks, and `UPSTREAM.md` (recording the pinned commit), directory skeleton, CI skeleton, LICENSE and NOTICE | `swift build` and `swift test` pass against the macOS 15 target and all five platforms build (**verified: `swift build --target TelnetKit --triple` succeeds for the macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 floors**) | Shipped |
 | M1 protocol layer | `TelnetProtocolCore`, every `TelnetEvent` mapping, NVT coding, and the L1 unit tests (groups B and D) | Groups B and D are green and ASan passes | Shipped |
 | M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green; `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events | Shipped |
