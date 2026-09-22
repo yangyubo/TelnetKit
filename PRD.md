@@ -657,7 +657,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | --- | --- | --- |
 | `telnetkit-client` | `.executableTarget` (CLI, macOS only) | A complete interactive Telnet client that accepts the `telnet(1)` flags and drives TelnetKit; it is a working tool rather than an interface showcase |
 | `TelnetEchoServer` (the `telnetkit-echo-server` command) | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, warning, and oversized-subnegotiation scenarios |
-| `TelnetKitDemoApp` | SwiftUI macOS app (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
+| `TelnetKitDemoApp` | SwiftUI app, macOS and iOS targets (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
 
 ### 9.1.1 Documentation deliverables
 
@@ -669,6 +669,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | [docs/architecture.md](docs/architecture.md) | Design map: layers, concurrency model, event flow, C seam, extension points, test layout |
 | [docs/public-api.md](docs/public-api.md) | The caller contract and the public symbol test checklist |
 | [README.md](README.md) / [README.zh.md](README.zh.md) | The consumer contract: capabilities, install, quick start, known limitations, security |
+| [Examples/TelnetKitDemoApp/README.md](Examples/TelnetKitDemoApp/README.md) | The demo app's run procedure and the interfaces it exercises |
 | [.agents/skills/](.agents/skills/) | Reusable workflows: public API slice, C library import, documentation standard, prose standard |
 
 ### 9.2 Interfaces the demo must cover
@@ -704,11 +705,11 @@ This PRD's engineering constraints are split into development documents kept bes
 | M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green; `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events | Shipped |
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green; repeated and simultaneous negotiation produces a bounded byte count | Shipped |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Protocol line coverage is 92.3%; the DocC build reports 0 target diagnostics; the symbol graph holds no forbidden name; the API baseline shows no breaking change | Shipped |
-| M5 demo | `telnetkit-client` and `telnetkit-echo-server` (shipped), and the SwiftUI demo app | Criteria 1 and 3's local half hold: the client reaches the echo server and its window-size report appears in the server log. Criteria 2 and 4 still need the app | Partial |
+| M5 demo | `telnetkit-client`, `telnetkit-echo-server`, and the SwiftUI demo app in `Examples/TelnetKitDemoApp/` | Criteria 1 and 4 hold: the client reaches the echo server, and the app covers every public interface with a matching README snippet. Criterion 2 and criterion 3's local half are manual steps that are not recorded | Partial |
 | M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build | Partial |
 | M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived | Planned |
 
-> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M6 has built all five floors but has not run their test matrix, and M5 has shipped both executables but not the app.
+> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M6 has built all five floors but has not run their test matrix; M5 has shipped all three demo programs, and its two manual acceptance steps (one full interaction with a real service, and the window-size report on resize) are not recorded.
 
 > Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 
@@ -740,7 +741,7 @@ This PRD's engineering constraints are split into development documents kept bes
 | --- | --- | --- |
 | Q1 | Should `TelnetEvent.data` use `NIOCore.ByteBuffer` or a custom `[UInt8]`? | Use `ByteBuffer` (zero copy, consistent with the NIO ecosystem) and provide `[UInt8]` and `String` convenience views |
 | Q2 | Does the library provide reconnection, or only an example? | An example only: the library owns `waitForConnectivity` and clear errors, and the caller owns the retry policy |
-| Q3 | Should the SwiftUI demo app be an in-package executable target or a separate `Examples/` Xcode project? | A separate project under `Examples/` so that referencing SwiftUI inside the package cannot slow `swift test`, while reusing the `Sources/TelnetKit/Demos` components |
+| Q3 | Should the SwiftUI demo app be an in-package executable target or a separate `Examples/` Xcode project? | Decided: a separate project under `Examples/`, committed together with its XcodeGen `project.yml`, so referencing SwiftUI inside the package cannot slow `swift test`; the app carries its own views instead of adding a package component |
 | Q4 | Is `swift-metrics` or `swift-service-lifecycle` integration needed? | Not in the first release; swift-log is enough |
 | Q5 | Should Chinese documentation ship alongside the English? | Decided: every human-facing document is a bilingual pair under the [documentation standard](docs/AGENTS.md#bilingual-pairs), so this PRD pairs with [PRD.zh.md](PRD.zh.md) |
 

@@ -2,7 +2,7 @@
 
 [English](public-api.md) | 中文
 
-本文是 `TelnetKit` 库产物的调用方契约，定义每一个公开类型、方法与 case，并且是契约的存档依据：当代码与本文冲突时，其中一方是缺陷，变更必须同时修正两者。库与两个可执行文件已实现；SwiftUI Demo 处于设计阶段、尚未编写，因此涉及它的陈述依据[设计状态规则](../AGENTS.md#design-status)仍为**设计中**；需求与验收标准见 [PRD.zh.md](../PRD.zh.md)，内部设计见 [architecture.md](architecture.md)。
+本文是 `TelnetKit` 库产物的调用方契约，定义每一个公开类型、方法与 case，并且是契约的存档依据：当代码与本文冲突时，其中一方是缺陷，变更必须同时修正两者。库、两个可执行文件与 [`Examples/TelnetKitDemoApp/`](../Examples/TelnetKitDemoApp/README.zh.md) 下的 SwiftUI Demo 应用均已实现；需求与验收标准见 [PRD.zh.md](../PRD.zh.md)，内部设计见 [architecture.md](architecture.md)。
 
 ## 公开接口规则
 

@@ -1,0 +1,504 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0605E3049A5DFF3D023814A7 /* ConnectionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32AC7F45155F2D41B8429289 /* ConnectionPanel.swift */; };
+		08990A9F4336E35EAB495F97 /* TelnetKitDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B508C46FF8B0275749B6051 /* TelnetKitDemoApp.swift */; };
+		0CEF06C070991A1ED3F77435 /* DemoCatalogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F322E32D6708237E4DB7F0E8 /* DemoCatalogs.swift */; };
+		1BD848250C0A6C544AA48AE6 /* DemoModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DDCDA507F38E0B725E9190 /* DemoModel.swift */; };
+		1C7AA9939F790855028FF1DA /* ProtocolPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECDCDC5B85786AE532FA392 /* ProtocolPanels.swift */; };
+		32506693F6ADAA2451066EA0 /* DemoLogHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 258EBF919C10B604DB1FA216 /* DemoLogHandler.swift */; };
+		348530D9EC875C042E25AC69 /* DemoWindowMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE701D573FDE6ED52B5F888 /* DemoWindowMetrics.swift */; };
+		34CADE284048ADDE99053C99 /* TelnetKit in Frameworks */ = {isa = PBXBuildFile; productRef = E0D3FD93E89DF759C0DE5FA8 /* TelnetKit */; };
+		42608943761282F4515468FD /* DemoEventPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC48857195DA1EBD5FE4317 /* DemoEventPresentation.swift */; };
+		538F41F7AEC4DA12AAFE55B8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC8F154029BE695A5784A125 /* ContentView.swift */; };
+		5DF60BCFE877F7F3946D76CC /* DemoLogHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 258EBF919C10B604DB1FA216 /* DemoLogHandler.swift */; };
+		605C34B67EF0A638D2B47647 /* DemoWindowMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE701D573FDE6ED52B5F888 /* DemoWindowMetrics.swift */; };
+		71C3A955078DBD6CC7787FDE /* DemoConnectionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92240FB75AE2D33C1129A2C /* DemoConnectionSettings.swift */; };
+		7B8348E11A5728B82DCFB32E /* DemoEventPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC48857195DA1EBD5FE4317 /* DemoEventPresentation.swift */; };
+		8A2AC3B74719BD1722D70A19 /* ProtocolPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECDCDC5B85786AE532FA392 /* ProtocolPanels.swift */; };
+		9A07E36DB8948DCFE2CA75B9 /* TelnetKitDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B508C46FF8B0275749B6051 /* TelnetKitDemoApp.swift */; };
+		A48EE2A3096E4DEA6CA64032 /* DemoConnectionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92240FB75AE2D33C1129A2C /* DemoConnectionSettings.swift */; };
+		BE497D81C809E320CE4FD539 /* SessionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446ED57A958B7B7259549856 /* SessionViews.swift */; };
+		BFB4521CD7C0D15D2EED13EC /* SessionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446ED57A958B7B7259549856 /* SessionViews.swift */; };
+		C78AC173B625B513C5E09FA2 /* DemoModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74DDCDA507F38E0B725E9190 /* DemoModel.swift */; };
+		D08DBCA8DD978FD6A5E2AA62 /* ConnectionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32AC7F45155F2D41B8429289 /* ConnectionPanel.swift */; };
+		E03A2A6B71F9F00E5BB7436A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC8F154029BE695A5784A125 /* ContentView.swift */; };
+		F5D860C2A5CB877A11AFD878 /* DemoCatalogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F322E32D6708237E4DB7F0E8 /* DemoCatalogs.swift */; };
+		FBC21057389558D209E92288 /* TelnetKit in Frameworks */ = {isa = PBXBuildFile; productRef = D29497C72D3D7E9798F6AFE0 /* TelnetKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		24BA9776F0CD77C4C0A56D5F /* TelnetKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TelnetKit; path = ../..; sourceTree = SOURCE_ROOT; };
+		258EBF919C10B604DB1FA216 /* DemoLogHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoLogHandler.swift; sourceTree = "<group>"; };
+		32AC7F45155F2D41B8429289 /* ConnectionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionPanel.swift; sourceTree = "<group>"; };
+		3B508C46FF8B0275749B6051 /* TelnetKitDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelnetKitDemoApp.swift; sourceTree = "<group>"; };
+		446ED57A958B7B7259549856 /* SessionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionViews.swift; sourceTree = "<group>"; };
+		74DDCDA507F38E0B725E9190 /* DemoModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoModel.swift; sourceTree = "<group>"; };
+		7BC48857195DA1EBD5FE4317 /* DemoEventPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoEventPresentation.swift; sourceTree = "<group>"; };
+		B92240FB75AE2D33C1129A2C /* DemoConnectionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoConnectionSettings.swift; sourceTree = "<group>"; };
+		BC8F154029BE695A5784A125 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CA253769A9B2B97F7D82F137 /* TelnetKitDemoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TelnetKitDemoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CECDCDC5B85786AE532FA392 /* ProtocolPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolPanels.swift; sourceTree = "<group>"; };
+		E14AA8FF6C990CD9D000ACD2 /* TelnetKitDemoApp-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "TelnetKitDemoApp-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F322E32D6708237E4DB7F0E8 /* DemoCatalogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCatalogs.swift; sourceTree = "<group>"; };
+		FAE701D573FDE6ED52B5F888 /* DemoWindowMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWindowMetrics.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7993B7C06BE5C900BB973771 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34CADE284048ADDE99053C99 /* TelnetKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		81DA05FA0DBDB07F843FDDF9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FBC21057389558D209E92288 /* TelnetKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A7F955521B1B765D1785E2D /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				24BA9776F0CD77C4C0A56D5F /* TelnetKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		182CFCF1FD3182DF563895B4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E14AA8FF6C990CD9D000ACD2 /* TelnetKitDemoApp-iOS.app */,
+				CA253769A9B2B97F7D82F137 /* TelnetKitDemoApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		47C49FCF3750E753BAEF5F37 = {
+			isa = PBXGroup;
+			children = (
+				0A7F955521B1B765D1785E2D /* Packages */,
+				ACD24FD6BC5481490C3DAA74 /* TelnetKitDemoApp */,
+				182CFCF1FD3182DF563895B4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		93E51A8C95CDE75F034D5075 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				32AC7F45155F2D41B8429289 /* ConnectionPanel.swift */,
+				BC8F154029BE695A5784A125 /* ContentView.swift */,
+				CECDCDC5B85786AE532FA392 /* ProtocolPanels.swift */,
+				446ED57A958B7B7259549856 /* SessionViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		ACD24FD6BC5481490C3DAA74 /* TelnetKitDemoApp */ = {
+			isa = PBXGroup;
+			children = (
+				93E51A8C95CDE75F034D5075 /* Views */,
+				F322E32D6708237E4DB7F0E8 /* DemoCatalogs.swift */,
+				B92240FB75AE2D33C1129A2C /* DemoConnectionSettings.swift */,
+				7BC48857195DA1EBD5FE4317 /* DemoEventPresentation.swift */,
+				258EBF919C10B604DB1FA216 /* DemoLogHandler.swift */,
+				74DDCDA507F38E0B725E9190 /* DemoModel.swift */,
+				FAE701D573FDE6ED52B5F888 /* DemoWindowMetrics.swift */,
+				3B508C46FF8B0275749B6051 /* TelnetKitDemoApp.swift */,
+			);
+			path = TelnetKitDemoApp;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4E6DF401D09DEC2B5C45EB44 /* TelnetKitDemoApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 72462E3E7372BD2BF1473845 /* Build configuration list for PBXNativeTarget "TelnetKitDemoApp" */;
+			buildPhases = (
+				B2A75157847D5DC6BDE05ED4 /* Sources */,
+				7993B7C06BE5C900BB973771 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TelnetKitDemoApp;
+			packageProductDependencies = (
+				E0D3FD93E89DF759C0DE5FA8 /* TelnetKit */,
+			);
+			productName = TelnetKitDemoApp;
+			productReference = CA253769A9B2B97F7D82F137 /* TelnetKitDemoApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B1A9CB919D1B1356102F3CD9 /* TelnetKitDemoApp-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9105EDA1A9C30D2F927F7104 /* Build configuration list for PBXNativeTarget "TelnetKitDemoApp-iOS" */;
+			buildPhases = (
+				F07CF54E765E6F056F5E3618 /* Sources */,
+				81DA05FA0DBDB07F843FDDF9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "TelnetKitDemoApp-iOS";
+			packageProductDependencies = (
+				D29497C72D3D7E9798F6AFE0 /* TelnetKit */,
+			);
+			productName = "TelnetKitDemoApp-iOS";
+			productReference = E14AA8FF6C990CD9D000ACD2 /* TelnetKitDemoApp-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6DB032CB24BC274575713C13 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4E6DF401D09DEC2B5C45EB44 = {
+						ProvisioningStyle = Automatic;
+					};
+					B1A9CB919D1B1356102F3CD9 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 40997452EE4407E80F5858FD /* Build configuration list for PBXProject "TelnetKitDemoApp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 47C49FCF3750E753BAEF5F37;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6B700F8748286D2A02C9F7B7 /* XCLocalSwiftPackageReference "../.." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 182CFCF1FD3182DF563895B4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4E6DF401D09DEC2B5C45EB44 /* TelnetKitDemoApp */,
+				B1A9CB919D1B1356102F3CD9 /* TelnetKitDemoApp-iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B2A75157847D5DC6BDE05ED4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D08DBCA8DD978FD6A5E2AA62 /* ConnectionPanel.swift in Sources */,
+				E03A2A6B71F9F00E5BB7436A /* ContentView.swift in Sources */,
+				0CEF06C070991A1ED3F77435 /* DemoCatalogs.swift in Sources */,
+				71C3A955078DBD6CC7787FDE /* DemoConnectionSettings.swift in Sources */,
+				42608943761282F4515468FD /* DemoEventPresentation.swift in Sources */,
+				5DF60BCFE877F7F3946D76CC /* DemoLogHandler.swift in Sources */,
+				1BD848250C0A6C544AA48AE6 /* DemoModel.swift in Sources */,
+				348530D9EC875C042E25AC69 /* DemoWindowMetrics.swift in Sources */,
+				1C7AA9939F790855028FF1DA /* ProtocolPanels.swift in Sources */,
+				BE497D81C809E320CE4FD539 /* SessionViews.swift in Sources */,
+				9A07E36DB8948DCFE2CA75B9 /* TelnetKitDemoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F07CF54E765E6F056F5E3618 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0605E3049A5DFF3D023814A7 /* ConnectionPanel.swift in Sources */,
+				538F41F7AEC4DA12AAFE55B8 /* ContentView.swift in Sources */,
+				F5D860C2A5CB877A11AFD878 /* DemoCatalogs.swift in Sources */,
+				A48EE2A3096E4DEA6CA64032 /* DemoConnectionSettings.swift in Sources */,
+				7B8348E11A5728B82DCFB32E /* DemoEventPresentation.swift in Sources */,
+				32506693F6ADAA2451066EA0 /* DemoLogHandler.swift in Sources */,
+				C78AC173B625B513C5E09FA2 /* DemoModel.swift in Sources */,
+				605C34B67EF0A638D2B47647 /* DemoWindowMetrics.swift in Sources */,
+				8A2AC3B74719BD1722D70A19 /* ProtocolPanels.swift in Sources */,
+				BFB4521CD7C0D15D2EED13EC /* SessionViews.swift in Sources */,
+				08990A9F4336E35EAB495F97 /* TelnetKitDemoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		07F1A37D73519C7A20A08926 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "TelnetKit Demo";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.telnetkit.TelnetKitDemoApp.ios;
+				PRODUCT_NAME = TelnetKitDemoApp;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		610DD3DDA8FE825570317F64 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "TelnetKit Demo";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.telnetkit.TelnetKitDemoApp;
+				PRODUCT_NAME = TelnetKitDemoApp;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		74D21B21215DCCCBE1C9EC3B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "TelnetKit Demo";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.telnetkit.TelnetKitDemoApp;
+				PRODUCT_NAME = TelnetKitDemoApp;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		AC90C4D09AEA7D0F4EEF3F02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "TelnetKit Demo";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.telnetkit.TelnetKitDemoApp.ios;
+				PRODUCT_NAME = TelnetKitDemoApp;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EB5884D5E3395D0AD2853103 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		EBBB07EBC85493571348EE66 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		40997452EE4407E80F5858FD /* Build configuration list for PBXProject "TelnetKitDemoApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBBB07EBC85493571348EE66 /* Debug */,
+				EB5884D5E3395D0AD2853103 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		72462E3E7372BD2BF1473845 /* Build configuration list for PBXNativeTarget "TelnetKitDemoApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				74D21B21215DCCCBE1C9EC3B /* Debug */,
+				610DD3DDA8FE825570317F64 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9105EDA1A9C30D2F927F7104 /* Build configuration list for PBXNativeTarget "TelnetKitDemoApp-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC90C4D09AEA7D0F4EEF3F02 /* Debug */,
+				07F1A37D73519C7A20A08926 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6B700F8748286D2A02C9F7B7 /* XCLocalSwiftPackageReference "../.." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D29497C72D3D7E9798F6AFE0 /* TelnetKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TelnetKit;
+		};
+		E0D3FD93E89DF759C0DE5FA8 /* TelnetKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TelnetKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 6DB032CB24BC274575713C13 /* Project object */;
+}

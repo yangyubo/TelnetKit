@@ -2,7 +2,7 @@
 
 [English](architecture.md) | 中文
 
-修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：库各分层与演示可执行文件均已实现，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载。需求与验收标准见 [PRD.zh.md](../PRD.zh.md)；调用方可见的签名见 [public-api.md](public-api.md)。
+修改 `Sources/` 下任何内容之前先读本文。本文是设计契约：库各分层与演示程序均已实现，除特别标注外下文每一条陈述都是**设计中**，状态由[设计状态规则](../AGENTS.md#design-status)承载。需求与验收标准见 [PRD.zh.md](../PRD.zh.md)；调用方可见的签名见 [public-api.md](public-api.md)。
 
 ## 组成
 
@@ -150,4 +150,4 @@ Network.framework 的错误集合（`NWError`）在 `TelnetNetworkEventMapping` 
 
 协议套件是 RFC 行为的正确性关卡；公开 API 套件是契约关卡，它覆盖 [public-api.md](public-api.md#symbol-checklist) 中列出的每一个公开符号。集成套件负责时序：依赖超时的测试使用较短的配置上限与宽松的断言上限，绝不使用固定 sleep。
 
-平台归属：协议层与公开接口套件在五个平台都跑；绑定回环监听的集成套件只在 macOS 与 iOS 模拟器上跑，因为 watchOS、tvOS 与 visionOS 没有进程与回环服务端语义。演示可执行文件是手工路径，不能替代任何套件。
+平台归属：协议层与公开接口套件在五个平台都跑；绑定回环监听的集成套件只在 macOS 与 iOS 模拟器上跑，因为 watchOS、tvOS 与 visionOS 没有进程与回环服务端语义。演示程序是手工路径，不能替代任何套件。

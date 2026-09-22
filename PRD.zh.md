@@ -657,7 +657,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | --- | --- | --- |
 | `telnetkit-client` | `.executableTarget`（CLI，仅 macOS） | 完整交互式 Telnet 客户端：接受 `telnet(1)` 参数并驱动 TelnetKit；它是可用工具，而不是接口展示程序 |
 | `TelnetEchoServer`（命令名 `telnetkit-echo-server`） | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning/超长子协商场景 |
-| `TelnetKitDemoApp` | SwiftUI macOS App（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
+| `TelnetKitDemoApp` | SwiftUI App，macOS 与 iOS 目标（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
 
 ### 9.1.1 文档交付物
 
@@ -669,6 +669,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | [docs/architecture.md](docs/architecture.md) | 设计地图：分层、并发模型、事件流、C 接缝、扩展点、测试布局 |
 | [docs/public-api.md](docs/public-api.md) | 公开接口调用方契约与公开符号测试清单 |
 | [README.md](README.md) / [README.zh.md](README.zh.md) | 使用方契约：能力、安装、快速开始、已知限制、安全说明 |
+| [Examples/TelnetKitDemoApp/README.md](Examples/TelnetKitDemoApp/README.md) | Demo 应用的运行步骤与它所演练的接口 |
 | [.agents/skills/](.agents/skills/) | 可复用工作流：公开接口切片、C 库引入、文档规范、行文规范 |
 
 ### 9.2 Demo 必须覆盖的接口清单
@@ -704,11 +705,11 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
-| M5 Demo | `telnetkit-client` 与 `telnetkit-echo-server`（已交付）+ SwiftUI DemoApp | 标准 1 与标准 3 的本地部分成立：客户端能连上回显服务端，其窗口尺寸上报出现在服务端日志中；标准 2 与 4 仍需 App | 部分完成 |
+| M5 Demo | `telnetkit-client`、`telnetkit-echo-server` 与 `Examples/TelnetKitDemoApp/` 下的 SwiftUI Demo 应用 | 标准 1 与标准 4 成立：客户端能连上回显服务端，App 覆盖全部公开接口且有配套 README 片段。标准 2 与标准 3 的本地部分属手工步骤，尚未记录 | 部分完成 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建但未跑测试矩阵，M5 已交付两个可执行文件但尚未交付 App。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建但未跑测试矩阵；M5 已交付三个演示程序，它的两项手工验收（与真实服务的完整交互、缩放时的窗口尺寸上报）尚未记录。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 
@@ -740,7 +741,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | --- | --- | --- |
 | Q1 | `TelnetEvent.data` 用 `NIOCore.ByteBuffer` 还是自定义 `[UInt8]`？ | 用 `ByteBuffer`（零拷贝、与 NIO 生态一致），并提供 `[UInt8]`/`String` 便捷视图 |
 | Q2 | 断线重连由库提供还是仅给示例？ | 仅给示例：库负责 `waitForConnectivity` 与清晰错误，重连策略由调用方决定 |
-| Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 放 `Examples/` 独立工程（避免包内引用 SwiftUI 拖慢 `swift test`），但复用包内 `Sources/TelnetKit/Demos` 组件 |
+| Q3 | SwiftUI DemoApp 放在包内可执行目标还是 `Examples/` 独立 Xcode 工程？ | 已决策：放 `Examples/` 独立工程，并连同其 XcodeGen `project.yml` 一起提交，避免包内引用 SwiftUI 拖慢 `swift test`；应用自带视图，不新增包内组件 |
 | Q4 | 是否需要 `swift-metrics`/`swift-service-lifecycle` 集成？ | 首版不需要，swift-log 足够 |
 | Q5 | 是否同步发布中文文档？ | 已决策：全部面向人的文档均为中英双语配对，规则见 [docs/AGENTS.md](docs/AGENTS.zh.md#双语配对)，因此本 PRD 与 [PRD.md](PRD.md) 配对 |
 

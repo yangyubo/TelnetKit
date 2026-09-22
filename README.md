@@ -10,7 +10,7 @@ TelnetKit gives you one `async` object per connection. You await the connection,
 
 ## Status
 
-The library is implemented and tested on macOS, and the CLI client and echo server ship as macOS executables. The requirement source is [PRD.md](PRD.md); the design contract is [docs/architecture.md](docs/architecture.md) and [docs/public-api.md](docs/public-api.md).
+The library is implemented and tested on macOS; the CLI client and echo server ship as macOS executables, and the SwiftUI demo app ships in [`Examples/`](Examples/TelnetKitDemoApp/README.md). The requirement source is [PRD.md](PRD.md); the design contract is [docs/architecture.md](docs/architecture.md) and [docs/public-api.md](docs/public-api.md).
 
 ## Requirements
 
@@ -48,8 +48,7 @@ swift run telnetkit-echo-server
 swift run telnetkit-client 127.0.0.1 2323
 ```
 
-The client prints server data, forwards keystrokes, and enters command mode on `^]`; library use is one `await` (see [Use the library](#use-the-library)).
-The SwiftUI example is not shipped yet.
+The client prints server data, forwards keystrokes, and enters command mode on `^]`; library use is one `await` (see [Use the library](#use-the-library)). The SwiftUI demo in [`Examples/`](Examples/TelnetKitDemoApp/README.md) builds the same calls into a macOS and iOS app.
 
 ## Use the library
 
@@ -102,7 +101,7 @@ await connection.close()
 - Proxy mode is not supported: transparent forwarding between two peers is a middle-man and debug-tool use, and this library is a Telnet endpoint.
 - Telnet over TLS/SSL is out of scope: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options. Apple's own telnet and Homebrew's netkit-telnet support neither, upstream libtelnet implements neither option, and the IETF drafts never became RFCs.
 - Apple platforms only: macOS, iOS, iPadOS, watchOS, tvOS, and visionOS. Linux, Windows, and Android are out of scope, and no abstraction is kept for them.
-- The `telnetkit-client` CLI and the `telnetkit-echo-server` peer ship as macOS executables; the SwiftUI example is not provided. The library core itself builds for all five.
+- The `telnetkit-client` CLI and the `telnetkit-echo-server` peer ship as macOS executables, and the SwiftUI demo app targets macOS 15+ and iOS 18+. The library core itself builds for all five.
 - An iOS session is a foreground session: the system suspends the app in the background and the connection drops. Reconnect from the app when it returns to the foreground.
 - SSH, RLogin, and BBS file-transfer protocols are out of scope.
 

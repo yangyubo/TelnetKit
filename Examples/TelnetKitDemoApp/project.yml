@@ -1,0 +1,84 @@
+# XcodeGen source for TelnetKitDemoApp.xcodeproj.
+#
+# The generated project is committed, so opening or building the demo needs no extra tool.
+# Edit this file and re-run `xcodegen generate` in this directory to change the project
+# structure; never hand-edit the generated `.xcodeproj`.
+name: TelnetKitDemoApp
+options:
+  bundleIdPrefix: com.example.telnetkit
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  # The demo consumes the package exactly as a caller does: a local Swift package reference
+  # and the TelnetKit library product. Nothing in `Examples/` is a package target, so
+  # `swift test` never builds SwiftUI.
+  TelnetKit:
+    path: ../..
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  TelnetKitDemoApp:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: TelnetKitDemoApp
+    dependencies:
+      - package: TelnetKit
+        product: TelnetKit
+    settings:
+      base:
+        PRODUCT_NAME: TelnetKitDemoApp
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.telnetkit.TelnetKitDemoApp
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: TelnetKit Demo
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        CODE_SIGN_IDENTITY: "-"
+
+  TelnetKitDemoApp-iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: TelnetKitDemoApp
+    dependencies:
+      - package: TelnetKit
+        product: TelnetKit
+    settings:
+      base:
+        PRODUCT_NAME: TelnetKitDemoApp
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.telnetkit.TelnetKitDemoApp.ios
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: TelnetKit Demo
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_IDENTITY: "-"
+
+schemes:
+  TelnetKitDemoApp:
+    build:
+      targets:
+        TelnetKitDemoApp: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+  TelnetKitDemoApp-iOS:
+    build:
+      targets:
+        TelnetKitDemoApp-iOS: all
+    run:
+      config: Debug
+    archive:
+      config: Release

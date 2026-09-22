@@ -2,7 +2,7 @@
 
 [English](testing.md) | 中文
 
-本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.zh.md](../PRD.zh.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。库套件与 vendored C 套件已实现；SwiftUI Demo 依据[设计状态规则](../AGENTS.md#design-status)仍为**设计中**。
+本文负责"每个套件怎么跑"：环境、框架、每一层的具体命令、质量门槛与 CI 矩阵。需求编号与验收标准留在 [PRD.zh.md](../PRD.zh.md#8-测试策略与用例清单)；单个测试的设计说明留在测试源码里，依据是[层级表](AGENTS.zh.md#层级分类一个事实一个家)。库套件、vendored C 套件与 SwiftUI Demo 应用均已实现。
 
 ## 环境
 
@@ -46,6 +46,16 @@ swift run telnetkit-client 127.0.0.1 2323           # 手工：用 CLI 客户端
 套件自己绑定回环监听并在 teardown 中停掉，因此不需要有服务端在运行。
 
 命令行客户端与回显服务端是手工入口而非夹具：一个终端跑 `swift run telnetkit-echo-server`，另一个终端跑 `swift run telnetkit-client 127.0.0.1 2323`，即可完成一次交互；服务端会把收到的每个窗口尺寸打印为 `NAWS <columns>x<rows>`。两者都不能替代套件；回显服务端既不链接 `TelnetKit` 也不链接 libtelnet，因此两个对端不会共享同一个解析缺陷。
+
+SwiftUI Demo 是第三个手工入口，它不是包内 target，因此从 `Examples/` 下自己的工程构建：
+
+```sh
+cd Examples/TelnetKitDemoApp
+xcodebuild build -scheme TelnetKitDemoApp -destination 'generic/platform=macOS'
+xcodebuild build -scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+它的交互检查就是 [PRD.zh.md](../PRD.zh.md#9-demo-项目需求) 中的手工验收步骤；运行方式见 [`Examples/TelnetKitDemoApp/README.zh.md`](../Examples/TelnetKitDemoApp/README.zh.md)。
 
 模拟器的构建与运行走 `xcodebuild`，因为 SwiftPM 的测试包在这些平台上需要一个宿主应用。
 

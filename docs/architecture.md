@@ -2,7 +2,7 @@
 
 English | [中文](architecture.zh.md)
 
-Read this before changing anything under `Sources/`. It is the design contract: the library layers and the demo executables are implemented, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status). Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
+Read this before changing anything under `Sources/`. It is the design contract: the library layers and the demo programs are implemented, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status). Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
 
 ## Composition
 
@@ -150,4 +150,4 @@ Tests mirror the layers, and each layer is reachable without the one above it.
 
 The protocol suite is the correctness gate for RFC behavior; the public API suite is the contract gate, and it touches every public symbol listed in [public-api.md](public-api.md#symbol-checklist). The integration suite owns timing: a test that depends on a timeout uses a short configured bound and a generous assertion bound, never a fixed sleep.
 
-Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo executables are the manual path, not a substitute for any suite.
+Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo programs are the manual path, not a substitute for any suite.

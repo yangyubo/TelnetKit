@@ -8,7 +8,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 ## Design status
 
-The `TelnetKit` library exists and is tested, and both demo executables are written; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
+The `TelnetKit` library exists and is tested, and all three demos are written; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
 
 - **Verified.** Reproduced on this machine: `swift test` passes 115 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2), `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, and the DocC build reports 0 target diagnostics.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
@@ -29,7 +29,7 @@ Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event
 Sources/TelnetKitClient/       the telnetkit-client CLI
 Sources/TelnetEchoServer/      macOS-only demo echo server
 Tests/CLibTelnetTests/         the vendored libtelnet suite; Tests/TelnetKitTests/ holds the Swift suites
-Examples/TelnetKitDemoApp/     SwiftUI demo application (designed, not written)
+Examples/TelnetKitDemoApp/     SwiftUI demo application (macOS and iOS targets)
 docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
 ```
