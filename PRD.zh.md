@@ -305,7 +305,7 @@ public struct TelnetOptions: Sendable {
     public var local: [LocalOption]
     public var remote: [RemoteOption]
 
-    /// 常用预设：本端提供 BINARY + SGA，向对端索取 SGA + ECHO
+    /// 常用预设：本端提供 BINARY + SGA + TTYPE，向对端索取 SGA + ECHO
     public static var standardClient: TelnetOptions { get }
     /// 服务端向客户端主动请求 TTYPE / NAWS / NEW-ENVIRON
     public static func serverRequesting(_ options: [TelnetOption]) -> TelnetOptions

@@ -61,10 +61,10 @@ struct PublicValueTypeTests {
         #expect(Set(TelnetNegotiation.allCases) == [.will, .wont, .do, .dont])
     }
 
-    @Test("standardClient offers BINARY and SGA locally and requests SGA and ECHO")
+    @Test("standardClient offers BINARY, SGA, and TERMINAL-TYPE and requests SGA and ECHO")
     func standardClient() {
         let options = TelnetOptions.standardClient
-        #expect(options.local.map(\.option) == [.binary, .suppressGoAhead])
+        #expect(options.local.map(\.option) == [.binary, .suppressGoAhead, .terminalType])
         #expect(options.local.allSatisfy { $0.enabledByDefault })
         #expect(options.remote.map(\.option) == [.suppressGoAhead, .echo])
         #expect(options.remote.allSatisfy { $0.requestOnConnect })
