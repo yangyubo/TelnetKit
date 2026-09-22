@@ -56,16 +56,20 @@ public struct TelnetOptions: Sendable {
         return true
     }
 
-    /// BINARY, SGA, and ECHO offered locally, with SGA requested remotely.
+    /// BINARY and SGA offered locally, with SGA and ECHO requested remotely.
+    ///
+    /// This is the `telnet(1)` client role: the local end asks the peer to echo and does
+    /// not echo itself, so a peer that answers `will echo` takes over the display of typed
+    /// input, and the local end echoes only when the peer declines.
     public static var standardClient: TelnetOptions {
         TelnetOptions(
             local: [
                 LocalOption(.binary),
                 LocalOption(.suppressGoAhead),
-                LocalOption(.echo),
             ],
             remote: [
                 RemoteOption(.suppressGoAhead),
+                RemoteOption(.echo),
             ]
         )
     }

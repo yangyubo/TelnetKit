@@ -16,6 +16,11 @@ All notable changes to TelnetKit are recorded here. The format follows [Keep a C
 - Suites: a white-box protocol suite, a black-box public API suite over a loopback fixture, and integration coverage for concurrency, timeouts, cancellation, idle close, and path mapping.
 - The `telnetkit-client` CLI: a complete interactive Telnet client that accepts the `telnet(1)` flags, forwards keystrokes, and enters command mode on the escape character.
 
+### Changed
+
+- `TelnetOptions.standardClient` requests ECHO from the peer and no longer offers it locally, matching `telnet(1)`.
+- `.localEchoChanged(enabled:)` reports whether the local end should echo, as its contract states, rather than the peer's echo state.
+
 ### Known limitations
 
 - The `TelnetEchoServer` fixture and the SwiftUI example are not shipped yet.

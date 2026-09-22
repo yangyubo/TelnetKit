@@ -144,7 +144,7 @@ public struct TelnetOptions: Sendable {
 
 `isValid` is false for a combination the protocol rejects, currently `binary` together with `lineMode` in `local`. `connect` throws `.invalidConfiguration` rather than negotiating an invalid set.
 
-`standardClient` is `binary`, `suppressGoAhead`, and `echo` offered locally, and `suppressGoAhead` requested remotely. `serverRequesting(_:)` builds the peer set a server-side caller needs.
+`standardClient` is `binary` and `suppressGoAhead` offered locally, and `suppressGoAhead` and `echo` requested remotely. `serverRequesting(_:)` builds the peer set a server-side caller needs.
 
 ## Events
 

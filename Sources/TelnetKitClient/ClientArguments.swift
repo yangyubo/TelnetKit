@@ -240,13 +240,6 @@ struct ClientArguments {
                 options.remote.append(.init(.binary))
             }
         }
-        // A client asks the peer to echo and does not offer to echo itself: `telnet(1)`
-        // sends DO ECHO, so a telnetd keeps echoing. Offering WILL ECHO makes the peer
-        // delegate echo to this end, which then has nothing to display.
-        options.local.removeAll { $0.option == .echo }
-        if !options.remote.contains(where: { $0.option == .echo }) {
-            options.remote.append(.init(.echo))
-        }
         return options
     }
 }

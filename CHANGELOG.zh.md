@@ -16,6 +16,11 @@ TelnetKit 的所有重要变更都记录在此。格式遵循 [Keep a Changelog]
 - 测试套件：白盒协议套件、基于回环夹具的黑盒公开接口套件，以及并发、超时、取消、空闲关闭与路径映射的集成覆盖。
 - `telnetkit-client` 命令行客户端：完整交互式 Telnet 客户端，接受 `telnet(1)` 参数、转发按键，并在转义字符上进入命令模式。
 
+### 变更
+
+- `TelnetOptions.standardClient` 改为向对端索取 ECHO、不再本端提供 ECHO，与 `telnet(1)` 一致。
+- `.localEchoChanged(enabled:)` 报告本端是否应回显（与其契约一致），而非对端的回显状态。
+
 ### 已知限制
 
 - `TelnetEchoServer` 夹具与 SwiftUI 示例尚未交付。
