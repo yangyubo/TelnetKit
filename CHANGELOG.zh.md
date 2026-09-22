@@ -6,6 +6,10 @@ TelnetKit 的所有重要变更都记录在此。格式遵循 [Keep a Changelog]
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-22
+
+首个公开发布版本。`Package.resolved` 已提交在本 tag 上，固定 swift-nio 2.103.0、swift-nio-transport-services 1.28.0、swift-log 1.15.1、swift-atomics 1.3.1、swift-collections 1.6.0 与 swift-system 1.8.1。
+
 ### 新增
 
 - `TelnetKit` 库：经 NIOTS 走 Network.framework 的异步 `TelnetConnection`，协议状态机由内部 `CLibTelnet` target 背后的 pin 住 libtelnet 子模块承担。

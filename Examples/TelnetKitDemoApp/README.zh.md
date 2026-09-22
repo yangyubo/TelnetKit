@@ -35,6 +35,14 @@ swift run telnetkit-echo-server
 
 `swift run telnetkit-echo-server --inject all` 会让对端在协商之后发送畸形交换，**Events** 标签页因此也能显示 `.warning` 与 `.protocolError` 行。
 
+## 截图
+
+macOS 截图是与 `telnetkit-echo-server` 的回环实况会话：NAWS `97x21`，选项表由 `optionStatus(_:)` 填充，Events 有 12 条事件。iOS 截图是同一应用在模拟器中刚启动的状态。
+
+![macOS 上处于回环实况会话的 TelnetKitDemoApp](../../docs/images/demo-macos.png)
+
+![iOS 模拟器中刚启动的 TelnetKitDemoApp](../../docs/images/demo-ios.png)
+
 ## 工程文件
 
 `TelnetKitDemoApp.xcodeproj` 由 `project.yml` 生成并已提交，因此打开或构建应用都不需要额外工具。要改变结构，请修改 `project.yml` 并在本目录重新生成：

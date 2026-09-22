@@ -6,6 +6,10 @@ All notable changes to TelnetKit are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-22
+
+First public release. `Package.resolved` is committed at this tag and pins swift-nio 2.103.0, swift-nio-transport-services 1.28.0, swift-log 1.15.1, swift-atomics 1.3.1, swift-collections 1.6.0, and swift-system 1.8.1.
+
 ### Added
 
 - The `TelnetKit` library: an async `TelnetConnection` over Network.framework through NIOTS, with a pinned libtelnet submodule behind the internal `CLibTelnet` target.

@@ -35,6 +35,14 @@ Both targets share the sources under `TelnetKitDemoApp/`. The iOS simulator reac
 
 `swift run telnetkit-echo-server --inject all` makes the peer send its malformed exchanges after negotiation, so the **Events** tab can also show `.warning` and `.protocolError` rows.
 
+## Screenshots
+
+The macOS capture is a live loopback session against `telnetkit-echo-server`: NAWS `97x21`, the option table filled from `optionStatus(_:)`, and 12 events. The iOS capture is the same app at launch in the simulator.
+
+![TelnetKitDemoApp in a live loopback session on macOS](../../docs/images/demo-macos.png)
+
+![TelnetKitDemoApp at launch in the iOS simulator](../../docs/images/demo-ios.png)
+
 ## The project file
 
 `TelnetKitDemoApp.xcodeproj` is generated from `project.yml` and committed, so opening or building the app needs no extra tool. Change the structure in `project.yml` and regenerate in this directory:

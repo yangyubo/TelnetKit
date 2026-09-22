@@ -707,9 +707,9 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
 | M5 Demo | `telnetkit-client`、`telnetkit-echo-server` 与 `Examples/TelnetKitDemoApp/` 下的 SwiftUI Demo 应用 | §9.3 四条标准全部成立：客户端能连上回显服务端，对真实 telnetd 的会话进入 shell，缩放窗口时服务端日志打印 `NAWS 105x32`，库在 iOS 18 模拟器上 115 个测试全绿且 App 在 iOS 模拟器里跑通回环服务端，App 覆盖全部公开接口且有配套 README 片段 | 已交付 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**）；协议层与公开接口测试在 macOS 与 iOS 全绿（**已验证：115 个测试在 `swift test` 下通过，并在 iPhone 17 模拟器上经 `xcodebuild test` 再次全部通过**），其余平台构建通过 | 已交付 |
-| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
+| M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved`（**已验证：[CHANGELOG.zh.md](CHANGELOG.zh.md) 载有 v0.1.0 发布说明，`Package.resolved` 已纳入版本控制并在其中记录 pin，两张 Demo 截图已提交到 `docs/images/`，带注释的 `v0.1.0` tag 已在本地存在；出口标准所说的 push 属于人工发布动作**） | 部分完成 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 满足其出口标准：五平台构建成功，115 个测试在 macOS 与 iPhone 17 模拟器上全绿，CI workflow 已带上四模拟器矩阵，其余平台构建通过；真实蜂窝↔Wi‑Fi 切换仍是 [docs/testing.zh.md](docs/testing.zh.md#手工验收) 中的纯设备步骤；M5 的 §9.3 四条标准全部成立。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 满足其出口标准：五平台构建成功，115 个测试在 macOS 与 iPhone 17 模拟器上全绿，CI workflow 已带上四模拟器矩阵，其余平台构建通过；真实蜂窝↔Wi‑Fi 切换仍是 [docs/testing.zh.md](docs/testing.zh.md#手工验收) 中的纯设备步骤；M5 的 §9.3 四条标准全部成立。M7 已备好但尚未发布：v0.1.0 发布说明、归档的 `Package.resolved` pin 与两张 Demo 截图均已提交，带注释的 `v0.1.0` tag 已在本地存在，而出口标准要求的 `git push origin main --follow-tags` 保留给人工执行，因此 M7 仍为部分完成。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 
