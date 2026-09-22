@@ -53,24 +53,35 @@ jobs:
       - run: swift test --sanitize=address
 
   platform-matrix:
-    name: Library build (${{ matrix.platform }})
+    name: Platform matrix (${{ matrix.platform }})
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         include:
+          # iOS runs the full suite. The other three platforms provide no loopback
+          # listener, so they run the two network-free suites: the vendored C suite and
+          # the protocol suite (docs/testing.md).
           - platform: iOS
             sdk: iphonesimulator
             triple: arm64-apple-ios18.0-simulator
+            destination: platform=iOS Simulator,name=iPhone 17
+            suites: ""
           - platform: watchOS
             sdk: watchsimulator
             triple: arm64-apple-watchos11.0-simulator
+            destination: platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)
+            suites: "-only-testing:CLibTelnetTests -only-testing:TelnetKitTests/TelnetProtocolCoreTests -only-testing:TelnetKitTests/TelnetWireCodingTests -only-testing:TelnetKitTests/TelnetTruncationTrackerTests"
           - platform: tvOS
             sdk: appletvsimulator
             triple: arm64-apple-tvos18.0-simulator
+            destination: platform=tvOS Simulator,name=Apple TV 4K (3rd generation)
+            suites: "-only-testing:CLibTelnetTests -only-testing:TelnetKitTests/TelnetProtocolCoreTests -only-testing:TelnetKitTests/TelnetWireCodingTests -only-testing:TelnetKitTests/TelnetTruncationTrackerTests"
           - platform: visionOS
             sdk: xrsimulator
             triple: arm64-apple-xros2.0-simulator
+            destination: platform=visionOS Simulator,name=Apple Vision Pro
+            suites: "-only-testing:CLibTelnetTests -only-testing:TelnetKitTests/TelnetProtocolCoreTests -only-testing:TelnetKitTests/TelnetWireCodingTests -only-testing:TelnetKitTests/TelnetTruncationTrackerTests"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,6 +91,17 @@ jobs:
           swift build --target TelnetKit \
             --sdk "$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)" \
             --triple ${{ matrix.triple }}
+      - name: Install the ${{ matrix.platform }} simulator runtime
+        if: matrix.platform != 'iOS'
+        run: xcodebuild -downloadPlatform ${{ matrix.platform }}
+      - name: List the installed simulators
+        run: xcrun simctl list devices available
+      - name: Run the ${{ matrix.platform }} simulator suites
+        run: |
+          xcodebuild test -scheme TelnetKit \
+            -destination '${{ matrix.destination }}' \
+            -derivedDataPath .build/xcode-${{ matrix.platform }} \
+            CODE_SIGNING_ALLOWED=NO ${{ matrix.suites }}
 
   coverage:
     name: Code coverage

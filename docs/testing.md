@@ -12,7 +12,7 @@ Facts verified on the development machine (Xcode 27.0, `swift-driver` 1.168.6, A
 |---|---|---|
 | Framework | `Testing.framework` ships in the Xcode SDK beside `XCTest.framework` | Swift Testing needs no package dependency and no `swift-testing` checkout |
 | SwiftPM | `swift test` supports `--enable-code-coverage`, `--sanitize`, `--filter`, `--skip`, `--parallel/--no-parallel`, `--list-tests`, `--xunit-output` | Coverage, sanitizers, and per-suite selection run without `xcodebuild` |
-| Simulator runtimes | This machine has **only the iOS 26.5 runtime** installed; watchOS, tvOS, and visionOS need a one-time runtime download from Xcode | A device name in a command only works where its runtime is installed, so CI installs the runtimes it names |
+| Simulator runtimes | This machine has **only the iOS 27.0 runtime** installed; watchOS, tvOS, and visionOS need a one-time runtime download from Xcode | A device name in a command only works where its runtime is installed, so CI installs the runtimes it names |
 | Device names | `xcrun simctl list devices available` | Device names change per runtime; the plan names the family, and each command reads the installed list |
 
 Toolchain floor: Xcode 26 or newer with Swift 6.2 or newer. The deployment floors under test are macOS 15, iOS 18, watchOS 11, tvOS 18, and visionOS 2 (PRD §7).
@@ -62,12 +62,17 @@ Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM 
 ```sh
 xcrun simctl list devices available                # read the installed names first
 xcodebuild -list                                   # SwiftPM names the sole scheme TelnetKit
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
-                 -only-testing:CLibTelnetTests
+xcodebuild test -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'   # the full suite
+xcodebuild test -scheme TelnetKit -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)' \
+                 -only-testing:CLibTelnetTests -only-testing:TelnetKitTests/TelnetProtocolCoreTests \
+                 -only-testing:TelnetKitTests/TelnetWireCodingTests -only-testing:TelnetKitTests/TelnetTruncationTrackerTests
 ```
 
+tvOS and visionOS take the same `-only-testing` list with their own destination, `platform=tvOS Simulator,name=Apple TV 4K (3rd generation)` and `platform=visionOS Simulator,name=Apple Vision Pro`. iOS runs every suite; the three loopback-free platforms run the vendored C suite and the protocol suite, which are the suites they can host.
+
 `xcodebuild` exposes exactly one scheme for this package, named `TelnetKit`, so every command reads it from `xcodebuild -list` instead of assuming a name.
+
+A simulator's first cold run can outlast the public-API suite's 2 s event bound while the runtime initializes: one cold full run recorded an `EventDeliveryTests` failure in a 615 s session that also logged `Failure collecting diagnostics from simulator: Timed out after 600.0 seconds`, and the warm rerun passed all 115 tests. Re-run before reporting a simulator failure as a defect.
 
 ## Coverage, sanitizers, and concurrency
 
@@ -91,7 +96,7 @@ Path events and connectivity waiting are the hardest part of the plan, because a
 |---|---|---|
 | `.pathChanged`, `.betterPathAvailable`, `.betterPathUnavailable`, `.viabilityChanged`, `.waitingForConnectivity` | Inject `NIOTSNetworkEvents` into the pipeline and assert the mapped `TelnetEvent` and the untouched option ledger | Protocol and integration suites |
 | `waitForConnectivity` parks a connect attempt with no route (FR-PATH-01) | `NIOTSChannelOptions.waitForActivity` against an unroutable address, asserting the call has not thrown or returned within a bound, then released | macOS integration suite |
-| A real cellular-to-Wi-Fi switch and a real suspend/resume | Manual run on a device or simulator, recorded in the M6 checklist | M6 manual verification |
+| A real cellular-to-Wi-Fi switch and a real suspend/resume | Manual run on a device or simulator, recorded under [Manual verification](#manual-verification) | M6 manual verification |
 | Timeout and cancellation | A short configured bound plus a generous assertion bound; never a fixed sleep | All suites |
 
 ## Quality gates
@@ -115,16 +120,18 @@ A change passes when all of the following hold, and the run reports the observed
 | `macos-suite` | macOS 15 or newer | `swift test` plus `--enable-code-coverage` | Gates 1, 4, 5 |
 | `sanitizers` | macOS | `swift test --sanitize=address`, `swift test --sanitize=thread` | Gate 6 |
 | `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | Gate 7 |
-| `platform-matrix` | macOS with all four runtimes | `xcodebuild build` and `xcodebuild test` per platform | Gates 2, 3 |
+| `platform-matrix` | macOS with all four runtimes | Per platform: `swift build --target TelnetKit --triple`, then `xcodebuild test` — the full suite on iOS and the two network-free suites on watchOS, tvOS, and visionOS | Gates 2, 3 |
 | `api-surface` | macOS | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | Gate 4, for the interface snapshot |
 | `documentation` | macOS | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | Gate 4, for the DocC build |
 
-The matrix job downloads the watchOS, tvOS, and visionOS runtimes once, caches them, and only runs the protocol suite on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.zh.md#11-风险与对策), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
+The matrix job downloads the watchOS, tvOS, and visionOS runtimes and runs only the network-free suites on those platforms. Runtime download size is the cost driver behind the [R11 risk](../PRD.md#11-risks-and-mitigations), so the matrix runs on pull requests that touch `Sources/` and on the default branch, not on every push.
 
 ## Manual verification
 
-Three things cannot be automated on a hosted runner and are recorded as evidence in the milestone checklist:
+Three things cannot be automated on a hosted runner and are recorded as evidence here:
 
 1. A public Telnet service over the internet answers a login prompt, which is the only check that leaves the local network. Recorded: the SwiftUI demo answered a real telnetd, reached its password prompt, and carried the session into a shell.
 2. The SwiftUI demo app in the iOS simulator reaches `swift run telnetkit-echo-server` over loopback, the iOS clause of PRD §9.3 criterion 2. Recorded: the `TelnetKitDemoApp-iOS` scheme ran in the simulator and connected over loopback.
 3. A cellular-to-Wi-Fi switch on a device, and background suspension on iOS or watchOS, show `.pathChanged` and the documented disconnect behavior.
+
+M6 records the automatable part of item 3: the injected path-event suite is green in the macOS and iOS runs, and the background policy is the demo's disconnect on `scenePhase == .background`, since the library starts no background daemon. The real cellular-to-Wi-Fi switch is device-only and is not reproduced here; M6's exit criterion is the five-platform build plus the green macOS and iOS suites, which this machine reproduced.

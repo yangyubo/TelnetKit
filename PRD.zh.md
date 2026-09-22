@@ -554,9 +554,9 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | L2 公开接口测试（黑盒） | 契约稳定性、无 C 泄漏、错误语义 | 只 `import TelnetKit`，配合测试 target 内的回环夹具 |
 | L3 集成测试 | 真实连接、超时、取消、并发多连接、路径事件 | `NIOTSConnectionBootstrap` 连本地 `NIOTSListenerBootstrap` 夹具 |
 | L4 健壮性 | 模糊输入、资源上限 | 随机/恶意字节流、超大 SB、洪泛 |
-| L5 静态保障 | 接口、并发与五平台构建 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job、iOS/watchOS/tvOS/visionOS 模拟器构建 |
+| L5 静态保障 | 接口、并发与五平台构建 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job、iOS/watchOS/tvOS/visionOS 模拟器构建与测试矩阵 |
 
-框架统一使用 **Swift Testing**（`import Testing`，`@Test`/`@Suite`/`#expect`/`#require`），异步用 `async` 测试函数；需要超时保护的用 `withTimeout` 辅助（测试内自建）。协议层与公开接口测试在五个平台都能跑；集成测试（会落 socket/回显服务端）只在 macOS 与 iOS 模拟器上跑。
+框架统一使用 **Swift Testing**（`import Testing`，`@Test`/`@Suite`/`#expect`/`#require`），异步用 `async` 测试函数；需要超时保护的用 `withTimeout` 辅助（测试内自建）。协议套件在五个平台都能跑；公开接口与集成套件要绑定回环监听，只在 macOS 与 iOS 模拟器上跑。
 
 ### 8.2 用例清单（公开接口必测）
 
@@ -706,10 +706,10 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
 | M5 Demo | `telnetkit-client`、`telnetkit-echo-server` 与 `Examples/TelnetKitDemoApp/` 下的 SwiftUI Demo 应用 | §9.3 四条标准全部成立：客户端能连上回显服务端，对真实 telnetd 的会话进入 shell，缩放窗口时服务端日志打印 `NAWS 105x32`，库在 iOS 18 模拟器上 115 个测试全绿且 App 在 iOS 模拟器里跑通回环服务端，App 覆盖全部公开接口且有配套 README 片段 | 已交付 |
-| M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
+| M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功（**已验证：`swift build --target TelnetKit --triple` 在 macOS 15、iOS 18、watchOS 11、tvOS 18 与 visionOS 2 下限下均成功**）；协议层与公开接口测试在 macOS 与 iOS 全绿（**已验证：115 个测试在 `swift test` 下通过，并在 iPhone 17 模拟器上经 `xcodebuild test` 再次全部通过**），其余平台构建通过 | 已交付 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建，macOS 与 iOS 套件在本地全绿，尚缺 CI 矩阵与设备上的路径事件、后台挂起复核；M5 的 §9.3 四条标准全部成立。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 满足其出口标准：五平台构建成功，115 个测试在 macOS 与 iPhone 17 模拟器上全绿，CI workflow 已带上四模拟器矩阵，其余平台构建通过；真实蜂窝↔Wi‑Fi 切换仍是 [docs/testing.zh.md](docs/testing.zh.md#手工验收) 中的纯设备步骤；M5 的 §9.3 四条标准全部成立。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 
@@ -729,7 +729,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | R8 | `AsyncStream` 事件缓冲策略不当导致内存暴涨或事件丢失 | 中 | 默认 `.bounded`，丢弃/终止策略可配且**丢弃时发出 `.warning`**；补大流量压测 |
 | R9 | 公开 API 与 swift-nio 类型（如 `ByteBuffer`）耦合，未来升级受限 | 低 | `TelnetEvent.data` 采用 `ByteBuffer` 作为二进制载体（与 NIO 生态一致）；同时提供 `text`/`bytes([UInt8])` 便捷访问，避免调用方必须理解 NIO |
 | R10 | 应用后台挂起会断开连接（watchOS 与 iOS 最明显），App Store 审核关注明文协议 | 中 | 文档写明「前台会话」语义与后台断开行为，不引入后台常驻能力；提供 `idleTimeout` 与应用层重连示例；`waitForConnectivity` 让恢复时的重连不必手写重试循环；README 安全章节标注明文风险 |
-| R11 | 五平台 CI 成本与模拟器资源占用 | 中 | iOS 跑完整测试；watchOS/tvOS/visionOS 只跑构建 + 协议层与公开接口测试；集成测试固定在 macOS job |
+| R11 | 五平台 CI 成本与模拟器资源占用 | 中 | iOS 跑完整测试；watchOS/tvOS/visionOS 只跑构建加不碰网络的套件（vendored C 套件与协议套件）；公开接口与集成套件固定在 macOS 与 iOS 模拟器 |
 | R12 | NIOTS 只能在有 Network.framework 的运行时验证：CI 的本机 `swift test` 无法覆盖真实路径事件 | 中 | 集成测试用 `NIOTSListenerBootstrap` 起本地夹具；路径事件用注入的 `NIOTSNetworkEvents` 在协议层单测；真机/模拟器的蜂窝↔Wi‑Fi 切换列入 M6 手工验收 |
 | R13 | 单一传输层没有退路：若 Network.framework 在某平台行为异常（例如 watchOS 的连接可用性），没有备选路径 | 中 | 只在五个 Apple 平台承诺且以官方支持的组合为前提；发现平台级缺陷时按平台文档化限制，不临时引入 POSIX 分支（那会推翻 G6） |
 

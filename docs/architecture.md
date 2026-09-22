@@ -41,7 +41,7 @@ The decision record:
 | No TLS | Telnet over TLS/SSL is unsupported: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options | The standard was abandoned, devices that offer it are rare, neither Apple's nor Homebrew's telnet implements it, upstream libtelnet implements neither option, and confidentiality belongs to a VPN or a bastion host rather than to this library |
 | Executables | macOS only | Both need a process, a terminal, and a loopback listener, which watchOS, tvOS, and visionOS do not provide; `TelnetEchoServer` links neither `TelnetKit` nor `CLibTelnet`, so it cannot share a parser defect with the library |
 
-Test placement follows the same split: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs on macOS and the iOS simulator.
+Test placement follows the same split; [Test architecture](#test-architecture) owns the suite-by-suite platform matrix.
 
 ## Concurrency model
 
@@ -150,4 +150,4 @@ Tests mirror the layers, and each layer is reachable without the one above it.
 
 The protocol suite is the correctness gate for RFC behavior; the public API suite is the contract gate, and it touches every public symbol listed in [public-api.md](public-api.md#symbol-checklist). The integration suite owns timing: a test that depends on a timeout uses a short configured bound and a generous assertion bound, never a fixed sleep.
 
-Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo programs are the manual path, not a substitute for any suite.
+Platform placement: the protocol suite runs on all five platforms, while the public interface and integration suites, which bind a loopback listener, run only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo programs are the manual path, not a substitute for any suite.

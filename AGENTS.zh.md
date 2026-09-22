@@ -10,7 +10,7 @@ TelnetKit 是一个仅面向 Apple 平台的 Swift Package，为 Swift 调用方
 
 `TelnetKit` 库已经存在并通过测试，三个演示程序均已编写；[PRD.md](PRD.md) 是需求来源，上述文档是它的设计契约。本仓库中的陈述分为三类，正文必须标明属于哪一类：
 
-- **已验证。** 在本机实际复现过：`swift test` 通过 115 个测试；`-strict-concurrency=complete` 无警告；`swift test --sanitize=address` 通过；`TelnetKit` 在五个平台下限均可构建；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节；协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；`TelnetKitDemoApp` 可构建 macOS 与 iOS 两个目标并对真实 telnetd 跑通会话。
+- **已验证。** 在本机实际复现过：115 个测试在 macOS 与 iOS 上全绿；`-strict-concurrency=complete` 无警告；`swift test --sanitize=address` 通过；`TelnetKit` 在五个平台下限均可构建；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节；协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；`TelnetKitDemoApp` 可构建 macOS 与 iOS 两个目标并对真实 telnetd 跑通会话。
 - **上游事实。** 读自被 pin 的依赖而非我们的代码：例如 libtelnet 0.23 不导出任何选项状态查询函数。
 - **设计中。** 尚未编写的代码的计划行为。设计中的陈述必须写成需求，绝不能写成对既有行为的描述；行为落地后删除该标记。
 

@@ -10,7 +10,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 The `TelnetKit` library exists and is tested, and all three demos are written; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
 
-- **Verified.** Reproduced on this machine: `swift test` passes 115 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors, `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, the DocC build reports 0 target diagnostics, and `TelnetKitDemoApp` builds for macOS and iOS and runs against a real telnetd.
+- **Verified.** Reproduced on this machine: the 115-test suite is green on macOS and iOS, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors, `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, the DocC build reports 0 target diagnostics, and `TelnetKitDemoApp` builds for macOS and iOS and runs against a real telnetd.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
 - **Designed.** Planned behavior of code that is not written. Mark designed statements as requirements, never as descriptions of existing behavior, and delete the marker when the behavior ships.
 

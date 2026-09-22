@@ -41,7 +41,7 @@ CLibTelnet (C target)                       libtelnet 子模块 0.23, parsing on
 | 不做 TLS | 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项 | 该标准已废弃、提供它的设备极少，Apple 与 Homebrew 的 telnet 都不实现，上游 libtelnet 两个选项都未实现；保密应交给 VPN 或跳板机，而不是本库 |
 | 可执行产物 | 仅 macOS | 两者都需要进程、终端与回环监听，watchOS、tvOS、visionOS 不提供这些语义；`TelnetEchoServer` 既不链接 `TelnetKit` 也不链接 `CLibTelnet`，因此不会与它所检验的库共享同一个解析缺陷 |
 
-测试归属按同样口径拆分：协议层与公开接口套件在五个平台都跑；会绑定回环监听的集成套件只在 macOS 与 iOS 模拟器上跑。
+测试归属按同样口径拆分；逐套件的平台矩阵由[测试架构](#测试架构)负责。
 
 ## 并发模型
 
@@ -150,4 +150,4 @@ Network.framework 的错误集合（`NWError`）在 `TelnetNetworkEventMapping` 
 
 协议套件是 RFC 行为的正确性关卡；公开 API 套件是契约关卡，它覆盖 [public-api.md](public-api.md#symbol-checklist) 中列出的每一个公开符号。集成套件负责时序：依赖超时的测试使用较短的配置上限与宽松的断言上限，绝不使用固定 sleep。
 
-平台归属：协议层与公开接口套件在五个平台都跑；绑定回环监听的集成套件只在 macOS 与 iOS 模拟器上跑，因为 watchOS、tvOS 与 visionOS 没有进程与回环服务端语义。演示程序是手工路径，不能替代任何套件。
+平台归属：协议套件在五个平台都跑；绑定回环监听的公开接口与集成套件只在 macOS 与 iOS 模拟器上跑，因为 watchOS、tvOS 与 visionOS 没有进程与回环服务端语义。演示程序是手工路径，不能替代任何套件。

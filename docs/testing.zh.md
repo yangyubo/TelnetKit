@@ -12,7 +12,7 @@
 |---|---|---|
 | 框架 | `Testing.framework` 与 `XCTest.framework` 同随 Xcode SDK 提供 | Swift Testing 不需要任何包依赖，也不需要检出 `swift-testing` |
 | SwiftPM | `swift test` 支持 `--enable-code-coverage`、`--sanitize`、`--filter`、`--skip`、`--parallel/--no-parallel`、`--list-tests`、`--xunit-output` | 覆盖率、消毒器与按套件选择都无需 `xcodebuild` |
-| 模拟器运行时 | 本机**只装了 iOS 26.5 运行时**；watchOS、tvOS、visionOS 需要在 Xcode 里一次性下载 | 命令里的设备名只在该运行时已安装的机器上有效，因此 CI 会先安装它要用的运行时 |
+| 模拟器运行时 | 本机**只装了 iOS 27.0 运行时**；watchOS、tvOS、visionOS 需要在 Xcode 里一次性下载 | 命令里的设备名只在该运行时已安装的机器上有效，因此 CI 会先安装它要用的运行时 |
 | 设备名 | `xcrun simctl list devices available` | 设备名随运行时变化；本方案只写设备族，每条命令先读已安装列表 |
 
 工具链下限：Xcode 26 或更新，Swift 6.2 或更新。被测部署下限是 macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2（PRD §7）。
@@ -62,12 +62,17 @@ xcodebuild build -scheme TelnetKitDemoApp-iOS -destination 'platform=iOS Simulat
 ```sh
 xcrun simctl list devices available                # 先读已安装的设备名
 xcodebuild -list                                   # SwiftPM 把唯一的 scheme 命名为 TelnetKit
-xcodebuild build -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'
-xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17' \
-                 -only-testing:CLibTelnetTests
+xcodebuild test -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPhone 17'   # 全部套件
+xcodebuild test -scheme TelnetKit -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)' \
+                 -only-testing:CLibTelnetTests -only-testing:TelnetKitTests/TelnetProtocolCoreTests \
+                 -only-testing:TelnetKitTests/TelnetWireCodingTests -only-testing:TelnetKitTests/TelnetTruncationTrackerTests
 ```
 
+tvOS 与 visionOS 用同一份 `-only-testing` 列表，只换各自的 destination：`platform=tvOS Simulator,name=Apple TV 4K (3rd generation)` 与 `platform=visionOS Simulator,name=Apple Vision Pro`。iOS 跑全部套件；三个无回环能力的平台跑 vendored C 套件与协议套件，也就是它们能承载的套件。
+
 本包在 `xcodebuild` 下只暴露一个 scheme，名字是 `TelnetKit`，因此每条命令都用 `xcodebuild -list` 读出它，而不是假定一个名字。
+
+模拟器首次冷启动时，运行时初始化可能超过公开接口套件 2 s 的事件等待上限：一次冷启动全量运行在 615 s 的会话中记录了 1 个 `EventDeliveryTests` 失败，同时还打印了 `Failure collecting diagnostics from simulator: Timed out after 600.0 seconds`，而热重跑 115 个测试全绿。因此模拟器上的失败在判为缺陷前先重跑一次。
 
 ## 覆盖率、消毒器与并发检查
 
@@ -91,7 +96,7 @@ xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPh
 |---|---|---|
 | `.pathChanged`、`.betterPathAvailable`、`.betterPathUnavailable`、`.viabilityChanged`、`.waitingForConnectivity` | 向管线注入 `NIOTSNetworkEvents`，断言映射出的 `TelnetEvent` 与被保持不变的选项账本 | 协议套件与集成套件 |
 | `waitForConnectivity` 在无路由时挂起连接尝试（FR-PATH-01） | 用 `NIOTSChannelOptions.waitForActivity` 连接不可路由地址，断言调用在限时内既未抛错也未返回，随后释放 | macOS 集成套件 |
-| 真实蜂窝↔Wi‑Fi 切换与真实挂起/恢复 | 在设备或模拟器上手工执行，记录进 M6 清单 | M6 手工验收 |
+| 真实蜂窝↔Wi‑Fi 切换与真实挂起/恢复 | 在设备或模拟器上手工执行，记录在[手工验收](#手工验收) | M6 手工验收 |
 | 超时与取消 | 短的配置上限加宽松的断言上限；绝不使用固定 sleep | 全部套件 |
 
 ## 质量门槛
@@ -115,16 +120,18 @@ xcodebuild test  -scheme TelnetKit -destination 'platform=iOS Simulator,name=iPh
 | `macos-suite` | macOS 15 或更新 | `swift test` 加 `--enable-code-coverage` | 门槛 1、4、5 |
 | `sanitizers` | macOS | `swift test --sanitize=address`、`swift test --sanitize=thread` | 门槛 6 |
 | `strict-concurrency` | macOS | `swift build -Xswiftc -strict-concurrency=complete` | 门槛 7 |
-| `platform-matrix` | 装有全部四个运行时的 macOS | 逐平台执行 `xcodebuild build` 与 `xcodebuild test` | 门槛 2、3 |
+| `platform-matrix` | 装有全部四个运行时的 macOS | 逐平台先 `swift build --target TelnetKit --triple`，再 `xcodebuild test`——iOS 跑全部套件，watchOS、tvOS、visionOS 跑两个不碰网络的套件 | 门槛 2、3 |
 | `api-surface` | macOS | `swift package diagnose-api-breaking-changes api-baseline-0.1.0 --products TelnetKit` | 门槛 4 的接口快照部分 |
 | `documentation` | macOS | `xcodebuild docbuild -scheme TelnetKit -destination 'generic/platform=macOS'` | 门槛 4 的 DocC 构建部分 |
 
-矩阵 job 会一次性下载并缓存 watchOS、tvOS、visionOS 运行时，且在这些平台上只跑协议套件。运行时下载体积是 [R11 风险](../PRD.zh.md#11-风险与对策) 的成本来源，因此矩阵只在改动 `Sources/` 的 PR 与主分支上运行，而不是每次 push 都跑。
+矩阵 job 会下载 watchOS、tvOS、visionOS 运行时，且在这些平台上只跑不碰网络的套件。运行时下载体积是 [R11 风险](../PRD.zh.md#11-风险与对策) 的成本来源，因此矩阵只在改动 `Sources/` 的 PR 与主分支上运行，而不是每次 push 都跑。
 
 ## 手工验收
 
-有三件事无法在托管 runner 上自动化，作为证据记录在里程碑清单中：
+有三件事无法在托管 runner 上自动化，作为证据记录在此处：
 
 1. 公网上的真实 Telnet 服务能应答登录提示，这是唯一离开本地网络的检查。已记录：SwiftUI Demo 应答了真实 telnetd、走到密码提示，并进入 shell 完成会话。
 2. iOS 模拟器里的 SwiftUI Demo 应用经回环连上 `swift run telnetkit-echo-server`，即 PRD §9.3 标准 2 的 iOS 子句。已记录：`TelnetKitDemoApp-iOS` scheme 在模拟器里运行并连上回环服务端。
 3. 在设备上做蜂窝↔Wi‑Fi 切换，以及 iOS 或 watchOS 上进入后台，能观察到 `.pathChanged` 与文档所述断连行为。
+
+M6 记录了第 3 条中可自动化的部分：注入式路径事件套件在 macOS 与 iOS 运行中全绿，后台策略就是 Demo 在 `scenePhase == .background` 时断开连接，因为库不启动任何后台常驻能力。真实蜂窝↔Wi‑Fi 切换只能在设备上做，此处未复现；M6 的出口标准是五平台构建加上 macOS 与 iOS 套件全绿，本机已复现。
