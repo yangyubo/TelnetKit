@@ -13,7 +13,9 @@ actor TelnetClient {
     private var terminalSettings: termios?
     private var escapeCharacter: UInt8?
     private var debug: Bool
-    private var localEcho = false
+    /// Typed input is echoed locally until the peer says it will echo; a terminal in raw
+    /// mode has no echo of its own, so a silent peer would otherwise swallow every key.
+    private var localEcho = true
     private var inCommandMode = false
     private var commandBuffer: [UInt8] = []
 
@@ -53,6 +55,7 @@ actor TelnetClient {
                 configuration: arguments.configuration
             )
             self.connection = connection
+            inCommandMode = false
             writeError("Connected to \(host).")
             if let remote = await connection.remoteAddress {
                 writeError("Remote address \(remote).")
@@ -109,6 +112,7 @@ actor TelnetClient {
             do { try await connection.sendEnvironment(variables, scope: scope) } catch { report(error) }
 
         case .localEchoChanged(let enabled):
+            // `enabled` is this end's echo duty: a peer that will echo turns it off.
             localEcho = enabled
 
         case .negotiation(let action, let option, _):
@@ -185,8 +189,12 @@ actor TelnetClient {
         case 0x04:
             await send(command: .endOfFile)
         case 0x0D:
-            if localEcho { writeOutput([0x0D, 0x0A]) }
-            await send(bytes: [0x0D, 0x0A])
+            // A bare LF: the terminal's output post-processing adds the carriage return,
+            // and an explicit CR here would double it.
+            if localEcho { writeOutput([0x0A]) }
+            // CR NUL, not CR LF: the peer's line discipline turns the CR into a newline,
+            // and a following LF would end a second, empty line. `telnet(1)` sends CR NUL.
+            await send(bytes: [0x0D, 0x00])
         default:
             if localEcho, byte >= 0x20 || byte == 0x7F {
                 writeOutput([byte])
@@ -198,6 +206,9 @@ actor TelnetClient {
     private func handleCommandByte(_ byte: UInt8) async {
         switch byte {
         case 0x0D, 0x0A:
+            // Command mode echoes typed input itself, so it must also end the line the
+            // user submitted; otherwise the next diagnostic lands on the same line.
+            writeOutput([0x0A])
             let line = String(decoding: commandBuffer, as: UTF8.self)
             commandBuffer.removeAll(keepingCapacity: true)
             await execute(line)

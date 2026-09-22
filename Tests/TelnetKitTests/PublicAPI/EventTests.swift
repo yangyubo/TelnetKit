@@ -36,10 +36,12 @@ struct EventDeliveryTests {
                 if case .negotiation(.will, .echo, true) = $0 { return true } else { return false }
             }
         )
-        #expect(await recorder.waitFor { if case .localEchoChanged(true) = $0 { return true } else { return false } })
+        // The peer echoes, so the local end must not.
+        #expect(await recorder.waitFor { if case .localEchoChanged(false) = $0 { return true } else { return false } })
 
         try await server.send([0xFF, 0xFC, 0x01])
-        #expect(await recorder.waitFor { if case .localEchoChanged(false) = $0 { return true } else { return false } })
+        // The peer stops echoing, so the local end must.
+        #expect(await recorder.waitFor { if case .localEchoChanged(true) = $0 { return true } else { return false } })
         task.cancel()
         await connection.close()
     }

@@ -395,7 +395,9 @@ final class TelnetProtocolCore: @unchecked Sendable {
         ledger.recordInbound(action, option: option)
         emit(.negotiation(action, option: option, remote: true))
         if option == .echo, action == .will || action == .wont {
-            emit(.localEchoChanged(enabled: action == .will))
+            // A peer that will echo takes over the display of typed input, so this end
+            // stops echoing; a peer that wont echo leaves the local end to do it.
+            emit(.localEchoChanged(enabled: action == .wont))
         }
     }
 
