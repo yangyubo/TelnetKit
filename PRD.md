@@ -43,12 +43,12 @@ TelnetKit's position: **wrap libtelnet with the Swift 6 concurrency model and Sw
 - ❌ BBS business logic (ANSI art, ZMODEM and other file-transfer protocols).
 - ❌ MCCP2 compression (`HAVE_ZLIB`). All three Apple SDKs ship zlib (I verified `-lz` links for macOS, iOS, and iPadOS), so leaving it off is a tradeoff rather than a dependency gap: the target users (developers, operators, and technical enthusiasts) do not rely on it, and accepting a compressed stream would add three undesigned contracts: an inflation-ratio bound, event-flow behavior under compression, and a compressed-state failure mode. The first release answers `wont`, and v0.2 evaluates the enablement conditions in §6.3.
 - ❌ Proxy mode (`TELNET_FLAG_PROXY`). It turns libtelnet into a transparent pipe: RFC 1143 answering is switched off and every `WILL`/`WONT`/`DO`/`DONT` is reported to the application to forward by itself, with COMPRESS2 auto-detection as its only extra. That is the middle-man shape (client ↔ proxy ↔ server) and the debug-tool shape, where the forwarder must not take a position on options. This library is the opposite: it is an endpoint, and its value is exactly the RFC 1143 answering, the option table, and `optionStatus(_:)` that proxy mode would switch off; the COMPRESS2 extra is zlib-gated and off in the first release. A caller that needs transparent forwarding runs upstream libtelnet in proxy mode; v0.2 revisits this only under the precondition rule §6.3 sets for compression.
-- ❌ A Telnet server framework productized on `NIOTSListenerBootstrap`; the echo server in the test fixture is not part of the product interface.
+- ❌ A Telnet server framework productized on `NIOTSListenerBootstrap`; the echo server the demo ships is not part of the product interface.
 - ❌ Anything beyond text encoding: `send(text:)` encodes as UTF-8 by default, the encoding strategy is configurable, and no charset autodetection is attempted.
 - ❌ Telnet over TLS/SSL (`telnets`/992, START-TLS, the TELNET ENCRYPT and AUTHENTICATION options). Devices and servers that offer it are rare, the standard was abandoned, Apple's and Homebrew's telnet both lack it, and upstream libtelnet implements neither ENCRYPT nor AUTHENTICATION. A deployment that needs confidentiality uses a VPN or a bastion host; this library carries plaintext Telnet only and states that fact prominently in its documentation.
 - ❌ Non-Apple platforms (Linux, Windows, and Android are out of scope, with no abstraction or conditional compilation kept for them).
 - ❌ A POSIX/BSD socket transport (`NIOPosix`, raw `socket()`, `select`/`kqueue`); Network.framework is the only transport.
-- ❌ A productized server or listener side (`NIOTSListenerBootstrap`); the echo server in the test fixture is not part of the product interface.
+- ❌ A productized server or listener side (`NIOTSListenerBootstrap`); the echo server the demo ships is not part of the product interface.
 
 ---
 
@@ -150,7 +150,7 @@ TelnetKit/
 │   │   └── TelnetNetworkEventMapping.swift
 │   ├── TelnetKitClient/                # [executable, macOS only] the telnetkit-client CLI
 │   │   └── main.swift
-│   └── TelnetEchoServer/               # [executable, macOS only] local loopback server (demo + integration fixture)
+│   └── TelnetEchoServer/               # [executable, macOS only] local loopback server (demo + manual peer)
 │       └── main.swift
 ├── Tests/
 │   └── TelnetKitTests/
@@ -551,7 +551,7 @@ The case inventory below is the requirement list; [docs/testing.md](docs/testing
 | Layer | Goal | Method |
 | --- | --- | --- |
 | L1 protocol unit tests (white box) | Per-event, per-byte correctness | `@testable import TelnetKit` and a direct byte feed into `TelnetProtocolCore` |
-| L2 public interface tests (black box) | Contract stability, no C leak, error semantics | `import TelnetKit` only, against a loopback `TelnetEchoServer` |
+| L2 public interface tests (black box) | Contract stability, no C leak, error semantics | `import TelnetKit` only, against the test target's loopback fixture |
 | L3 integration tests | A real connection, timeout, cancellation, concurrent connections, path events | `NIOTSConnectionBootstrap` against a local `NIOTSListenerBootstrap` fixture |
 | L4 robustness | Fuzz input and resource bounds | Random and malicious byte streams, oversized SB, flooding |
 | L5 static assurance | Interface, concurrency, and five platform builds | `swift-api-digester` snapshot, `swift build -Xswiftc -strict-concurrency=complete`, an AddressSanitizer job, and iOS, watchOS, tvOS, and visionOS simulator builds |
@@ -656,7 +656,7 @@ Every suite uses **Swift Testing** (`import Testing`, `@Test`/`@Suite`/`#expect`
 | Name | Form | Purpose |
 | --- | --- | --- |
 | `telnetkit-client` | `.executableTarget` (CLI, macOS only) | A complete interactive Telnet client that accepts the `telnet(1)` flags and drives TelnetKit; it is a working tool rather than an interface showcase |
-| `TelnetEchoServer` | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, and warning scenarios |
+| `TelnetEchoServer` (the `telnetkit-echo-server` command) | `.executableTarget` (local server, macOS only) | An integration target with no external dependency: echo, plus active TTYPE/NAWS/NEW-ENVIRON negotiation and injected negotiation, subnegotiation, warning, and oversized-subnegotiation scenarios |
 | `TelnetKitDemoApp` | SwiftUI macOS app (`Examples/`) | An interactive terminal: connection panel, output area, input field, option-status table, event log, automatic window-size reporting |
 
 ### 9.1.1 Documentation deliverables
@@ -704,11 +704,11 @@ This PRD's engineering constraints are split into development documents kept bes
 | M2 connection layer | `TelnetChannelHandler`, the `TelnetConnection` actor, timeout, cancellation, and close, with L2/L3 tests (group A) | Group A is green; `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events | Shipped |
 | M3 negotiation and capabilities | RFC 1143 negotiation strategy, TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP, and group C tests | Group C is green; repeated and simultaneous negotiation produces a bounded byte count | Shipped |
 | M4 quality and documentation | Groups E, F, and G, DocC, interface snapshot, coverage gates, README, CHANGELOG | Protocol line coverage is 92.3%; the DocC build reports 0 target diagnostics; the symbol graph holds no forbidden name; the API baseline shows no breaking change | Shipped |
-| M5 demo | `telnetkit-client` (shipped), `TelnetEchoServer`, and the SwiftUI demo app | The CLI client reaches a server and carries an interaction; the four §9.3 criteria still need the echo server and the app | Partial |
+| M5 demo | `telnetkit-client` and `telnetkit-echo-server` (shipped), and the SwiftUI demo app | Criteria 1 and 3's local half hold: the client reaches the echo server and its window-size report appears in the server log. Criteria 2 and 4 still need the app | Partial |
 | M6 Apple platform matrix | `Package.swift` declares all five platforms; CI gains iOS, watchOS, tvOS, and visionOS simulator builds and tests; the path events (FR-PATH) and background-suspension behavior are re-reviewed on iOS | All five platforms build; the protocol and public interface suites are green on macOS and iOS, and the remaining platforms build | Partial |
 | M7 release | v0.1.0 tag, release notes, macOS and iOS simulator screenshots or recordings | The tag is pushed and `Package.resolved` is archived | Planned |
 
-> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M6 has built all five floors but has not run their test matrix, and M5 has not started.
+> Status: **Shipped** means the exit criterion is met and the evidence is in [AGENTS.md](AGENTS.md#design-status); **Partial** means code or evidence has landed but the exit criterion is not met; **Planned** means no work has started. M6 has built all five floors but has not run their test matrix, and M5 has shipped both executables but not the app.
 
 > Suggested pace: M0 and M1 land in one pass; M2 and M3 can run in parallel; M4 and M5 run in parallel after M2 and M3, and M6 depends on the green M4 suites. Every milestone produces something runnable, so no "big integration at the end" risk accumulates.
 
@@ -770,7 +770,7 @@ let package = Package(
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
         .executable(name: "telnetkit-client", targets: ["TelnetKitClient"]),
-        .executable(name: "TelnetEchoServer", targets: ["TelnetEchoServer"]),
+        .executable(name: "telnetkit-echo-server", targets: ["TelnetEchoServer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.103.0"),
@@ -803,7 +803,7 @@ let package = Package(
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
         ]),
-        .testTarget(name: "TelnetKitTests", dependencies: ["TelnetKit", "TelnetEchoServer"]),
+        .testTarget(name: "TelnetKitTests", dependencies: ["TelnetKit"]),
     ]
 )
 ```

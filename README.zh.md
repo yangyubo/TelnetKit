@@ -10,7 +10,7 @@ TelnetKit 为每条连接提供一个 `async` 对象：建立连接后消费已�
 
 ## 状态
 
-本库已在 macOS 上实现并通过测试；CLI Demo 与回显服务端可执行文件不属于本里程碑。需求来源是 [PRD.zh.md](PRD.zh.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。
+本库已在 macOS 上实现并通过测试，命令行客户端与回显服务端以 macOS 可执行文件交付。需求来源是 [PRD.zh.md](PRD.zh.md)，设计契约是 [docs/architecture.md](docs/architecture.md) 与 [docs/public-api.md](docs/public-api.md)。
 
 ## 环境要求
 
@@ -41,15 +41,15 @@ targets: [
 git submodule update --init --recursive
 ```
 
-本包交付 `TelnetKit` 库与 `telnetkit-client` 命令行客户端：
+本包交付 `TelnetKit` 库与两个 macOS 可执行文件。先起回显服务端，再让客户端连它：
 
 ```sh
+swift run telnetkit-echo-server
 swift run telnetkit-client 127.0.0.1 2323
 ```
 
-它把服务端数据打印到 stdout、把按键转发给对端，并在转义字符 `^]` 上进入命令模式；库的用法只有一次 `await`，
-事件消费见[使用库](#使用库)。
-回显服务端与 SwiftUI 示例尚未交付。
+客户端把服务端数据打印到 stdout、把按键转发给对端，并在转义字符 `^]` 上进入命令模式；库的用法只有一次 `await`（见[使用库](#使用库)）。
+SwiftUI 示例尚未交付。
 
 ## 使用库
 
@@ -102,7 +102,7 @@ await connection.close()
 - 不支持代理模式：在两个对端之间透明转发属于中间人与调试工具场景，而本库是 Telnet 端点。
 - 不支持 Telnet over TLS/SSL：既不做 `telnets`/992，也不做 START-TLS，也不实现 TELNET ENCRYPT 与 AUTHENTICATION 选项。Apple 自带 telnet 与 Homebrew 的 netkit-telnet 都不支持，上游 libtelnet 两个选项都未实现，IETF 相关草案也从未成为 RFC。
 - 仅支持 Apple 平台：macOS、iOS、iPadOS、watchOS、tvOS、visionOS。Linux、Windows、Android 不在范围内，也不为它们保留抽象。
-- `telnetkit-client` 命令行客户端以仅 macOS 可执行文件交付；回显服务端与 SwiftUI 示例尚未提供。库本体在五个平台均可构建。
+- `telnetkit-client` 命令行客户端与 `telnetkit-echo-server` 对端以仅 macOS 可执行文件交付；SwiftUI 示例尚未提供。库本体在五个平台均可构建。
 - iOS 上是前台会话：应用进入后台会被系统挂起，连接随之中断；回到前台后由应用自行重连。
 - SSH、RLogin 与 BBS 文件传输协议不在范围内。
 

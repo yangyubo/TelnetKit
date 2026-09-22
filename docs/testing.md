@@ -2,7 +2,7 @@
 
 English | [中文](testing.zh.md)
 
-This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.zh.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The library suites and the vendored C suite are implemented; the demo procedure is **Designed** under the [design-status rule](../AGENTS.md#design-status).
+This document owns how every suite runs: the environment, the framework, the exact command per layer, the quality gates, and the CI matrix. Requirement identifiers and acceptance criteria stay in [PRD.md](../PRD.zh.md#8-测试策略与用例清单); the per-test design notes stay in the test source, per the [tier table](AGENTS.md#the-tier-taxonomy-one-home-per-fact). The library suites and the vendored C suite are implemented; the SwiftUI demo is **Designed** under the [design-status rule](../AGENTS.md#design-status).
 
 ## Environment
 
@@ -43,9 +43,9 @@ swift test --list-tests | wc -l                    # count for the coverage chec
 swift run telnetkit-client 127.0.0.1 2323           # manual: the CLI client against a server
 ```
 
-The echo server is a fixture, not a service: a suite binds its own loopback listener and stops it on teardown.
+A suite binds its own loopback listener and stops it on teardown, so no suite needs a server to be running.
 
-The CLI demo and the standalone echo server are not provided in this milestone; when they ship they are manual entry points, not a substitute for a suite.
+The CLI client and the echo server are manual entry points rather than fixtures: run `swift run telnetkit-echo-server` in one terminal and `swift run telnetkit-client 127.0.0.1 2323` in another to carry an interaction, and the server prints each window size it receives as `NAWS <columns>x<rows>`. Neither replaces a suite, and the echo server links neither `TelnetKit` nor libtelnet, so the two peers cannot share a parser defect.
 
 Simulator builds and runs use `xcodebuild` against the package, since a SwiftPM test bundle needs a host application on those platforms.
 

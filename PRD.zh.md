@@ -43,12 +43,12 @@ TelnetKit 的定位：**用 Swift 6 并发模型与 SwiftNIO 把 libtelnet 封�
 - ❌ BBS 业务逻辑（ANSI 图、文件传输协议 ZMODEM 等）。
 - ❌ MCCP2 压缩（`HAVE_ZLIB`）。Apple 三个 SDK 都自带 zlib（我已验证 macOS/iOS/iPadOS 均可 `-lz` 链接），所以关闭不是依赖问题，而是取舍：目标用户（开发者、运维人员、极客）不依赖它；而一旦接受压缩流，inflate 会引入解压炸弹、压缩态事件流与失败模式三项未设计的契约。首版对其一律 `wont`，v0.2 按 §6.3 的启用条件评估。
 - ❌ 代理模式（`TELNET_FLAG_PROXY`）。它把 libtelnet 变成一根透明管道：关闭 RFC 1143 应答，把每个 `WILL`/`WONT`/`DO`/`DONT` 上报给应用自行转发，唯一的额外能力是自动识别 COMPRESS2。这是中间人（客户端 ↔ 代理 ↔ 服务端）与调试工具的形态：转发方不能对选项站队。本库恰恰相反——它是端点，价值就在于代理模式会关掉的那三样：RFC 1143 自动应答、选项表与 `optionStatus(_:)`；而 COMPRESS2 这项额外能力受 zlib 控制，首版未开启。需要透明转发时，请直接以代理模式使用上游 libtelnet；v0.2 若要重新评估，须先满足 §6.3 为压缩设定的同类前置条件。
-- ❌ Telnet 服务端框架（`NIOTSListenerBootstrap` 侧产品化）；测试夹具中的回显服务端不计入产品接口。
+- ❌ Telnet 服务端框架（`NIOTSListenerBootstrap` 侧产品化）；Demo 交付的回显服务端不计入产品接口。
 - ❌ 文本层面编码转换以外的东西：`send(text:)` 默认按 UTF-8 编码，编码策略可配置但不做字符集自动探测。
 - ❌ Telnet over TLS/SSL（`telnets`/992、START-TLS、TELNET ENCRYPT 与 AUTHENTICATION 选项）。设备与服务端极少，标准已废弃，Apple 与 Homebrew 的 telnet 都不支持；上游 libtelnet 也未实现 ENCRYPT/AUTHENTICATION。需要保密时由部署方使用 VPN 或跳板机，本库只承载明文 Telnet，并在文档中显著标注这一事实。
 - ❌ 非 Apple 平台支持（Linux、Windows、Android 明确不做，也不为它们保留抽象或条件编译）。
 - ❌ POSIX/BSD socket 传输路径（`NIOPosix`、裸 `socket()`、`select`/`kqueue`）；传输层只有 Network.framework 一条路。
-- ❌ 服务端/监听侧（`NIOTSListenerBootstrap`）产品化；测试夹具中的回显服务端不计入产品接口。
+- ❌ 服务端/监听侧（`NIOTSListenerBootstrap`）产品化；Demo 交付的回显服务端不计入产品接口。
 
 ---
 
@@ -150,7 +150,7 @@ TelnetKit/
 │   │   └── TelnetNetworkEventMapping.swift
 │   ├── TelnetKitClient/                # [可执行，仅 macOS] telnetkit-client 命令行客户端
 │   │   └── main.swift
-│   └── TelnetEchoServer/               # [可执行，仅 macOS] 本地回环服务端（Demo + 集成测试夹具）
+│   └── TelnetEchoServer/               # [可执行，仅 macOS] 本地回环服务端（Demo + 手工对端）
 │       └── main.swift
 ├── Tests/
 │   └── TelnetKitTests/
@@ -551,7 +551,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | 层 | 目标 | 手段 |
 | --- | --- | --- |
 | L1 协议单测（白盒） | 逐事件、逐字节正确性 | `@testable import TelnetKit` + `TelnetProtocolCore` 直接喂字节 |
-| L2 公开接口测试（黑盒） | 契约稳定性、无 C 泄漏、错误语义 | 只 `import TelnetKit`，配合 `TelnetEchoServer` 回环 |
+| L2 公开接口测试（黑盒） | 契约稳定性、无 C 泄漏、错误语义 | 只 `import TelnetKit`，配合测试 target 内的回环夹具 |
 | L3 集成测试 | 真实连接、超时、取消、并发多连接、路径事件 | `NIOTSConnectionBootstrap` 连本地 `NIOTSListenerBootstrap` 夹具 |
 | L4 健壮性 | 模糊输入、资源上限 | 随机/恶意字节流、超大 SB、洪泛 |
 | L5 静态保障 | 接口、并发与五平台构建 | `swift-api-digester` 快照、`swift build -Xswiftc -strict-concurrency=complete`、AddressSanitizer job、iOS/watchOS/tvOS/visionOS 模拟器构建 |
@@ -656,7 +656,7 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | 名称 | 形态 | 作用 |
 | --- | --- | --- |
 | `telnetkit-client` | `.executableTarget`（CLI，仅 macOS） | 完整交互式 Telnet 客户端：接受 `telnet(1)` 参数并驱动 TelnetKit；它是可用工具，而不是接口展示程序 |
-| `TelnetEchoServer` | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning 场景 |
+| `TelnetEchoServer`（命令名 `telnetkit-echo-server`） | `.executableTarget`（本地服务端，仅 macOS） | 无外部依赖的联调目标：回显 + 主动发起 TTYPE/NAWS/NEW-ENVIRON 协商 + 注入协商/子协商/Warning/超长子协商场景 |
 | `TelnetKitDemoApp` | SwiftUI macOS App（`Examples/`） | 可交互终端：连接面板、输出区、输入框、选项状态表、事件日志、窗口尺寸自动上报 |
 
 ### 9.1.1 文档交付物
@@ -704,11 +704,11 @@ NIOTS 把 Network.framework 的路径事件暴露给 SwiftNIO（`NIOTSNetworkEve
 | M2 连接层 | `TelnetChannelHandler` + `TelnetConnection` actor + 超时/取消/关闭 + L2/L3 测试（A 组） | A 组用例全绿；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节 | 已交付 |
 | M3 协商与能力 | RFC 1143 协商策略、TTYPE/NAWS/NEW-ENVIRON/MSSP/ZMP + C 组测试 | C 组用例全绿；重复与同时协商产生的字节数有界 | 已交付 |
 | M4 质量与文档 | E/F/G 组测试、DocC、接口快照、覆盖率门槛、README、CHANGELOG | 协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0；符号图中无违禁名；API 基线与当前一致 | 已交付 |
-| M5 Demo | `telnetkit-client`（已交付）+ `TelnetEchoServer` + SwiftUI DemoApp | CLI 客户端能连服务端并完成交互；§9.3 四条验收仍需回显服务端与 App | 部分完成 |
+| M5 Demo | `telnetkit-client` 与 `telnetkit-echo-server`（已交付）+ SwiftUI DemoApp | 标准 1 与标准 3 的本地部分成立：客户端能连上回显服务端，其窗口尺寸上报出现在服务端日志中；标准 2 与 4 仍需 App | 部分完成 |
 | M6 Apple 平台矩阵 | `Package.swift` 声明五平台；CI 增加 iOS/watchOS/tvOS/visionOS 模拟器构建与测试；路径事件（FR-PATH）与后台挂起行为在 iOS 下复核 | 五平台构建成功；协议层与公开接口测试在 macOS 与 iOS 全绿，其余平台构建通过 | 部分完成 |
 | M7 发布 | v0.1.0 tag、Release Notes、macOS 与 iOS 模拟器截图/录屏 | 打 tag 并归档 `Package.resolved` | 计划中 |
 
-> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建但未跑测试矩阵，M5 尚未开始。
+> 状态：**已交付** 表示出口标准已满足且证据记录在 [AGENTS.md](AGENTS.md#design-status)；**部分完成** 表示代码或证据已落地但出口标准尚未满足；**计划中** 表示尚未开始。M6 已完成五平台构建但未跑测试矩阵，M5 已交付两个可执行文件但尚未交付 App。
 
 > 建议节奏：M0–M1 一次性完成；M2/M3 可并行；M4/M5 在 M2/M3 后并行；M6 依赖 M4 的全绿测试；每里程碑均有可运行产物，不积累"最后集成"风险。
 
@@ -770,7 +770,7 @@ let package = Package(
     products: [
         .library(name: "TelnetKit", targets: ["TelnetKit"]),
         .executable(name: "telnetkit-client", targets: ["TelnetKitClient"]),
-        .executable(name: "TelnetEchoServer", targets: ["TelnetEchoServer"]),
+        .executable(name: "telnetkit-echo-server", targets: ["TelnetEchoServer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.103.0"),
@@ -803,7 +803,7 @@ let package = Package(
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
         ]),
-        .testTarget(name: "TelnetKitTests", dependencies: ["TelnetKit", "TelnetEchoServer"]),
+        .testTarget(name: "TelnetKitTests", dependencies: ["TelnetKit"]),
     ]
 )
 ```

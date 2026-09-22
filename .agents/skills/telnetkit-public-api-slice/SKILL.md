@@ -33,7 +33,7 @@ Exclude the `libtelnet/` submodule from edits, including documentation edits; it
 3. Implement at the protocol layer: add or extend `TelnetProtocolCore` and the wire-coding helper. Feed the C callback, copy its buffers, and produce the Swift event or value. Run the protocol test.
 4. Wire the transport: extend `TelnetChannelHandler` or the bootstrap only as the slice requires, keeping the EventLoop ownership rule. Re-run the protocol test plus any transport test.
 5. Expose the public surface: add the declaration to `Sources/TelnetKit/Public/`, with a `///` comment stating outcome, throw conditions, ownership, ordering, and cancellation.
-6. Write the public API test through `import TelnetKit` only, against `TelnetEchoServer`, and add the symbol to the [symbol checklist](../../../docs/public-api.md#symbol-checklist) if it is new.
+6. Write the public API test through `import TelnetKit` only, against the test target's loopback fixture, and add the symbol to the [symbol checklist](../../../docs/public-api.md#symbol-checklist) if it is new.
 7. Update the demo if the slice is caller-visible in the demo scope, per the [demo requirement](../../../PRD.md#9-demo-项目需求).
 8. Run the narrow checks, then the full suite; re-read the complete diff for layer violations before reporting.
 

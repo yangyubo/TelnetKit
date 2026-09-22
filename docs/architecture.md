@@ -2,7 +2,7 @@
 
 English | [中文](architecture.zh.md)
 
-Read this before changing anything under `Sources/`. It is the design contract: the library layers are implemented, the demo executables are designed, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status) rather than in this file. Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
+Read this before changing anything under `Sources/`. It is the design contract: the library layers and the demo executables are implemented, every statement below is **Designed** unless marked otherwise, and status lives in the [design-status rule](../AGENTS.md#design-status). Requirements and acceptance criteria live in [PRD.md](../PRD.md); caller-visible signatures live in [public-api.md](public-api.md).
 
 ## Composition
 
@@ -39,7 +39,7 @@ The decision record:
 | Transport | `NIOTSConnectionBootstrap` on `NIOTSEventLoopGroup` | Network.framework is Apple's supported transport and supplies connection management, proxy and VPN integration, path monitoring, and energy behavior without per-feature code |
 | No POSIX path | `NIOPosix` is not a dependency | A second transport would double the invariants (backpressure, cancellation, path reporting) to prove on five platforms while adding no capability a caller asked for |
 | No TLS | Telnet over TLS/SSL is unsupported: not `telnets`/992, not START-TLS, not the TELNET ENCRYPT or AUTHENTICATION options | The standard was abandoned, devices that offer it are rare, neither Apple's nor Homebrew's telnet implements it, upstream libtelnet implements neither option, and confidentiality belongs to a VPN or a bastion host rather than to this library |
-| Executables | macOS only | `telnetkit-client` and the echo server need a process, a terminal, and a loopback listener, which watchOS, tvOS, and visionOS do not provide |
+| Executables | macOS only | Both need a process, a terminal, and a loopback listener, which watchOS, tvOS, and visionOS do not provide; `TelnetEchoServer` links neither `TelnetKit` nor `CLibTelnet`, so it cannot share a parser defect with the library |
 
 Test placement follows the same split: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs on macOS and the iOS simulator.
 
@@ -145,9 +145,9 @@ Tests mirror the layers, and each layer is reachable without the one above it.
 | Suite | Layer under test | Fixture |
 |---|---|---|
 | `Tests/TelnetKitTests/Protocol/` | `TelnetProtocolCore` through `@testable import` | Byte arrays in, `[TelnetEvent]` out; no socket |
-| `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | `TelnetEchoServer` on the loopback address |
+| `Tests/TelnetKitTests/PublicAPI/` | `TelnetConnection` through `import TelnetKit` only | A `NIOTSListenerBootstrap` fixture in the test target |
 | `Tests/TelnetKitTests/Integration/` | Connection behavior: timeout, cancellation, close, concurrency, path events | A local fixture started with `NIOTSListenerBootstrap`, plus injected `NIOTSNetworkEvents` |
 
 The protocol suite is the correctness gate for RFC behavior; the public API suite is the contract gate, and it touches every public symbol listed in [public-api.md](public-api.md#symbol-checklist). The integration suite owns timing: a test that depends on a timeout uses a short configured bound and a generous assertion bound, never a fixed sleep.
 
-Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo executables are the manual path and the fixture, not a substitute for any suite.
+Platform placement: the protocol and public interface suites run on all five platforms, while the integration suite, which binds a loopback listener, runs only on macOS and the iOS simulator, because watchOS, tvOS, and visionOS provide no process or loopback-server semantics. The demo executables are the manual path, not a substitute for any suite.

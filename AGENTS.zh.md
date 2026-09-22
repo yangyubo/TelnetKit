@@ -8,7 +8,7 @@ TelnetKit 是一个仅面向 Apple 平台的 Swift Package，为 Swift 调用方
 
 ## 设计状态
 
-`TelnetKit` 库已经存在并通过测试；[PRD.md](PRD.md) 是需求来源，上述文档是它的设计契约。演示可执行文件处于设计阶段，尚未编写。本仓库中的陈述分为三类，正文必须标明属于哪一类：
+`TelnetKit` 库已经存在并通过测试，两个演示可执行文件均已编写；[PRD.md](PRD.md) 是需求来源，上述文档是它的设计契约。本仓库中的陈述分为三类，正文必须标明属于哪一类：
 
 - **已验证。** 在本机实际复现过：`swift test` 通过 115 个测试；`-strict-concurrency=complete` 无警告；`swift test --sanitize=address` 通过；`TelnetKit` 在五个平台下限（macOS 15、iOS 18、watchOS 11、tvOS 18、visionOS 2）均可构建；`leaks --atExit` 在 300 条连接与 10 万事件后报告 0 泄露字节；协议层行覆盖率 92.3%；DocC 构建 target 诊断数为 0。
 - **上游事实。** 读自被 pin 的依赖而非我们的代码：例如 libtelnet 0.23 不导出任何选项状态查询函数。
@@ -26,15 +26,15 @@ Sources/CLibTelnet/            我们的 module map、两个指向子模块的�
 Sources/TelnetKit/Public/      公开类型；调用方唯一可见的符号
 Sources/TelnetKit/Protocol/    对 telnet_t 的内部 Swift 封装
 Sources/TelnetKit/Transport/   内部 NIOTS handler、bootstrap 与路径事件映射
-Sources/TelnetKitClient/       telnetkit-client 命令行客户端，本包唯一的可执行产物
-Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端（已设计，尚未编写）
+Sources/TelnetKitClient/       telnetkit-client 命令行客户端
+Sources/TelnetEchoServer/      仅 macOS 的本地回显服务端（供 Demo 使用）
 Tests/CLibTelnetTests/         内置 libtelnet 套件；测试套件位于 Tests/TelnetKitTests/
 Examples/TelnetKitDemoApp/     SwiftUI 演示应用（已设计，尚未编写）
 docs/                          架构、公开接口契约、测试方案、文档标准
 .agents/skills/                可复用工作流
 ```
 
-包产物：库 `TelnetKit` 与可执行文件 `telnetkit-client`；`TelnetEchoServer` 已设计但尚未声明。`CLibTelnet` 始终是内部 target，绝不成为 product。
+包产物：库 `TelnetKit` 与可执行文件 `telnetkit-client`、`telnetkit-echo-server`。`CLibTelnet` 始终是内部 target，绝不成为 product。
 
 ## 命令
 
@@ -44,6 +44,7 @@ swift build                       # 构建全部 target 的 debug 版本
 swift test                        # 115 个测试，离线且在 60s 内
 swift test --filter TelnetProtocolCoreTests   # 迭代时只跑一个套件
 swift run telnetkit-client 127.0.0.1 2323     # 交互式命令行客户端
+swift run telnetkit-echo-server               # 本地回显服务端
 swift build -Xswiftc -strict-concurrency=complete   # 并发检查
 swift build --configuration release               # release 构建与体积检查
 swift package describe            # target 与 product 清单
@@ -78,7 +79,7 @@ swift build --target CLibTelnet --sdk "$(xcrun --sdk iphonesimulator --show-sdk-
 - 公开符号带 `///` 文档注释，说明调用方契约：结果、抛出或结束条件、所有权、顺序与取消语义。内部注释只解释不显然的不变量；不叙述控制流。
 - 一个术语一个含义。`option`、`negotiation`、`subnegotiation`、`event`、`connection`、`session` 采用 [docs/glossary](docs/public-api.md#glossary) 中的定义；不得为已定义的术语另造同义词。
 - 当引入依赖能删掉自有代码与测试时，优先用依赖；把这一选择记进 PRD，而不是写进注释。
-- 测试描述公开 API 的可观测行为。协议层测试直接驱动解析层；连接测试用真实 socket 打 `TelnetEchoServer`。废弃行为要与其测试一起变更，并遵循同一条决定规则。
+- 测试描述公开 API 的可观测行为。协议层测试直接驱动解析层；连接测试用真实 socket 打测试 target 内的回环夹具。废弃行为要与其测试一起变更，并遵循同一条决定规则。
 - 文件以恰好一个结尾换行结束。`FIXME` 用于缺陷，`TODO` 用于计划工作，`XXX` 用于必须回看的高风险点；不要留没有理由的裸标记。
 
 ## 文档

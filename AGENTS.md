@@ -8,7 +8,7 @@ Read [docs/architecture.md](docs/architecture.md) before changing `Sources/`. Th
 
 ## Design status
 
-The `TelnetKit` library exists and is tested; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. The demo executables are designed but not written. A statement in this repository is one of three kinds, and prose states which:
+The `TelnetKit` library exists and is tested, and both demo executables are written; [PRD.md](PRD.md) is the requirement source and the documents named above are the design contract for it. A statement in this repository is one of three kinds, and prose states which:
 
 - **Verified.** Reproduced on this machine: `swift test` passes 115 tests, `-strict-concurrency=complete` reports no warning, `swift test --sanitize=address` passes, `TelnetKit` builds for all five floors (macOS 15, iOS 18, watchOS 11, tvOS 18, visionOS 2), `leaks --atExit` reports 0 leaked bytes over 300 connections and 100,000 events, protocol line coverage is 92.3%, and the DocC build reports 0 target diagnostics.
 - **Upstream fact.** Read from the pinned dependency, not from our code: for example libtelnet 0.23 exports no option-status query.
@@ -26,15 +26,15 @@ Sources/CLibTelnet/            our module map, two symlinks into the submodule, 
 Sources/TelnetKit/Public/      public types; the only symbols callers may see
 Sources/TelnetKit/Protocol/    internal Swift wrapper over telnet_t
 Sources/TelnetKit/Transport/   internal NIOTS handler, bootstrap, and path-event mapping
-Sources/TelnetKitClient/       the telnetkit-client CLI, the package's only executable
-Sources/TelnetEchoServer/      macOS-only local echo server (designed, not written)
+Sources/TelnetKitClient/       the telnetkit-client CLI
+Sources/TelnetEchoServer/      macOS-only demo echo server
 Tests/CLibTelnetTests/         the vendored libtelnet suite; Tests/TelnetKitTests/ holds the Swift suites
 Examples/TelnetKitDemoApp/     SwiftUI demo application (designed, not written)
 docs/                          architecture, public API contract, test plan, documentation standard
 .agents/skills/                repeatable workflows
 ```
 
-Package products: library `TelnetKit` and the `telnetkit-client` executable; `TelnetEchoServer` is designed but not declared. `CLibTelnet` stays internal and never becomes a product.
+Package products: `TelnetKit` and the `telnetkit-client` and `telnetkit-echo-server` executables. `CLibTelnet` stays internal and never becomes a product.
 
 ## Commands
 
@@ -44,6 +44,7 @@ swift build                       # debug build of every target
 swift test                        # 115 tests, offline, under 60s
 swift test --filter TelnetProtocolCoreTests   # one suite while iterating
 swift run telnetkit-client 127.0.0.1 2323     # the interactive CLI client
+swift run telnetkit-echo-server               # the local echo server
 swift build -Xswiftc -strict-concurrency=complete   # concurrency error check
 swift build --configuration release               # release build and binary-size check
 swift package describe            # target and product inventory
@@ -78,7 +79,7 @@ Never run `git push` and never ask whether to push; a commit stays local until t
 - Public symbols carry a `///` doc comment that states the caller contract: outcome, throw or finish conditions, ownership, ordering, and cancellation. Internal comments explain non-obvious invariants only; they do not narrate control flow.
 - One meaning per term. Use `option`, `negotiation`, `subnegotiation`, `event`, `connection`, and `session` with the definitions in [docs/glossary](docs/public-api.md#glossary); do not introduce a synonym for a term already defined there.
 - Prefer an existing dependency over new code when it removes owned code and tests; record the choice in the PRD rather than in a comment.
-- Tests describe observable behavior of the public API. A protocol-level test drives the parse layer directly; a connection test drives a real socket against `TelnetEchoServer`. Change obsolete behavior together with its tests, under the same decision rule.
+- Tests describe observable behavior of the public API. A protocol-level test drives the parse layer directly; a connection test drives a real socket against the test target's loopback fixture. Change obsolete behavior together with its tests, under the same decision rule.
 - Files end with exactly one trailing newline. Keep a `FIXME` for a defect, `TODO` for planned work, and `XXX` for a hazard that must be revisited; do not use a bare marker without a reason.
 
 ## Documentation
